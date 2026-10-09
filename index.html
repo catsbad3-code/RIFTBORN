@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#120d24">
+<link rel="icon" href="img/icono.png">
+<title>Riftborn: El Ascenso del Eclipse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div class="marco" id="marcoJugador">
+    <button id="btnPerfil" class="retrato" aria-label="Abrir personaje"><canvas id="avatar" width="112" height="112"></canvas></button>
+    <span class="nivel-badge" id="hNivel">1</span>
+    <div class="marco-info">
+      <div class="marco-nombre"><span id="hNombre"></span><span id="hRango" class="rango-txt"></span></div>
+      <div class="barra vida"><span id="hpFill"></span><em id="hpTxt"></em></div>
+      <div class="barra en"><span id="enFill"></span><em id="enTxt"></em></div>
+    </div>
+    <button id="btnPuntos" class="pill oculto"></button>
+  </div>
+  <div id="buffs" aria-label="Efectos activos"></div>
+  <div class="marco objetivo oculto" id="marcoObjetivo">
+    <div class="marco-info">
+      <div class="marco-nombre"><span id="oNombre"></span><span id="oRango" class="rango-txt"></span></div>
+      <div class="barra vida"><span id="oFill"></span><em id="oTxt"></em></div>
+    </div>
+    <div class="retrato ret-obj"><span id="oColor"></span></div>
+  </div>
+</div>
+<div id="jefe" class="oculto"><p id="jefeNombre"></p><div class="barra"><span id="jefeFill"></span></div></div>
+<div id="banner"></div>
+<div id="fundido"></div>
+<div id="chat"><div class="chat-cab" id="chatCab"><span>General</span><button id="chatMin" aria-label="Minimizar chat" title="Minimizar">–</button></div>
+  <div id="chatLog" aria-live="polite"></div><span class="chat-rs" id="chatRs" title="Arrastra para cambiar el tamaño" aria-hidden="true"></span></div>
+<button id="btnInteractuar" class="btn principal oculto"></button>
+<div id="panelAccion">
+  <div class="xp" title="Experiencia"><span id="xpFill"></span><em id="xpTxt"></em></div>
+  <div id="barra"></div>
+</div>
+<div id="micro">
+  <span id="hPoc" class="dato">🧪 0</span>
+  <button id="btnPersonaje" class="micro-btn" title="Personaje (C)" aria-label="Personaje">👤</button>
+  <button id="btnLibro" class="micro-btn" title="Libro de poderes (P)" aria-label="Libro de poderes">📖</button><button id="btnMis" class="micro-btn" title="Registro de misiones (L)" aria-label="Registro de misiones">📜</button>
+  <button id="btnMascota" class="micro-btn" title="Mascota (G)" aria-label="Mascota">🐾</button>
+  <button id="btnBolsa" class="micro-btn" title="Bolsa (B)" aria-label="Bolsa">🎒</button>
+  <button id="btnMenuJuego" class="micro-btn" title="Menú (Esc)" aria-label="Menú">☰</button>
+</div>
+<div id="movil">
+  <button id="mHab" class="mbtn" aria-label="Habilidad">✦</button>
+  <button id="mAtk" class="mbtn grande" aria-label="Ataque">⚔</button>
+  <button id="mPoc" class="mbtn chico" aria-label="Poción">🧪</button>
+</div>
+
+<!-- ============ Acceso ============ -->
+<div id="pAuth" class="overlay portada wow-login">
+  <div class="wl-logo"><span class="wl-eclipse"></span><b>RIFTBORN</b><small>El Ascenso del Eclipse</small></div>
+  <form class="wl-form" id="fAuth">
+    <label>Nombre de cuenta<input id="aUser" autocomplete="username" maxlength="20" required></label>
+    <label>Contraseña de la cuenta<input id="aPass" type="password" autocomplete="current-password" required></label>
+    <label id="lPass2" class="oculto">Repite la contraseña<input id="aPass2" type="password" autocomplete="new-password"></label>
+    <p class="error" id="aErr"></p>
+    <button class="wbtn grande" id="aBtn" type="submit">Conectar</button>
+    <label class="wl-check"><input type="checkbox" id="aRecordar"> Recordar nombre de cuenta</label>
+  </form>
+  <div class="wl-izq">
+    <button class="wbtn" id="tabReg" type="button">Crear cuenta</button>
+    <button class="wbtn" id="tabEntrar" type="button">Ya tengo cuenta</button>
+    <small class="wl-version">Versión 1.0.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
+  </div>
+  <div class="wl-der">
+    <button class="wbtn" type="button" data-ir="pAyuda">Cómo jugar</button>
+    <button class="wbtn" type="button" id="btnCreditos">Créditos</button>
+  </div>
+  <p class="wl-copy">Riftborn © 2026. Un juego de cazadores, portales y gatos.</p>
+</div>
+
+<div id="pMenu" class="overlay portada oculto">
+  <div class="eclipse chico"></div>
+  <h1>Riftborn</h1>
+  <p class="tenue" id="saludo"></p>
+  <div class="menu">
+    <button class="btn principal" data-ir="pPersonajes">Jugar</button>
+    <button class="btn" data-ir="pAyuda">Cómo jugar</button>
+  </div>
+</div>
+
+<div id="pAyuda" class="overlay portada oculto">
+  <h2>Cómo jugar</h2>
+  <div class="panel ancho">
+    <h3>Controles en ordenador</h3>
+    <dl class="controles" style="margin:8px 0 14px">
+      <dt>WASD</dt><dd>Moverte</dd>
+      <dt>Clic izquierdo</dt><dd>Ataque principal (mantén pulsado), apuntas con el ratón</dd>
+      <dt>Clic derecho</dt><dd>Habilidad especial (gasta energía)</dd>
+      <dt>Q F R 1 2 3 4</dt><dd>Poderes de la barra de acción (se aprenden al subir de nivel)</dd>
+      <dt>H</dt><dd>Beber poción</dd>
+      <dt>E</dt><dd>Entrar, hablar o usar lo que tengas cerca</dd>
+      <dt>C, B y P</dt><dd>Personaje, bolsa y libro de poderes</dd>
+      <dt>G</dt><dd>Invocar o guardar a tu mascota</dd>
+      <dt>Esc</dt><dd>Menú de pausa</dd>
+    </dl>
+    <h3>Controles en teléfono</h3>
+    <p class="tenue" style="margin:8px 0 14px">Arrastra el dedo en la parte izquierda para moverte. En las mazmorras aparecen los botones de ataque, habilidad y poción. Tu personaje apunta solo al enemigo más cercano.</p>
+    <h3>Tu vida de cazador</h3>
+    <p class="tenue" style="margin-top:8px">En la ciudad aparecen portales de distintos rangos, de E a S. Elige uno y entra: dentro hay una cueva llena de monstruos y un jefe al fondo. Derrótalo para despejar la mazmorra y salir con la recompensa. En la posada puedes dormir para recuperarte y guardar, comprar pociones y forjar tu arma. Tu rango de cazador sube con tu nivel. Toca tu retrato arriba a la izquierda para ver tu perfil.</p>
+  </div>
+  <button class="btn" id="btnAyudaVolver">Volver</button>
+</div>
+
+<div id="pPersonajes" class="overlay portada wow-sel oculto">
+  <div class="ws-reino">Reino: <b>Lumeria</b> <small>(Normal)</small></div>
+  <div class="ws-escena">
+    <canvas id="selCv" width="520" height="560"></canvas>
+    <div class="ws-rotar"><button class="wrot" id="rotIzq" aria-label="Girar a la izquierda">⟲</button><button class="wrot" id="rotDer" aria-label="Girar a la derecha">⟳</button></div>
+  </div>
+  <div class="ws-lista wpanel">
+    <div class="wpanel-tit">Personajes</div>
+    <div id="listaPj"></div>
+    <button class="wbtn" id="btnNuevoPj">Crear personaje</button>
+  </div>
+  <button class="wbtn enorme" id="btnEntrarMundo">Entrar al mundo</button>
+  <div class="ws-izq"><button class="wbtn" data-ir="pAyuda">Cómo jugar</button></div>
+  <div class="ws-der">
+    <button class="wbtn" id="btnBorrarPj">Borrar personaje</button>
+    <button class="wbtn" id="btnLogout">Atrás</button>
+  </div>
+</div>
+
+<div id="pCrear" class="overlay portada wow-crear oculto">
+  <div class="wc-izq wpanel">
+    <div class="wpanel-tit">Gato</div>
+    <div class="wc-iconos" id="gatosPj"></div>
+    <div class="wpanel-tit">Clase</div>
+    <div class="wc-iconos" id="clases"></div>
+  </div>
+  <div class="ws-escena"><canvas id="crearCv" width="520" height="560"></canvas>
+    <div class="ws-rotar"><button class="wrot" id="rotIzq2" aria-label="Girar a la izquierda">⟲</button><button class="wrot" id="rotDer2" aria-label="Girar a la derecha">⟳</button></div>
+  </div>
+  <div class="wc-der wpanel" id="claseInfo"></div>
+  <div class="wc-nombre">
+    <label>Nombre<input id="cNombre" maxlength="16" placeholder="Nombre del cazador"></label>
+    <button class="wbtn" id="btnAleatorio" type="button">Aleatorio</button>
+    <p class="error" id="cErr"></p>
+    <button class="wbtn enorme" id="btnCrear">Aceptar</button>
+  </div>
+  <div class="ws-der"><button class="wbtn" data-ir="pPersonajes">Atrás</button></div>
+</div>
+
+<!-- Ventanas del juego al estilo WoW (no detienen la partida) -->
+<div id="wPj" class="wv oculto" role="dialog" aria-label="Personaje">
+  <div class="wv-cab"><canvas class="wv-retrato" id="wPjRetrato" width="96" height="96"></canvas><b id="wPjTitulo"></b><button class="wv-x" data-wcerrar="wPj" aria-label="Cerrar">✕</button></div>
+  <div class="wv-cuerpo" id="wPjCuerpo"></div>
+  <nav class="wv-tabs"><button data-wtab="personaje">Personaje</button><button data-wtab="mascota">Mascota</button><button data-wtab="registro">Registro</button></nav>
+</div>
+<div id="wLibro" class="wv libro oculto" role="dialog" aria-label="Libro de hechizos">
+  <div class="wv-cab"><span class="wv-retrato ico" id="icoLibro"></span><b>Libro de hechizos</b><button class="wv-x" data-wcerrar="wLibro" aria-label="Cerrar">✕</button></div>
+  <div class="wv-cuerpo" id="wLibroCuerpo"></div>
+</div>
+<div id="wBolsa" class="wv bolsa oculto" role="dialog" aria-label="Mochila">
+  <div class="wv-cab"><span class="wv-retrato ico" id="icoMochila"></span><b>Mochila</b><button class="wv-x" data-wcerrar="wBolsa" aria-label="Cerrar">✕</button></div>
+  <div class="wv-cuerpo" id="wBolsaCuerpo"></div>
+</div>
+<div id="wMis" class="wv mis oculto" role="dialog" aria-label="Registro de misiones">
+  <div class="wv-cab"><span class="wv-retrato ico" id="icoMis"></span><b>Registro de misiones</b><button class="wv-x" data-wcerrar="wMis" aria-label="Cerrar">✕</button></div>
+  <div class="wv-cuerpo mis-cuerpo"><div class="mis-lista" id="misLista"></div><div class="mis-det" id="misDet"></div></div>
+</div>
+<div id="seguimiento" aria-live="polite"></div>
+<div id="wTip" class="wtip oculto"></div>
+<div id="wMenu" class="wmenu oculto"></div>
+
+<!-- ============ En partida ============ -->
+<div id="pPausa" class="overlay oculto">
+  <h2>Pausa</h2>
+  <div class="menu">
+    <button class="btn principal" id="btnSeguir">Continuar</button>
+    <button class="btn" id="btnVerPerfil">Perfil</button>
+    <button class="btn" id="btnGuardar">Guardar partida</button>
+    <button class="btn" id="btnSalir">Salir al menú principal</button>
+  </div>
+  <p class="nota" id="notaGuardado"></p>
+</div>
+
+<div id="pPerfil" class="overlay oculto">
+  <div class="ventana">
+    <div class="ventana-cab"><h2 id="vTitulo">Personaje</h2><button class="cerrar" data-cerrar aria-label="Cerrar">✕</button></div>
+    <div id="vCuerpo"></div>
+    <nav class="pestanas">
+      <button data-tab="personaje">Personaje</button>
+      <button data-tab="bolsa">Bolsa</button>
+      <button data-tab="poderes">Libro de poderes</button>
+      <button data-tab="registro">Registro</button>
+    </nav>
+  </div>
+</div>
+
+<div id="pTienda" class="overlay oculto">
+  <h2>Mostrador de la tendera</h2>
+  <p class="tenue">«Nada como una buena poción antes de cruzar un portal, cazador.»</p>
+  <div class="panel" id="tiendaCuerpo"></div>
+  <button class="btn principal" data-cerrar>Salir</button>
+</div>
+
+<div id="pForja" class="overlay oculto">
+  <h2>Forja del herrero</h2>
+  <p class="tenue">«Tráeme oro y haré que tu arma corte hasta las sombras.»</p>
+  <div class="panel" id="forjaCuerpo"></div>
+  <button class="btn principal" data-cerrar>Salir</button>
+</div>
+
+<div id="pPortal" class="overlay oculto">
+  <div class="rango-grande" id="poLetra">E</div>
+  <h2 id="poTitulo"></h2>
+  <div class="panel" id="poCuerpo"></div>
+  <div class="menu fila">
+    <button class="btn" data-cerrar>Ahora no</button>
+    <button class="btn principal" id="btnEntrarPortal">Entrar al portal</button>
+  </div>
+</div>
+
+<div id="pMision" class="overlay oculto">
+  <p class="tenue" id="miNombre"></p>
+  <h2 id="miTitulo"></h2>
+  <div class="panel" id="miCuerpo" style="max-width:520px"></div>
+  <div class="menu fila">
+    <button class="btn" id="miNo" data-cerrar>Ahora no</button>
+    <button class="btn principal" id="miSi">Aceptar</button>
+  </div>
+</div>
+
+<div id="pMascota" class="overlay oculto">
+  <h2>Tu primera mascota</h2>
+  <p class="tenue">Elige a tu compañero y ponle un nombre. Podrás invocarlo o guardarlo cuando quieras.</p>
+  <div class="gatos" id="gatosOpc"></div>
+  <label class="campo">Nombre de tu mascota<input id="mNombre" maxlength="14" placeholder="Por ejemplo, Sombrita"></label>
+  <p class="error" id="mErr"></p>
+  <div class="menu fila">
+    <button class="btn" data-cerrar>Ahora no</button>
+    <button class="btn principal" id="btnInvocarPet">Invocar</button>
+  </div>
+</div>
+
+<div id="pMuerte" class="overlay oculto">
+  <h2>Has caído</h2>
+  <p class="tenue" id="muerteTxt"></p>
+  <button class="btn principal" id="btnRevivir">Despertar en la posada</button>
+</div>
+
+<script src="auth/auth.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
