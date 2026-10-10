@@ -122,6 +122,48 @@ const PODERES = {
   domo:     { n:'Erupción del abismo', d:'Las sombras estallan a tu alrededor y lanzan lejos a los enemigos.', nivel:16, cd:12, coste:50, ic:'domo' },
   ejercito: { n:'Ejército de sombras', d:'Levantas a tres soldados de sombra y recuperas parte de tu vida.', nivel:20, cd:60, coste:80, ic:'pilar' }
 };
+// Talentos de cada clase: 1 punto cada 2 niveles (desde el 3), hasta 3 rangos por talento
+const TALENTOS = {
+  guerrero: [
+    { id:'piel',    n:'Piel de hierro',   d:'+6% de vida máxima por rango.',              ic:'domo',  f:(D, r) => D.maxHp = Math.round(D.maxHp * (1 + .06 * r)) },
+    { id:'furia',   n:'Furia',            d:'+7% de daño físico por rango.',              ic:'corte', f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'muralla', n:'Muralla',          d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'vigor',   n:'Vigor',            d:'+35% de regeneración de vida por rango.',    ic:'pilar', f:(D, r) => D.regHp *= 1 + .35 * r },
+    { id:'ritmo',   n:'Ritmo de batalla', d:'-6% de tiempo de recarga por rango.',        ic:'luna',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  sombra: [
+    { id:'filo',    n:'Filo oculto',      d:'+3% de golpe crítico por rango.',            ic:'corte', f:(D, r) => D.crit = Math.min(.65, D.crit + .03 * r) },
+    { id:'letal',   n:'Golpe letal',      d:'+7% de daño físico por rango.',              ic:'luna',  f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'viento',  n:'Pies de viento',   d:'+4% de velocidad por rango.',                ic:'tp',    f:(D, r) => D.vel = Math.min(340, D.vel * (1 + .04 * r)) },
+    { id:'evasion', n:'Evasión',          d:'+3% de defensa por rango.',                  ic:'tp',    f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Danza de sombras', d:'-6% de tiempo de recarga por rango.',        ic:'ola',   f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  mago: [
+    { id:'mente',   n:'Mente vasta',      d:'+10% de energía máxima por rango.',          ic:'bola',  f:(D, r) => D.maxEn = Math.round(D.maxEn * (1 + .1 * r)) },
+    { id:'arcano',  n:'Poder arcano',     d:'+7% de daño mágico por rango.',              ic:'rayo',  f:(D, r) => D.mag *= 1 + .07 * r },
+    { id:'flujo',   n:'Flujo',            d:'+20% de regeneración de energía por rango.', ic:'lluvia',f:(D, r) => D.regEn *= 1 + .2 * r },
+    { id:'escudo',  n:'Escudo de maná',   d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Tiempo arcano',    d:'-6% de tiempo de recarga por rango.',        ic:'bola',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ]
+};
+const MAX_RANGO_TAL = 3;
+const puntosTalento = pj => Math.max(0, Math.floor((pj.nivel - 1) / 2));
+const talentosGastados = pj => Object.values(pj.talentos || {}).reduce((a, b) => a + b, 0);
+function aplicarTalentos(D){
+  for (const t of TALENTOS[PJ.clase] || []){ const r = (PJ.talentos || {})[t.id] || 0; if (r) t.f(D, r); }
+}
+function subirTalento(id){
+  const t = (TALENTOS[PJ.clase] || []).find(x => x.id === id), r = PJ.talentos[id] || 0;
+  if (!t || r >= MAX_RANGO_TAL || talentosGastados(PJ) >= puntosTalento(PJ)) return;
+  PJ.talentos[id] = r + 1;
+  const hpAntes = D.maxHp, enAntes = D.maxEn;
+  derivar(); P.hp += Math.max(0, D.maxHp - hpAntes); P.en += Math.max(0, D.maxEn - enAntes);
+  texto(P.x, P.y - 78, `${t.n} ${r + 1}/${MAX_RANGO_TAL}`, '#ffd100', 14);
+  guardar(); renderLibro();
+}
+function reiniciarTalentos(){
+  PJ.talentos = {}; derivar(); P.hp = Math.min(P.hp, D.maxHp); P.en = Math.min(P.en, D.maxEn); guardar(); renderLibro();
+}
 const TECLAS = ['Q','F','R','1','2','3','4'];
 const CODIGO_TECLA = { KeyQ:'Q', KeyF:'F', KeyR:'R', Digit1:'1', Digit2:'2', Digit3:'3', Digit4:'4' };
 
@@ -332,6 +374,7 @@ function migrar(pj){
   if (pj.hermandad === undefined) pj.hermandad = null;
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
+  pj.talentos = pj.talentos || {};
   return pj;
 }
 
@@ -579,6 +622,8 @@ function derivar(){
     regEn: 6 + s.int * .3,
     regHp: s.vit * .06
   };
+  D.cdK = 1;
+  aplicarTalentos(D);
   D.poder = Math.max(D.fis, D.mag);
 }
 
@@ -1669,8 +1714,20 @@ function renderLibro(){
     h += `<div class="wl-h ${bloq ? 'bloq' : ''}" data-hz="${id}" title="${pw.d}"><canvas data-icono="${pw.ic}" width="80" height="80" ${bloq ? '' : `draggable="true" data-arrastra="${id}"`}></canvas>
       <div><b>${pw.n}</b><small>${bloq ? `Nivel ${pw.nivel}` : `${pw.coste} energía · ${pw.cd} s${tecla ? ` · tecla ${tecla}` : ''}`}</small></div></div>`;
   }
-  h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p></div>';
+  h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p>';
+  // talentos de la clase
+  const libres = puntosTalento(PJ) - talentosGastados(PJ);
+  h += `<div class="wl-sec">Talentos <small class="wl-pts">${libres} ${libres === 1 ? 'punto libre' : 'puntos libres'}</small></div>`;
+  for (const t of TALENTOS[PJ.clase] || []){
+    const r = PJ.talentos[t.id] || 0, puede = libres > 0 && r < MAX_RANGO_TAL;
+    h += `<div class="wl-h wl-tal ${r ? '' : 'bloq'}" title="${t.d}"><canvas data-icono="${t.ic}" width="80" height="80"></canvas>
+      <div><b>${t.n} <span class="wl-rango">${r}/${MAX_RANGO_TAL}</span></b><small>${t.d}</small></div>
+      <button class="wl-mas" data-tal="${t.id}" ${puede ? '' : 'disabled'} aria-label="Subir ${t.n}">+</button></div>`;
+  }
+  h += `<p class="wl-nota">Ganas un punto de talento cada 2 niveles. ${talentosGastados(PJ) ? '<button class="wl-reini" id="btnReiniTal">Reiniciar talentos</button>' : ''}</p></div>`;
   const cu = $('wLibroCuerpo'); cu.innerHTML = h;
+  cu.querySelectorAll('[data-tal]').forEach(b => b.onclick = e => { e.stopPropagation(); subirTalento(b.dataset.tal); });
+  if ($('btnReiniTal')) $('btnReiniTal').onclick = reiniciarTalentos;
   cu.querySelectorAll('canvas[data-icono]').forEach(cv => pintarIcono(cv, cv.dataset.icono));
   cu.querySelectorAll('[data-arrastra]').forEach(cv => cv.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', cv.dataset.arrastra); e.dataTransfer.effectAllowed = 'copy'; }));
   cu.querySelectorAll('.wl-h[data-hz]:not(.bloq)').forEach(el => el.onclick = e => {
@@ -2011,11 +2068,11 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005));
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK;
   } else {
     if (P.cd2 > 0) return;
     if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd; P.en -= c.h2.coste; vibrar(15);
+    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; vibrar(15);
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -2064,7 +2121,7 @@ function usarPoder(id){
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
   if ((P.cdP[id] || 0) > 0) return;
   if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd; vibrar(15);
+  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; vibrar(15);
   apuntar();
   PODER_FN[id]();
 }
