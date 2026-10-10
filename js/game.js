@@ -384,27 +384,99 @@ addEventListener('keydown', e => {
   }
 });
 
+// tamaño de cada "píxel" del escenario de personajes
+const PX_ESC = 4, ESC_PX = { cv:null, base:null };
+// pedestal de piedra con baldosas, borde y sombra, píxel a píxel (se calcula una vez)
+function pedestalPixel(lw, lh, py){
+  const img = new ImageData(lw, lh), d = img.data, cx = lw / 2;
+  py = Math.round(py);
+  const rx = 41, ry = 10, alto = 6;
+  const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+  const pon = (x, y, c, al = 255) => { if (x < 0 || y < 0 || x >= lw || y >= lh) return; const i = (y * lw + x) * 4, [r, g, bl] = typeof c === 'string' ? hex(c) : c; d[i] = r; d[i + 1] = g; d[i + 2] = bl; d[i + 3] = al; };
+  const azar = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+  const TOP = ['#8a8070', '#7c7262', '#6e6555', '#958b7a'], LADO = ['#4e463b', '#443d33', '#3a342b'];
+  const forma = new Uint8Array(lw * lh);
+  // haz de luz en franjas
+  for (let y = 0; y < py; y++){
+    const k = y / py, ancho = 10 + k * 28, al = Math.floor(k * 4) * 9;
+    if (!al) continue;
+    for (let x = Math.floor(cx - ancho); x <= Math.ceil(cx + ancho); x++) pon(x, y, '#ffe6aa', al);
+  }
+  // sombra en el suelo
+  for (let y = py; y < lh; y++) for (let x = 0; x < lw; x++){
+    const dx = (x + .5 - cx) / (rx + 5), dy = (y + .5 - py - alto - 2) / (ry + 3);
+    if (dx * dx + dy * dy <= 1) pon(x, y, '#000000', 110);
+  }
+  for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++){
+    const dx = (x + .5 - cx) / rx, dyt = (y + .5 - py) / ry, rt = dx * dx + dyt * dyt;
+    if (rt <= 1){
+      // cara de arriba: anillos de baldosas
+      const r = Math.sqrt(rt), anillo = Math.min(2, Math.floor(r * 3)), ang = (Math.atan2(dyt, dx) + Math.PI) / TAU;
+      const n = 6 + anillo * 6, seg = ang * n, borde = Math.abs(seg - Math.round(seg)) * Math.PI * 2 * r * rx / n;
+      const juntaAnillo = Math.abs(r * 3 - Math.round(r * 3)) < .09 && r > .2;
+      let c = TOP[Math.floor(azar(anillo, Math.floor(seg)) * TOP.length)];
+      if (r > .9) c = dyt < 0 ? '#a69c88' : '#7a705f';
+      else if (juntaAnillo || (anillo > 0 && borde < .5)) c = '#4a4337';
+      else if (dyt < -.3 && azar(x, y) < .12) c = '#a09683';
+      pon(x, y, c); forma[y * lw + x] = 1;
+    } else if (Math.abs(dx) <= 1 && y > py){
+      // costado del pedestal: hileras de bloques
+      const fondo = py + alto + ry * Math.sqrt(1 - dx * dx);
+      if (y + .5 <= fondo){
+        const fila = Math.floor((y - py - ry * Math.sqrt(1 - dx * dx)) / 2.5 + 8), col = Math.floor((x + (fila % 2) * 3) / 6);
+        let c = LADO[Math.floor(azar(fila, col) * LADO.length)];
+        if ((x + (fila % 2) * 3) % 6 === 0) c = '#2a251f';
+        if (dx > .55) c = '#2f2a23'; else if (dx < -.6) c = '#5a5245';
+        if (y + 1.5 > fondo) c = '#221e19';
+        pon(x, y, c); forma[y * lw + x] = 1;
+      }
+    }
+  }
+  // contorno oscuro
+  for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++){
+    if (forma[y * lw + x]) continue;
+    const vec = (xx, yy) => xx >= 0 && yy >= 0 && xx < lw && yy < lh && forma[yy * lw + xx];
+    if (vec(x - 1, y) || vec(x + 1, y) || vec(x, y - 1) || vec(x, y + 1)) pon(x, y, '#120e0b');
+  }
+  return img;
+}
+// anillo de runas animado con el color de la clase, en píxeles
+function runasPixel(b, cx, py, col, t){
+  const brillo = .55 + .2 * Math.sin(t / 700);
+  b.fillStyle = 'rgba(0,0,0,.45)';
+  for (let y = -4; y <= 4; y++){ const m = Math.round(17 * Math.sqrt(Math.max(0, 1 - (y / 4.5) ** 2))); if (m) b.fillRect(Math.round(cx - m), py + y, m * 2, 1); }
+  const anillo = (rx, ry, paso, dash, al) => {
+    const n = Math.round(TAU * rx * 1.2), vistos = new Set();
+    for (let i = 0; i < n; i++){
+      const u = i / n, ang = u * TAU;
+      if (dash && ((u * paso + t / 4000) % 1) > .45) continue;
+      const x = Math.round(cx + Math.cos(ang) * rx - .5), y = Math.round(py + Math.sin(ang) * ry - .5), k = x + ',' + y;
+      if (vistos.has(k)) continue; vistos.add(k);
+      b.globalAlpha = al * .35; b.fillStyle = col; b.fillRect(x, y - 1, 1, 3);
+      b.globalAlpha = al; b.fillRect(x, y, 1, 1);
+    }
+  };
+  anillo(30, 7.5, 0, false, brillo);
+  anillo(35, 9, 18, true, brillo * .8);
+  b.globalAlpha = 1;
+}
+
 // escena 3/4 con pedestal al estilo de la pantalla de personajes de WoW
 function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
   const a = cv.getContext('2d'), w = cv.width, h = cv.height, cx = w / 2, pie = h * .8;
   a.clearRect(0, 0, w, h);
   const col = CLASES[clase].color;
-  // haz de luz
-  const luz = a.createLinearGradient(0, 0, 0, pie);
-  luz.addColorStop(0, 'rgba(255,240,200,0)'); luz.addColorStop(1, 'rgba(255,230,170,.16)');
-  a.fillStyle = luz; a.beginPath(); a.moveTo(cx - 40, 0); a.lineTo(cx + 40, 0); a.lineTo(cx + 150, pie); a.lineTo(cx - 150, pie); a.fill();
-  // pedestal de piedra
-  a.fillStyle = '#1a1612'; a.beginPath(); a.ellipse(cx, pie + 16, 170, 46, 0, 0, TAU); a.fill();
-  const pd = a.createLinearGradient(0, pie - 30, 0, pie + 16);
-  pd.addColorStop(0, '#6b6355'); pd.addColorStop(1, '#2c2620');
-  a.fillStyle = pd; a.beginPath(); a.ellipse(cx, pie, 165, 42, 0, 0, TAU); a.fill();
-  a.strokeStyle = '#8c826e'; a.lineWidth = 2; a.beginPath(); a.ellipse(cx, pie, 165, 42, 0, 0, TAU); a.stroke();
-  // anillo de runas con el color de la clase
-  a.save(); a.shadowColor = col; a.shadowBlur = 18; a.strokeStyle = col; a.globalAlpha = .55 + .2 * Math.sin(t / 700);
-  a.lineWidth = 3; a.beginPath(); a.ellipse(cx, pie, 120, 30, 0, 0, TAU); a.stroke();
-  a.lineWidth = 1.5; a.setLineDash([6, 10]); a.lineDashOffset = -t / 60; a.beginPath(); a.ellipse(cx, pie, 140, 36, 0, 0, TAU); a.stroke();
-  a.restore();
-  a.fillStyle = 'rgba(0,0,0,.5)'; a.beginPath(); a.ellipse(cx, pie, 70, 15, 0, 0, TAU); a.fill();
+  // escenario en pixel art: se pinta en baja resolución y se amplía sin suavizar
+  const lw = Math.round(w / PX_ESC), lh = Math.round(h / PX_ESC);
+  if (!ESC_PX.cv || ESC_PX.cv.width !== lw || ESC_PX.cv.height !== lh){ ESC_PX.cv = document.createElement('canvas'); ESC_PX.cv.width = lw; ESC_PX.cv.height = lh; ESC_PX.base = null; }
+  const b = ESC_PX.cv.getContext('2d');
+  if (!ESC_PX.base) ESC_PX.base = pedestalPixel(lw, lh, pie / PX_ESC);
+  b.clearRect(0, 0, lw, lh);
+  b.putImageData(ESC_PX.base, 0, 0);
+  runasPixel(b, lw / 2, Math.round(pie / PX_ESC), col, t);
+  a.imageSmoothingEnabled = false;
+  a.drawImage(ESC_PX.cv, 0, 0, w, h);
+  a.imageSmoothingEnabled = true;
   if (!gatosListo) return;
   const dirs = ['ab', 'lado', 'ar', 'lado'], dir = dirs[rot];
   let flip = rot === 3;
