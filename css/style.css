@@ -822,3 +822,10 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 
 .ayuda-lista{margin:8px 0 0 18px;line-height:1.45}
 .ayuda-lista li{margin-bottom:4px}
+
+/* objetivo del objetivo (WoW) */
+.marco.odo{margin-top:2px;padding:2px 8px;display:grid;grid-template-columns:auto 1fr;gap:0 6px;align-items:center;min-width:150px;border-radius:6px}
+.marco.odo small{font:600 10px Rajdhani,sans-serif;color:#cfc4a8}
+.marco.odo b{font:700 12px Rajdhani,sans-serif;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marco.odo .barra{grid-column:1/-1;height:6px;margin-top:2px}
+.col-obj{display:flex;flex-direction:column;align-items:flex-start;gap:2px}

@@ -1419,7 +1419,7 @@ addEventListener('keydown', e => {
   if (!enJuego) return;
   if (e.code === 'Escape'){
     if (!$('wMenu').classList.contains('oculto')){ $('wMenu').classList.add('oculto'); return; }
-    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else pausar(); }
+    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else if (objetivoValido()) P.objetivo = null; else pausar(); }
     else if (PANELES_JUEGO.includes(pantallaActual)) pantalla(null);
     return;
   }
@@ -1433,6 +1433,8 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyH') beberPocion();
   if (e.code === 'KeyE' && interCerca) interCerca.accion();
   if (e.code === 'KeyG') toggleMascota();
+  if (e.code === 'Tab'){ e.preventDefault(); siguienteObjetivo(); }
+  if (e.code === 'KeyV'){ VER_PLACAS = !VER_PLACAS; try { localStorage.setItem('rb_placas', VER_PLACAS ? '1' : '0'); } catch (er) {} texto(P.x, P.y - 74, VER_PLACAS ? 'Placas de vida: sí' : 'Placas de vida: no', '#e9e4ff', 13); }
   const tecla = CODIGO_TECLA[e.code];
   if (tecla && !e.repeat) usarPoder(PJ.barra[tecla]);
 });
@@ -1443,6 +1445,7 @@ cv.addEventListener('pointerdown', e => {
   if (!enJuego || pantallaActual) return;
   if (e.pointerType === 'mouse'){
     mouse.x = e.clientX; mouse.y = e.clientY;
+    if (E.tipo === 'mazmorra'){ const en = enemigoEnPantalla(e.clientX, e.clientY); if (en) fijarObjetivo(en); }
     if (e.button === 0) mouse.izq = true;
     if (e.button === 2) usarHab(2);
     return;
@@ -1450,10 +1453,8 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault();
   // tocar un monstruo lo fija como objetivo de tus ataques y poderes
   if (E.tipo === 'mazmorra'){
-    const wx = e.clientX + cam.x, wy = e.clientY + cam.y;
-    let toc = null, md = 70 * 70;
-    for (const en of enemigos){ const d = (en.x - wx) ** 2 + (en.y - 20 - wy) ** 2; if (d < md){ md = d; toc = en; } }
-    if (toc){ P.objetivo = toc; P.tObj = 6; vibrar(10); return; }
+    const toc = enemigoEnPantalla(e.clientX, e.clientY, 70);
+    if (toc){ fijarObjetivo(toc); vibrar(10); return; }
   }
   if (e.clientX < W * .6 && !sticks.mov) sticks.mov = { id:e.pointerId, ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY };
 });
@@ -2010,6 +2011,7 @@ function actualizarBarra(){
       else if (pw){ cd = P.en < pw.coste ? 1 : clamp((P.cdP[id] || 0) / pw.cd, 0, 1); seg = P.cdP[id] || 0; }
     }
     if (b.tipo === 'h2') seg = P.cd2;
+    if ((b.tipo === 'h2' || b.tipo === 'poder') && !bloq && P.gcd > 0) cd = Math.max(cd, P.gcd / GCD);
     const segTxt = seg > 0.05 ? (seg < 1 ? seg.toFixed(1) : Math.ceil(seg)) + '' : '';
     if (b.seg !== segTxt){ b.el.querySelector('.seg').textContent = segTxt; b.seg = segTxt; }
     if (b.cd !== cd){ b.el.style.setProperty('--cd', cd); b.cd = cd; }
@@ -2047,9 +2049,30 @@ const formatoTiempo = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).p
 //  COMBATE
 // =====================================================
 // en el teléfono se apunta solo: primero al objetivo fijado (tocado o golpeado), si no al más cercano
+// ---------- objetivo fijo (estilo WoW): Tab, clic o toque; se mantiene hasta que muere o lo quitas con Esc ----------
+let VER_PLACAS = true; try { VER_PLACAS = localStorage.getItem('rb_placas') !== '0'; } catch (e) {}
+const GCD = 1; // tiempo de recarga global de habilidades y poderes (el ataque básico no lo usa)
+const objetivoValido = () => { const o = P && P.objetivo; return !!(o && !o.muerto && o.hp > 0 && enemigos.includes(o)); };
+function fijarObjetivo(e){ if (P.objetivo !== e){ P.objetivo = e; if (e) sfx('click'); } }
+function siguienteObjetivo(){
+  if (E.tipo !== 'mazmorra') return;
+  const lista = enemigos.filter(e => !e.muerto && Math.hypot(e.x - P.x, e.y - P.y) < 560 && lineaVision(P.x, P.y, e.x, e.y))
+    .sort((a, b) => Math.hypot(a.x - P.x, a.y - P.y) - Math.hypot(b.x - P.x, b.y - P.y));
+  if (!lista.length){ P.objetivo = null; return; }
+  const i = lista.indexOf(P.objetivo);
+  fijarObjetivo(lista[(i + 1) % lista.length]);
+}
+// enemigo bajo un punto de la pantalla (para seleccionarlo con clic o toque)
+function enemigoEnPantalla(sx, sy, radio = 46){
+  const wx = sx + cam.x, wy = sy + cam.y; let toc = null, md = radio * radio;
+  for (const en of enemigos){ if (en.muerto) continue; const d = (en.x - wx) ** 2 + (en.y - Math.min(40, altoDe(en) / 2) - wy) ** 2; if (d < md){ md = d; toc = en; } }
+  return toc;
+}
+// a quién ataca un enemigo (objetivo del objetivo)
+const unidadJugador = () => ({ nombre:PJ.nombre, hp:P.hp, maxHp:D.maxHp, color:'#7fc8ff' });
+function objetivoDe(e){ return e && e.objetivo && e.objetivo !== P ? e.objetivo : unidadJugador(); }
 function objetivoTactil(max = 360){
-  const o = P.objetivo;
-  if (o && !o.muerto && o.hp > 0 && enemigos.includes(o) && Math.hypot(o.x - P.x, o.y - P.y) < Math.max(max, 420)) return o;
+  if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < Math.max(max, 420)) return P.objetivo;
   return enemigoCercano(P.x, P.y, max);
 }
 // ataque automático (teléfono): golpea solo cuando hay un monstruo a tu alcance
@@ -2058,6 +2081,7 @@ function autoAtaque(){
   return !!objetivoTactil(PJ.clase === 'mago' ? 330 : 105);
 }
 function apuntar(){
+  if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < 620){ P.ang = Math.atan2(P.objetivo.y - P.y, P.objetivo.x - P.x); return; }
   if (!esTactil){ P.ang = Math.atan2(mouse.y + cam.y - (P.y - 20), mouse.x + cam.x - P.x); return; }
   const e = objetivoTactil(360);
   P.ang = e ? Math.atan2(e.y - P.y, e.x - P.x) : Math.atan2(P.ldy, P.ldx);
@@ -2069,6 +2093,7 @@ function enemigoCercano(x, y, max){
 }
 // punto del suelo hacia donde apuntas (para poderes de zona)
 function puntoMira(max){
+  if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < max + 60) return { x:P.objetivo.x, y:P.objetivo.y };
   if (esTactil){ const e = objetivoTactil(max); if (e) return { x:e.x, y:e.y }; return { x:P.x + Math.cos(P.ang) * 180, y:P.y + Math.sin(P.ang) * 180 }; }
   const mx = mouse.x + cam.x, my = mouse.y + cam.y + 20, d = Math.hypot(mx - P.x, my - P.y);
   const k = d > max ? max / d : 1;
@@ -2091,9 +2116,9 @@ function usarHab(n){
     if (P.cd1 > 0) return;
     P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
   } else {
-    if (P.cd2 > 0) return;
+    if (P.cd2 > 0 || P.gcd > 0) return;
     if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; vibrar(15); sfx('poder');
+    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; P.gcd = GCD; vibrar(15); sfx('poder');
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -2140,9 +2165,9 @@ function usarPoder(id){
   const pw = PODERES[id];
   if (PJ.nivel < pw.nivel){ texto(P.x, P.y - 74, `Se aprende en el nivel ${pw.nivel}`, '#9a91c2', 14); return; }
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
-  if ((P.cdP[id] || 0) > 0) return;
+  if ((P.cdP[id] || 0) > 0 || P.gcd > 0) return;
   if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; vibrar(15); sfx('poder');
+  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('poder');
   apuntar();
   PODER_FN[id]();
 }
@@ -2234,7 +2259,7 @@ function herir(e, dmg, critExtra = 0){
   const crit = Math.random() < D.crit + critExtra;
   if (crit) dmg *= 1.8;
   e.hp -= dmg; e.flash = .1; e.aggro = true;
-  P.objetivo = e; P.tObj = 6;
+  if (!objetivoValido()) P.objetivo = e;
   texto(e.x + rand(-8, 8), e.y - e.r - 4, Math.round(dmg), crit ? '#f2c46d' : '#ffffff', crit ? 19 : 14);
   if (e.hp <= 0) matar(e);
 }
@@ -2491,7 +2516,8 @@ function update(dt){
   P.hp = Math.min(D.maxHp, P.hp + (D.regHp + (E.tipo !== 'mazmorra' ? D.maxHp * .03 : 0)) * dt);
   P.en = Math.min(D.maxEn, P.en + D.regEn * efMod.regEn() * dt);
   updateEfectos(dt);
-  P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.inv -= dt; P.golpe -= dt;
+  P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.inv -= dt; P.golpe -= dt; P.gcd = Math.max(0, (P.gcd || 0) - dt);
+  if (P.objetivo && !objetivoValido()) P.objetivo = null;
 
   // portales de la ciudad (avanzan siempre)
   timerPortal -= dt;
@@ -2717,8 +2743,8 @@ function actualizarHUD(){
   $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
   // marco de objetivo: el jefe en combate, o el último enemigo golpeado
   let ob = null;
-  if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
-  else if (P.objetivo && !P.objetivo.muerto && P.tObj > 0) ob = P.objetivo;
+  if (objetivoValido()) ob = P.objetivo;
+  else if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
   const mo = $('marcoObjetivo');
   mo.classList.toggle('oculto', !ob);
   if (ob){
@@ -2728,7 +2754,11 @@ function actualizarHUD(){
     $('oFill').style.width = Math.max(0, ob.hp / ob.maxHp * 100) + '%';
     $('oTxt').textContent = `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`;
     $('oColor').style.background = ob.color;
+    const oo = objetivoDe(ob);
+    $('odoNombre').textContent = oo.nombre;
+    $('odoFill').style.width = Math.max(0, oo.hp / oo.maxHp * 100) + '%';
   }
+  $('marcoOdO').classList.toggle('oculto', !ob || !ob.aggro);
   if (hPocPrev !== PJ.pociones){ hPocPrev = PJ.pociones; $('hPoc').innerHTML = `${ic3('pocion')}<b>${PJ.pociones}</b>`; }
   $('btnPuntos').classList.toggle('oculto', !PJ.puntos);
   if (PJ.puntos) $('btnPuntos').textContent = `${PJ.puntos} puntos por repartir`;
@@ -4403,9 +4433,9 @@ function draw(t){
 
   dibujarEfectos(true);
 
-  // en el teléfono, un aro marca a quién apuntan tus ataques y poderes
-  if (esTactil && E.tipo === 'mazmorra'){
-    const o = objetivoTactil(360);
+  // un aro marca a tu objetivo (en el teléfono, también al enemigo al que apuntas solo)
+  if (E.tipo === 'mazmorra'){
+    const o = esTactil ? objetivoTactil(360) : (objetivoValido() ? P.objetivo : null);
     if (o){
       const pul = 1 + .08 * Math.sin(t / 140), rr = Math.max(34, (o.r || 20) * 1.4) * pul;
       ctx.strokeStyle = o === P.objetivo ? 'rgba(255,215,106,.95)' : 'rgba(255,90,90,.85)'; ctx.lineWidth = 3;
@@ -4430,9 +4460,9 @@ function draw(t){
     lista.push({ y:e.y, f:() => dibujarEnemigo(e) });
   }
   lista.sort((a, b) => a.y - b.y).forEach(o => o.f());
-  // flecha sobre la cabeza del objetivo (teléfono)
-  if (esTactil && E.tipo === 'mazmorra'){
-    const o = objetivoTactil(360);
+  // flecha sobre la cabeza del objetivo
+  if (E.tipo === 'mazmorra'){
+    const o = esTactil ? objetivoTactil(360) : (objetivoValido() ? P.objetivo : null);
     if (o){
       const yy = o.y - altoDe(o) - 14 + 4 * Math.sin(t / 160);
       ctx.fillStyle = o === P.objetivo ? '#ffd76a' : '#ff6b6b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
@@ -4545,11 +4575,29 @@ function dibujarEnemigo(e){
   const idx = (e.jefe && n === 'arana') ? MON.tipos.arana_jefe : (e.jefe && n === 'jabali') ? MON.tipos.jabali_jefe : lista[(Math.floor(t / (cerca ? 160 : 130) + (e.hx || 0) * .01) % lista.length + lista.length) % lista.length];
   const ref = MON.cuadros[(e.jefe && n === 'arana') ? MON.tipos.arana_jefe : (e.jefe && n === 'jabali') ? MON.tipos.jabali_jefe : D.walk[0]][3];
   const alto = pintarMonstruo(n, idx, e.x, pie, altoDe(e), ref, flip, e.flash, e.jefe ? e.color : null);
-  if (!e.jefe && e.hp < e.maxHp){
-    const bw = Math.max(26, e.r * 2.2), by = pie - alto - 8;
-    ctx.fillStyle = '#2a2148'; ctx.fillRect(e.x - bw / 2, by, bw, 4);
-    ctx.fillStyle = '#e2445c'; ctx.fillRect(e.x - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 4);
+  placaEnemigo(e, pie - alto);
+}
+// placa de vida sobre el enemigo (estilo WoW, tecla V): nombre y barra en píxeles; la del objetivo resalta
+function placaEnemigo(e, tope){
+  const obj = e === P.objetivo;
+  if (!VER_PLACAS && !obj){
+    if (e.jefe || e.hp >= e.maxHp) return;
+    const bw = Math.max(26, e.r * 2.2), by = Math.round(tope - 8);
+    ctx.fillStyle = '#2a2148'; ctx.fillRect(Math.round(e.x - bw / 2), by, Math.round(bw), 4);
+    ctx.fillStyle = '#e2445c'; ctx.fillRect(Math.round(e.x - bw / 2), by, Math.round(bw * Math.max(0, e.hp / e.maxHp)), 4);
+    return;
   }
+  if (!obj && !e.aggro && Math.hypot(e.x - P.x, e.y - P.y) > 420) return;
+  const w = e.jefe ? 90 : 56, h = obj ? 7 : 5, x = Math.round(e.x - w / 2), y = Math.round(tope - 12 - h);
+  ctx.globalAlpha = obj || e.aggro ? 1 : .75;
+  ctx.fillStyle = obj ? '#ffffff' : '#000000'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = '#2a0c10'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = e.aggro ? '#d8283c' : '#d8b02c'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), h);
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), 1);
+  ctx.font = `700 ${obj ? 12 : 11}px Rajdhani, sans-serif`; ctx.textAlign = 'center';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(e.nombre, e.x, y - 3);
+  ctx.fillStyle = obj ? '#ffffff' : (e.aggro ? '#ff8a8a' : '#ffe08a'); ctx.fillText(e.nombre, e.x, y - 3);
+  ctx.globalAlpha = 1;
 }
 function dibujarCadaver(c){
   const D = MON.tipos[c.n], edad = (performance.now() - c.t0) / 1000;
