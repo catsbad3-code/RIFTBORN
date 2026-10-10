@@ -2696,8 +2696,35 @@ function cuadroGato(tipo, dir, i){
   if (!set || !set.length) set = dir === 'ar' ? (g.lado.length ? g.lado : g.ab) : g.ab;
   return set[((i % set.length) + set.length) % set.length];
 }
+// silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
+const SILUETAS = new Map();
+function siluetaBlanca(img){
+  let c = SILUETAS.get(img);
+  if (!c && img.naturalWidth){
+    c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const a = c.getContext('2d'); a.drawImage(img, 0, 0); a.globalCompositeOperation = 'source-in'; a.fillStyle = '#fff'; a.fillRect(0, 0, c.width, c.height);
+    SILUETAS.set(img, c);
+  }
+  return c || img;
+}
+// zarpazo en pixel art: tres garras que barren un arco delante del gato
+function zarpazoPixel(x, y, ang, k, col){
+  if (k <= .05 || k >= .95) return;
+  const tam = 3, arco = 1.7, ini = ang - arco / 2;
+  for (let g = 0; g < 3; g++){
+    const r = 30 + g * 7, fin = ini + arco * Math.min(1, k * 1.6), desde = Math.max(ini, fin - .9);
+    for (let a = desde; a <= fin; a += .07){
+      const px = Math.round((x + Math.cos(a) * r) / tam) * tam, py = Math.round((y + Math.sin(a) * r * .6) / tam) * tam;
+      const cola = (a - desde) / Math.max(.01, fin - desde);
+      ctx.globalAlpha = Math.min(1, .35 + cola) * (k > .7 ? (1 - k) / .3 : 1);
+      ctx.fillStyle = cola > .7 ? '#ffffff' : col;
+      ctx.fillRect(px, py, tam, tam);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
 function dibujarJugador(t){
-  if (P.inv > 0 && P.golpe > -0.25 && Math.floor(t / 60) % 2) return;
+  if (P.inv > 0 && P.golpe > -0.25 && Math.floor(t / 60) % 2 && !gatoPx(PJ.gato)) return;
   const pie = P.y + 13;
   if (!gatosListo){
     ctx.fillStyle = '#120d24'; ctx.strokeStyle = CLASES[PJ.clase].color; ctx.lineWidth = 3;
@@ -2757,24 +2784,33 @@ function dibujarJugador(t){
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
   if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
   // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
+  let dxA = 0, dyA = 0, kAtk = 0;
   if (GD.px){
     alza = mov && !pose ? 0 : Math.round(alza);
     if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
     rot = 0; kx = 1; ky = 1;
+    // ataque: estocada hacia donde apunta (en píxeles enteros); al recibir un golpe, retrocede y tiembla
+    if (pose === 'atk'){ kAtk = 1 - P.pose.t / P.pose.dur; const s2 = Math.sin(kAtk * Math.PI); dxA = Math.round(Math.cos(P.ang) * 5 * s2); dyA = Math.round(Math.sin(P.ang) * 3 * s2); alza = 0; }
+    if (P.golpe > 0) dxA += Math.floor(t / 45) % 2 ? 2 : -2;
   }
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, setV, fV), esc = escG;
   // sombra y aro con el color de la clase
   ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
-  if (P.golpe > 0) ctx.globalAlpha = .65;
+  if (P.golpe > 0 && !GD.px) ctx.globalAlpha = .65;
+  // pixel art: tras el destello blanco, parpadea semitransparente mientras es invulnerable
+  if (GD.px && P.inv > 0 && P.golpe <= 0 && Math.floor(t / 60) % 2) ctx.globalAlpha = .45;
   ctx.save();
-  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x), Math.round(pie + alza)); }
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza) + dyA); }
   else ctx.translate(P.x, pie + alza);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
-  ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
+  const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : imgGato(PJ.gato);
+  ctx.drawImage(hojaG, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   ctx.restore();
   ctx.globalAlpha = 1;
+  if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
   const ny = pie - ALTO_GATO_PJ - 10;
   ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center';
