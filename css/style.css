@@ -885,3 +885,24 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .ret-obj canvas{width:100%;height:100%;display:block;border-radius:50%;image-rendering:pixelated}
 .marco.amistoso .marco-nombre{color:#7dffa8}
 .mbtn canvas{width:72%;height:72%;image-rendering:pixelated;pointer-events:none;position:relative;z-index:1}
+/* casino */
+.cas{max-height:calc(100vh - 190px);overflow-y:auto;overflow-x:hidden}
+.cas-can{display:block;margin:2px auto 4px;width:min(100%,300px);height:auto;image-rendering:pixelated;border:2px solid #b8862f;background:#1c1424}
+.cas-ru-cab{display:flex;align-items:center;gap:12px}
+.cas-ru-cab>div{flex:1}
+.cas-rueda{width:130px;flex:none;margin:0;border:none;background:none}
+.cas-msg{text-align:center;min-height:1.4em;margin:2px 0 6px}
+.cas .linea{align-items:center;padding:4px 0}
+.cas-apuestas{display:flex;gap:4px;justify-content:flex-end}
+.btn.cas-ap,.btn.cas-tipo{padding:.1rem .35rem !important;border-width:6px !important;font-size:.82rem;line-height:1.15}
+.cas-ap[aria-pressed="true"],.cas-tipo[aria-pressed="true"]{border-image-source:url(../img/ui-2.png) !important;color:#ffe9b0 !important}
+.cas-tipos{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:4px;margin:2px 0 4px}
+.cas-tipo small{display:block;opacity:.7;font-size:.68rem}
+.cas-rojo{color:#ff8a8a !important}.cas-negro{color:#c8c0d8 !important}
+.cas-num{width:4.5em;text-align:right;padding:2px 6px}
+.cas-hist{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:20px}
+.cas-hist span{min-width:22px;padding:1px 3px;text-align:center;font-weight:700;color:#fff;border:1px solid #b8862f;font-size:.78rem}
+.cas-tabla{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px;margin-top:6px;font-size:.8rem}
+.cas-tabla span{display:flex;align-items:center;gap:3px}
+.cas-sim{display:inline-block;width:28px;height:28px;background:url(../img/casino.png) no-repeat;image-rendering:pixelated;flex:none}
+@media (max-width:520px){.cas-tabla{grid-template-columns:repeat(2,1fr)}.cas-rueda{width:110px}}
