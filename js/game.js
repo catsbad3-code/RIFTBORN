@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.12.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.12.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -400,7 +400,7 @@ function migrar(pj){
   pj.kills = pj.kills || 0;
   pj.jefesTotal = pj.jefesTotal || 0;
   pj.tiempo = pj.tiempo || 0;
-  if (pj.prologo === undefined) pj.prologo = !!(pj.kills || pj.nivel > 1 || pj.tiempo > 30);
+  if (pj.prologo === undefined) pj.prologo = true;   // el prólogo solo lo viven los gatos recién creados
   if (pj.gato === undefined) pj.gato = 0;
   pj.equipo = pj.equipo || { cabeza:null, amuleto:null, pecho:null, manos:null, piernas:null, pies:null, anillo:null, arma:null };
   pj.bolsa = pj.bolsa || [];
@@ -1409,11 +1409,16 @@ function abrirTragaperras(maq){
       c.restore();
       c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(x0, vy, s, 6); c.fillRect(x0, vy + vh - 6, s, 6);
     }
-    // números de línea a los lados (varias líneas empiezan en la misma fila: se separan un poco)
+    // números de línea a los lados: las líneas que empiezan (o acaban) en la misma fila se reparten
+    // en vertical dentro de esa fila, para que se vean todas (en la de 7 líneas hay hasta 3 por fila)
+    const posLado = (fila, li, lado) => {
+      const grupo = M.lineas.map((L, j) => j).filter(j => M.lineas[j][lado ? N - 1 : 0] === fila), n = grupo.length, k = grupo.indexOf(li);
+      const paso = Math.min(22, (s - 4) / n);
+      return vy + (fila + .5) * s + (k - (n - 1) / 2) * paso;
+    };
     M.lineas.forEach((L, li) => {
-      const yI = vy + (L[0] + .5) * s, yD = vy + (L[N - 1] + .5) * s, off = li < 3 ? 0 : (li % 2 ? -1 : 1) * Math.min(22, s * .3);
       const gana = tirada && !girando && tirada.lineas.some(p => p.li === li);
-      for (const [xx, yy] of [[vx - 24, yI + off], [vx + vw + 24, yD + off]]){
+      for (const [xx, yy] of [[vx - 24, posLado(L[0], li, 0)], [vx + vw + 24, posLado(L[N - 1], li, 1)]]){
         c.fillStyle = COL_LINEA[li]; c.beginPath(); c.arc(xx, yy, gana ? 11 : 9, 0, TAU); c.fill();
         if (gana){ c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke(); }
         c.fillStyle = '#1c1424'; c.font = '700 11px Rajdhani, sans-serif'; c.fillText(li + 1, xx, yy + 1);
