@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.9.2'; // también en index.html (estilos y scripts)
+const VERSION = '1.9.3'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -2541,7 +2541,7 @@ function pintarRetratoObjetivo(u){
   a.imageSmoothingEnabled = false;
   let img = null, sx, sy, w, h, cabeza = false;
   if (u.cam && CAM[u.cam]){ img = CAM_IMG; [sx, sy, w, h] = CAM[u.cam].ab[0]; cabeza = true; }
-  else if (u.spr && NPC_SPR[u.spr]){ img = NPC_IMG; [sx, sy, w, h] = NPC_SPR[u.spr]; cabeza = true; }
+  else if (u.spr && NPC_SPR[u.spr]){ img = NPC_IMG; [sx, sy, w, h] = NPC_SPR[u.spr]; const o = NPC_SPR[u.spr][4] || 0; sy += o; h -= o; cabeza = true; }
   else {
     const n = sprDe(u); if (!n || !MON.tipos[n]) return;
     const idx = (u.jefe && n === 'arana') ? MON.tipos.arana_jefe : (u.jefe && n === 'jabali') ? MON.tipos.jabali_jefe : MON.tipos[n].walk[0];
@@ -4620,7 +4620,7 @@ function dibujarTiendaInt(t){
 // =====================================================
 //  NPC CON MISIONES (estilo WoW: ! amarillo, ? gris o amarillo)
 // =====================================================
-const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68], "adolfo": [590, 2, 48, 68]};
+const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68], "adolfo": [590, 2, 48, 80, 12]};  // el 5.º valor: píxeles de gorro que el retrato se salta
 const NPC_IMG = new Image();
 let npcListo = false;
 NPC_IMG.onload = () => npcListo = true;
@@ -4814,7 +4814,7 @@ function dibujarNPCSprite(n, t){
   const pie = n.y + 12;
   ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(n.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
   if (P && n === P.amigo){ ctx.strokeStyle = 'rgba(125,255,168,.9)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t / 50; ctx.beginPath(); ctx.ellipse(n.x, pie, 22, 8, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
-  const alto = 66;
+  const alto = n.spr && NPC_SPR[n.spr] ? NPC_SPR[n.spr][3] - 2 : 66;
   if (n.cam){
     if (!camListo) return;
     // cada dirección usa sus propios cuadros, anclados al centro del cuerpo y a los pies
