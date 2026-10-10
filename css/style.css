@@ -906,3 +906,6 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .cas-tabla span{display:flex;align-items:center;gap:3px}
 .cas-sim{display:inline-block;width:28px;height:28px;background:url(../img/casino.png) no-repeat;image-rendering:pixelated;flex:none}
 @media (max-width:520px){.cas-tabla{grid-template-columns:repeat(2,1fr)}.cas-rueda{width:110px}}
+.btn.chef-plato{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;text-align:left;padding:.4rem .6rem !important}
+.chef-plato small{display:block;opacity:.75;font-size:.75rem;font-weight:400;line-height:1.2}
+.chef-plato .ic3{width:32px !important;height:32px !important;flex:none}

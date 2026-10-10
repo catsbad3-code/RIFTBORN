@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.9.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.9.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -218,7 +218,7 @@ const TAM_BOLSA = 24;
 
 let uidObj = 0;
 // íconos de objetos de uso, cofre y minerales
-const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27, "emblema": 28, "caramelo": 29, "regalo": 30, "bombon": 31, "brasa": 32};
+const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27, "emblema": 28, "caramelo": 29, "regalo": 30, "bombon": 31, "brasa": 32, "pescado": 33, "guiso": 34, "tarta": 35};
 const IC3_URL = 'img/ic3.png?v=' + VERSION;
 const IC3_N = Object.keys(IC3).length;
 const IC3_IMG = new Image(); IC3_IMG.src = IC3_URL;
@@ -233,6 +233,9 @@ const APILABLES = {
   queso:     { n:'Galleta de queso',        d:'Alimenta a tu mascota: llena su barriga y le da experiencia.', valor:150, usa:true, r:1 },
   tetera:    { n:'Té de la posada',         d:'Recupera la mitad de tu energía y te deja Descansado 2 minutos.', valor:300, usa:true, r:1 },
   farol:     { n:'Farol purificador',       d:'Elimina todos tus efectos negativos (veneno, lentitud...).', valor:600, usa:true, r:1 },
+  pescado:   { n:'Pescado a la parrilla',   d:'Bien alimentado: +10% de daño durante 10 minutos.', valor:250, usa:true, r:1, comida:'com_atk' },
+  guiso:     { n:'Guiso del chef',          d:'Bien alimentado: recibes un 10% menos de daño durante 10 minutos.', valor:250, usa:true, r:1, comida:'com_def' },
+  tarta:     { n:'Tarta de nata',           d:'Bien alimentado: +10% de velocidad y +30% de energía recuperada durante 10 minutos.', valor:250, usa:true, r:1, comida:'com_vel' },
   bomba:     { n:'Bomba de sombras',        d:'Explota a tu alrededor y daña a los enemigos cercanos. Solo dentro de los portales.', valor:700, usa:true, r:2 },
   m_cobre:   { n:'Mineral de cobre',  d:'Material. Se encuentra en las cuevas de rango E.', valor:300,   mat:true, r:0 },
   m_hierro:  { n:'Mineral de hierro', d:'Material. Se encuentra en las cuevas de rango D.', valor:900,   mat:true, r:0 },
@@ -266,6 +269,11 @@ function usarApilable(k){
   else if (k === 'tetera'){ P.en = Math.min(D.maxEn, P.en + D.maxEn * .5); ponerEfecto('spi_up', 120); }
   else if (k === 'farol'){ limpiarEfectos(true); texto(P.x, P.y - 70, 'Purificado', '#ffe3a1', 15); }
   else if (k === 'queso'){ if (!alimentarMascota()) return; }
+  else if (A.comida){
+    // solo un plato a la vez, como el «Bien alimentado» de WoW
+    for (const c of ['com_atk', 'com_def', 'com_vel']) if (c !== A.comida) delete estados[c];
+    ponerEfecto(A.comida, 600); sfx('comer');
+  }
   PJ.mats[k]--; if (PJ.mats[k] <= 0) delete PJ.mats[k];
   chat(`Usas [${A.n}].`, '#ffe3a1'); guardar(); renderBolsa();
 }
@@ -997,7 +1005,7 @@ function dibujarAsociacionInt(t){
 // =====================================================
 //  CASINO: tres tragaperras y una ruleta
 // =====================================================
-const CAS = {"fachada":[0,0,184,168],"tragaperras":[186,0,48,76],"ruleta":[236,0,132,88],"alfombra":[370,0,48,48],"pared":[420,0,64,88],"sim0":[486,0,28,28],"sim1":[516,0,28,28],"sim2":[546,0,28,28],"sim3":[576,0,28,28],"sim4":[606,0,28,28],"sim5":[636,0,28,28]};
+const CAS = {"fachada":[0,0,184,168],"tragaperras":[186,0,48,76],"ruleta":[236,0,132,88],"alfombra":[370,0,48,48],"pared":[420,0,64,88],"sim0":[486,0,28,28],"sim1":[516,0,28,28],"sim2":[546,0,28,28],"sim3":[576,0,28,28],"sim4":[606,0,28,28],"sim5":[636,0,28,28],"fogon":[666,0,60,64]};
 const CAS_IMG = new Image();
 let casListo = false, PAT_ALFOMBRA = null;
 CAS_IMG.onload = () => {
@@ -1025,6 +1033,12 @@ function crearCasino(){
   setMueble(G, 7, 4, 10, 6);
   G.props.push({ cas:'ruleta', x:8.5 * T, y:6 * T });
   G.inter.push({ x:8.5 * T, y:6.6 * T, r:60, texto:'Jugar a la ruleta', accion:abrirRuleta });
+  // Adolfo, el chef, con su fogón en la esquina
+  setMueble(G, 9, 1, 11, 2);
+  G.props.push({ cas:'fogon', x:9.9 * T, y:2 * T + 4 });
+  G.npcs = [{ spr:'adolfo', nombre:'Adolfo, el chef', x:8.5 * T, y:2.55 * T }];
+  G.obs.push({ x:8.5 * T, y:2.55 * T, r:14 });
+  G.inter.push({ x:8.5 * T, y:3.3 * T, r:46, texto:'Hablar con Adolfo', accion:abrirAdolfo });
   G.puerta = 6 * T;
   G.inter.push({ x:6 * T, y:7.4 * T, r:50, texto:'Salir a la ciudad', accion:() => irCiudad('casino') });
   return G;
@@ -1067,8 +1081,48 @@ function dibujarPropCasino(pr){
     if (!sinMovimiento && Math.floor(t * 3 + pr.luz) % 2){ ctx.fillStyle = '#ff5a5a'; ctx.fillRect(pr.x - 6, pr.y - 74, 8, 4); }
     return;
   }
+  if (pr.cas === 'fogon'){
+    ctx.fillRect(pr.x - 28, pr.y - 6, 56, 8);
+    dibujarCas('fogon', pr.x, pr.y);
+    // vapor que sube de la olla
+    if (!sinMovimiento) for (let k = 0; k < 3; k++){
+      const u = (t * .6 + k / 3) % 1;
+      ctx.fillStyle = `rgba(235,240,248,${.55 * (1 - u)})`;
+      ctx.fillRect(Math.round(pr.x - 6 + k * 6 + Math.sin(u * 6 + k) * 3), Math.round(pr.y - 64 - u * 26), 4, 4);
+    }
+    return;
+  }
   ctx.fillRect(pr.x - 60, pr.y - 6, 120, 8);
   dibujarCas('ruleta', pr.x, pr.y);
+}
+
+// ---------- Adolfo, el chef ----------
+const PLATOS_ADOLFO = [['pescado', 600], ['guiso', 600], ['tarta', 600]];
+const FRASES_ADOLFO = [
+  '¡Bienvenido! Nadie gana en la ruleta con el estómago vacío.',
+  'Mi guiso lleva tres horas al fuego. El secreto es el cariño... y un poco de pimienta.',
+  'Los cazadores que comen bien vuelven de las mazmorras. Los otros... no tanto.',
+  '¿La tragaperras te ha dejado sin plata? Un pescado a la parrilla lo arregla todo.'
+];
+function abrirAdolfo(msg){
+  npcHablando = null; casJuego++;
+  const si = $('miSi'), no = $('miNo');
+  $('miNombre').textContent = 'Adolfo, el chef';
+  $('miTitulo').textContent = 'La cocina de Adolfo';
+  $('miCuerpo').innerHTML = `<p>${msg || FRASES_ADOLFO[Math.random() * FRASES_ADOLFO.length | 0]}</p>
+    ${PLATOS_ADOLFO.map(([k, precio]) => `<button class="btn chef-plato" data-plato="${k}" ${PJ.oro < precio ? 'disabled' : ''}>
+      <span class="tienda-ic">${ic3(k)}<span><b>${APILABLES[k].n}</b><small>${APILABLES[k].d}</small></span></span><span>${dinero(precio)}</span></button>`).join('')}
+    <div class="linea"><span>Tu dinero</span><b>${dinero(PJ.oro)}</b></div>
+    <p class="tenue" style="margin-top:6px">Los platos van a tu bolsa. Cómelos con clic derecho cuando quieras; solo hace efecto uno a la vez.</p>`;
+  $('miCuerpo').querySelectorAll('.chef-plato').forEach(b => b.onclick = () => {
+    const [k, precio] = PLATOS_ADOLFO.find(x => x[0] === b.dataset.plato);
+    if (PJ.oro < precio) return;
+    PJ.oro -= precio; darApilable(k); guardar(); renderBolsa(); sfx('moneda');
+    chat(`Compras [${APILABLES[k].n}] a Adolfo.`, '#ffe3a1');
+    abrirAdolfo(`¡Aquí tienes tu ${APILABLES[k].n.toLowerCase()}! Buen provecho.`);
+  });
+  si.classList.add('oculto'); no.textContent = 'Adiós';
+  pantalla('pMision');
 }
 
 // ---------- juegos ----------
@@ -3087,6 +3141,9 @@ const EFECTOS = {
   muro:    { n:'Muro de escudo',     d:'Recibes 60% menos daño',     ic:'b_def_up' },
   avatar:  { n:'Avatar',             d:'+25% de daño',               ic:'b_atk_up' },
   tormenta:{ n:'Tormenta de cuchillas', d:'Cortas a todos a tu alrededor', ic:'b_atk_up' },
+  com_atk: { n:'Bien alimentado',    d:'+10% de daño',               ic:'b_atk_up' },
+  com_def: { n:'Bien alimentado',    d:'Recibes 10% menos daño',     ic:'b_def_up' },
+  com_vel: { n:'Bien alimentado',    d:'+10% de velocidad y +30% de energía recuperada', ic:'b_agi_up' },
   evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' }
 };
 // qué debuff deja cada monstruo al golpearte (y con qué probabilidad)
@@ -3104,10 +3161,10 @@ function ponerEfecto(id, seg){
   pintarBuffs(true);
 }
 const efMod = {
-  dmg:   () => (estados.atk_up ? 1.2 : 1) * (estados.atk_dn ? .8 : 1) * (estados.avatar ? 1.25 : 1),
-  recibe:() => (estados.def_up ? .7 : 1) * (estados.def_dn ? 1.25 : 1) * (estados.muro ? .4 : 1),
-  vel:   () => (estados.agi_up ? 1.25 : 1) * (estados.agi_dn ? .65 : 1),
-  regEn: () => (estados.spi_up ? 1.6 : 1) * (estados.spi_dn ? .5 : 1)
+  dmg:   () => (estados.atk_up ? 1.2 : 1) * (estados.atk_dn ? .8 : 1) * (estados.avatar ? 1.25 : 1) * (estados.com_atk ? 1.1 : 1),
+  recibe:() => (estados.def_up ? .7 : 1) * (estados.def_dn ? 1.25 : 1) * (estados.muro ? .4 : 1) * (estados.com_def ? .9 : 1),
+  vel:   () => (estados.agi_up ? 1.25 : 1) * (estados.agi_dn ? .65 : 1) * (estados.com_vel ? 1.1 : 1),
+  regEn: () => (estados.spi_up ? 1.6 : 1) * (estados.spi_dn ? .5 : 1) * (estados.com_vel ? 1.3 : 1)
 };
 let tBuffs = 0, tVeneno = 0;
 function updateEfectos(dt){
@@ -4563,7 +4620,7 @@ function dibujarTiendaInt(t){
 // =====================================================
 //  NPC CON MISIONES (estilo WoW: ! amarillo, ? gris o amarillo)
 // =====================================================
-const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68]};
+const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68], "adolfo": [590, 2, 48, 68]};
 const NPC_IMG = new Image();
 let npcListo = false;
 NPC_IMG.onload = () => npcListo = true;
