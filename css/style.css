@@ -822,3 +822,61 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 
 .ayuda-lista{margin:8px 0 0 18px;line-height:1.45}
 .ayuda-lista li{margin-bottom:4px}
+
+/* objetivo del objetivo (WoW) */
+.marco.odo{margin-top:2px;padding:2px 8px;display:grid;grid-template-columns:auto 1fr;gap:0 6px;align-items:center;min-width:150px;border-radius:6px}
+.marco.odo small{font:600 10px Rajdhani,sans-serif;color:#cfc4a8}
+.marco.odo b{font:700 12px Rajdhani,sans-serif;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marco.odo .barra{grid-column:1/-1;height:6px;margin-top:2px}
+.col-obj{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.combo{display:flex;gap:4px;padding:0 0 0 12px}
+.combo i{width:10px;height:10px;border:2px solid #3a2a08;background:#1a1408;box-shadow:0 1px 2px #000}
+.combo i.on{background:#ffd100;box-shadow:0 0 6px #ffb300}
+/* teléfono vertical: la barra deja fuera ataque, habilidad y poción (ya están en los botones grandes) y pasa a dos filas */
+@media (max-width:520px){
+  body.tactil #panelAccion #barra{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 160px)}
+  body.tactil #panelAccion #barra .accion.clic,body.tactil #panelAccion #barra .accion.poc,body.tactil #panelAccion #barra .sep{display:none}
+  body.tactil #panelAccion{left:8px;transform:none}
+  body.tactil #micro{bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+  .marco.odo{display:none}
+}
+@media (max-width:520px) and (orientation:portrait){
+  body.jugando.tactil #chat{top:calc(178px + env(safe-area-inset-top,0px))}
+}
+
+/* ---------- grupo y buscador ---------- */
+#grupo{position:fixed;right:12px;top:calc(232px + env(safe-area-inset-top,0px));z-index:3;display:flex;flex-direction:column;gap:4px;pointer-events:none;width:170px}
+#grupo.oculto{display:none}
+.gm{display:flex;align-items:center;gap:6px;padding:3px 6px;background:linear-gradient(#211a36,#0f0b1c);border:1px solid #b8933f;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.6)}
+.gm-rol{font-size:15px;width:18px;text-align:center}
+.gm>div{flex:1;min-width:0}
+.gm>div>b{display:block;font:700 12px Rajdhani,sans-serif;color:#fff}
+.gm i{display:block;height:8px;background:#151515;border:1px solid #000}
+.gm i b{display:block;height:100%;background:linear-gradient(#41d65c,#128a29)}
+.gm.muerto{filter:grayscale(1);opacity:.6}
+#ojoLFD{position:fixed;left:50%;transform:translateX(-50%);top:calc(8px + env(safe-area-inset-top,0px));z-index:4;display:flex;gap:6px;align-items:center;padding:4px 12px;cursor:pointer;
+  color:#ffd100;font:700 13px Rajdhani,sans-serif;background:rgba(20,14,36,.9);border:1px solid #b8933f;border-radius:14px}
+#ojoLFD.oculto{display:none}
+.busc-sel{display:flex;gap:8px;align-items:center;margin:8px 0;font:700 13px Rajdhani,sans-serif}
+.busc-sel select{flex:1;padding:4px;background:#120d0a;color:#ffd100;border:1px solid #5a4a2a;font:600 13px Rajdhani,sans-serif}
+@media (max-width:520px){ #grupo{top:auto;bottom:calc(200px + env(safe-area-inset-bottom,0px));width:140px} }
+
+/* ---------- emblemas y durabilidad ---------- */
+.emb{display:inline-flex;align-items:center;gap:3px;color:#d2b4ff;font-weight:700}
+.emb .ic3{width:20px;height:20px;image-rendering:pixelated}
+.btn .ic3{width:20px;height:20px;vertical-align:middle;image-rendering:pixelated}
+.emb-lista{display:flex;flex-direction:column;gap:5px;max-height:52vh;overflow:auto}
+.emb-fila{display:flex;align-items:center;gap:8px;padding:4px;border:1px solid rgba(163,53,238,.35);border-radius:4px;background:rgba(163,53,238,.06)}
+.emb-fila>div{flex:1;min-width:0}
+.emb-fila b{display:block;font:700 13px Rajdhani,sans-serif}
+.emb-fila small{display:block;font:500 12px Rajdhani,sans-serif;color:#cfc4a8}
+.emb-fila .btn{min-width:0;padding:4px 10px;font-size:13px;white-space:nowrap}
+.emb-ic{width:36px;height:36px;flex-shrink:0;border:2px solid var(--rc);border-radius:4px;display:grid;place-items:center;background:#120d0a}
+.emb-ic .ico-obj{width:32px;height:32px}
+#durAviso{position:fixed;right:12px;top:calc(200px + env(safe-area-inset-top,0px));z-index:3;display:flex;gap:4px;align-items:center;padding:3px 8px;cursor:pointer;
+  font:700 12px Rajdhani,sans-serif;color:#ffd100;background:rgba(40,30,0,.85);border:1px solid #ffd100;border-radius:6px}
+#durAviso b{font-size:15px}
+#durAviso.rojo{color:#ff5a5a;border-color:#ff5a5a;background:rgba(50,0,0,.85)}
+#durAviso.oculto{display:none}
+.rojo{color:#ff5a5a}
+@media (max-width:520px){ #durAviso{top:auto;bottom:calc(250px + env(safe-area-inset-bottom,0px))} }
