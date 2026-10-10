@@ -41,7 +41,7 @@ function marcarPantallaCompleta(){
   const on = enPantallaCompleta();
   for (const id of ['btnPantalla', 'btnPantallaPausa']){
     const b = $(id); if (!b) continue;
-    b.classList.toggle('oculto', !pcSoportada || esApp);
+    b.classList.toggle('oculto', !esTactil || !pcSoportada || esApp);
     b.title = on ? 'Salir de pantalla completa' : 'Pantalla completa';
     if (id === 'btnPantallaPausa') b.textContent = on ? 'Salir de pantalla completa' : 'Pantalla completa';
   }
@@ -49,6 +49,8 @@ function marcarPantallaCompleta(){
 }
 document.addEventListener('fullscreenchange', marcarPantallaCompleta);
 document.addEventListener('webkitfullscreenchange', marcarPantallaCompleta);
+// vibración corta al usar poderes en el teléfono (en PC no hace nada)
+const vibrar = p => { if (esTactil && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
 
 // Las cuentas y el guardado están en auth/auth.js
 
@@ -1301,6 +1303,13 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   e.preventDefault();
+  // tocar un monstruo lo fija como objetivo de tus ataques y poderes
+  if (E.tipo === 'mazmorra'){
+    const wx = e.clientX + cam.x, wy = e.clientY + cam.y;
+    let toc = null, md = 70 * 70;
+    for (const en of enemigos){ const d = (en.x - wx) ** 2 + (en.y - 20 - wy) ** 2; if (d < md){ md = d; toc = en; } }
+    if (toc){ P.objetivo = toc; P.tObj = 6; vibrar(10); return; }
+  }
   if (e.clientX < W * .6 && !sticks.mov) sticks.mov = { id:e.pointerId, ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY };
 });
 cv.addEventListener('pointermove', e => {
@@ -1796,7 +1805,7 @@ function construirBarra(){
   const crear = (cls, tecla, spr, titulo, fn, info) => {
     const el = document.createElement('button');
     el.className = 'accion ' + cls; el.title = titulo; el.setAttribute('aria-label', titulo);
-    el.innerHTML = `<canvas width="96" height="96"></canvas><kbd>${tecla}</kbd><b class="bloq"></b><i class="num"></i>`;
+    el.innerHTML = `<canvas width="96" height="96"></canvas><kbd>${tecla}</kbd><b class="bloq"></b><i class="num"></i><i class="seg"></i>`;
     pintarIcono(el.querySelector('canvas'), spr);
     el.addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
     b.appendChild(el); barraEls.push({ el, ...info });
@@ -1816,15 +1825,18 @@ function construirBarra(){
 function actualizarBarra(){
   const c = CLASES[PJ.clase];
   for (const b of barraEls){
-    let cd = 0, bloq = '', num = '';
+    let cd = 0, bloq = '', num = '', seg = 0;
     if (b.tipo === 'h1') cd = clamp(P.cd1 / c.h1.cd, 0, 1);
     else if (b.tipo === 'h2') cd = P.en < c.h2.coste ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1);
     else if (b.tipo === 'poc'){ cd = clamp(P.cdPoc, 0, 1); num = PJ.pociones; }
     else {
       const id = PJ.barra[b.tecla], pw = PODERES[id];
       if (pw && PJ.nivel < pw.nivel) bloq = 'Nv ' + pw.nivel;
-      else if (pw) cd = P.en < pw.coste ? 1 : clamp((P.cdP[id] || 0) / pw.cd, 0, 1);
+      else if (pw){ cd = P.en < pw.coste ? 1 : clamp((P.cdP[id] || 0) / pw.cd, 0, 1); seg = P.cdP[id] || 0; }
     }
+    if (b.tipo === 'h2') seg = P.cd2;
+    const segTxt = seg > 0.05 ? (seg < 1 ? seg.toFixed(1) : Math.ceil(seg)) + '' : '';
+    if (b.seg !== segTxt){ b.el.querySelector('.seg').textContent = segTxt; b.seg = segTxt; }
     if (b.cd !== cd){ b.el.style.setProperty('--cd', cd); b.cd = cd; }
     if (b.bloq !== bloq){ b.el.querySelector('.bloq').textContent = bloq; b.el.classList.toggle('bloqueado', !!bloq); b.bloq = bloq; }
     if (b.num !== num){ b.el.querySelector('.num').textContent = num; b.num = num; }
@@ -1856,9 +1868,15 @@ const formatoTiempo = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).p
 // =====================================================
 //  COMBATE
 // =====================================================
+// en el teléfono se apunta solo: primero al objetivo fijado (tocado o golpeado), si no al más cercano
+function objetivoTactil(max = 360){
+  const o = P.objetivo;
+  if (o && !o.muerto && o.hp > 0 && enemigos.includes(o) && Math.hypot(o.x - P.x, o.y - P.y) < Math.max(max, 420)) return o;
+  return enemigoCercano(P.x, P.y, max);
+}
 function apuntar(){
   if (!esTactil){ P.ang = Math.atan2(mouse.y + cam.y - (P.y - 20), mouse.x + cam.x - P.x); return; }
-  const e = enemigoCercano(P.x, P.y, 360);
+  const e = objetivoTactil(360);
   P.ang = e ? Math.atan2(e.y - P.y, e.x - P.x) : Math.atan2(P.ldy, P.ldx);
 }
 function enemigoCercano(x, y, max){
@@ -1868,7 +1886,7 @@ function enemigoCercano(x, y, max){
 }
 // punto del suelo hacia donde apuntas (para poderes de zona)
 function puntoMira(max){
-  if (esTactil){ const e = enemigoCercano(P.x, P.y, max); if (e) return { x:e.x, y:e.y }; return { x:P.x + Math.cos(P.ang) * 180, y:P.y + Math.sin(P.ang) * 180 }; }
+  if (esTactil){ const e = objetivoTactil(max); if (e) return { x:e.x, y:e.y }; return { x:P.x + Math.cos(P.ang) * 180, y:P.y + Math.sin(P.ang) * 180 }; }
   const mx = mouse.x + cam.x, my = mouse.y + cam.y + 20, d = Math.hypot(mx - P.x, my - P.y);
   const k = d > max ? max / d : 1;
   return { x:P.x + (mx - P.x) * k, y:P.y + (my - P.y) * k };
@@ -1891,8 +1909,8 @@ function usarHab(n){
     P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005));
   } else {
     if (P.cd2 > 0) return;
-    if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; return; }
-    P.cd2 = c.h2.cd; P.en -= c.h2.coste;
+    if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
+    P.cd2 = c.h2.cd; P.en -= c.h2.coste; vibrar(15);
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -1940,8 +1958,8 @@ function usarPoder(id){
   if (PJ.nivel < pw.nivel){ texto(P.x, P.y - 74, `Se aprende en el nivel ${pw.nivel}`, '#9a91c2', 14); return; }
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
   if ((P.cdP[id] || 0) > 0) return;
-  if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd;
+  if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
+  P.en -= pw.coste; P.cdP[id] = pw.cd; vibrar(15);
   apuntar();
   PODER_FN[id]();
 }
@@ -3542,6 +3560,18 @@ function draw(t){
 
   dibujarEfectos(true);
 
+  // en el teléfono, un aro marca a quién apuntan tus ataques y poderes
+  if (esTactil && E.tipo === 'mazmorra'){
+    const o = objetivoTactil(360);
+    if (o){
+      const pul = 1 + .08 * Math.sin(t / 140), rr = Math.max(34, (o.r || 20) * 1.4) * pul;
+      ctx.strokeStyle = o === P.objetivo ? 'rgba(255,215,106,.95)' : 'rgba(255,90,90,.85)'; ctx.lineWidth = 3;
+      ctx.setLineDash([9, 6]); ctx.lineDashOffset = -t / 40;
+      ctx.beginPath(); ctx.ellipse(o.x, o.y + (o.r || 20) * .6, rr, rr * .42, 0, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    }
+  }
+
   // entidades ordenadas por profundidad
   const lista = [{ y:P.y, f:() => dibujarJugador(t) }];
   if (M) lista.push({ y:M.y, f:() => dibujarMascota(t) });
@@ -3557,6 +3587,15 @@ function draw(t){
     lista.push({ y:e.y, f:() => dibujarEnemigo(e) });
   }
   lista.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  // flecha sobre la cabeza del objetivo (teléfono)
+  if (esTactil && E.tipo === 'mazmorra'){
+    const o = objetivoTactil(360);
+    if (o){
+      const yy = o.y - altoDe(o) - 14 + 4 * Math.sin(t / 160);
+      ctx.fillStyle = o === P.objetivo ? '#ffd76a' : '#ff6b6b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(o.x - 9, yy - 10); ctx.lineTo(o.x + 9, yy - 10); ctx.lineTo(o.x, yy); ctx.closePath(); ctx.stroke(); ctx.fill();
+    }
+  }
   dibujarLucesCiudad(t);
   if (E.etiquetas){
     ctx.font = '600 15px Marcellus, Georgia, serif'; ctx.textAlign = 'center';

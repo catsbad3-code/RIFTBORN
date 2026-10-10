@@ -648,7 +648,7 @@ body.jugando #seguimiento{display:flex}
 
 /* =================== TELÉFONO ACOSTADO: HUD COMPACTO =================== */
 /* En pantallas bajas (teléfono en horizontal) todo se achica para dejar ver más mundo */
-@media (max-height:500px){
+@media (max-height:500px) and (pointer:coarse){
   #hud{padding:calc(6px + env(safe-area-inset-top,0px)) 8px 0 calc(8px + env(safe-area-inset-left,0px));gap:10px}
   .marco{padding:2px 8px 2px 2px;border-width:1.5px}
   .marco .retrato{width:42px;height:42px}
@@ -695,7 +695,16 @@ body.jugando #seguimiento{display:flex}
   .wv{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
   .wv-cuerpo{overflow-y:auto}
 }
-/* con la barra de poderes centrada, se corre a la izquierda para no chocar con los botones de ataque */
-@media (max-height:500px) and (pointer:coarse){
-  body.tactil #panelAccion{left:calc(50% - 50px)}
-}
+
+/* =================== PODERES EN EL TELÉFONO (no cambia nada en PC) =================== */
+/* barra de poderes centrada */
+@media (orientation:landscape){ body.tactil #panelAccion{left:50%;transform:translateX(-50%)} }
+/* segundos que faltan para volver a usar el poder */
+.accion .seg{display:none}
+body.tactil .accion .seg{display:block;position:absolute;inset:0;z-index:2;pointer-events:none;
+  font:700 15px/1 Rajdhani,sans-serif;font-style:normal;color:#fff;display:grid;place-items:center;
+  text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000}
+body.tactil .accion .seg:empty{display:none}
+/* al tocar, el botón se hunde y brilla para que se note que salió el poder */
+body.tactil .accion:active{transform:scale(.9);border-color:var(--corona);box-shadow:0 0 14px rgba(242,196,109,.8)}
+body.tactil .mbtn:active{transform:scale(.92);border-color:var(--corona)}
