@@ -457,6 +457,22 @@ body.jugando #buffs{display:flex}
   .wow-crear .ws-escena{top:46%}
   .wc-nombre{left:50%;bottom:62px}
 }
+/* pantallas medianas o teléfono acostado: escena a la izquierda y lista a la derecha, sin taparse */
+@media (max-width:900px) and (orientation:landscape){
+  .ws-escena{left:38%;top:calc(50% - 26px);transform:translate(-50%,-50%);width:min(44vw,64vh)}
+  .ws-lista{left:auto;right:10px;top:46px;bottom:auto;width:min(250px,34vw);max-height:calc(100% - 150px)}
+  #btnEntrarMundo{left:50%;bottom:12px;font-size:16px;padding:8px 22px}
+  .wow-crear .ws-escena{left:50%;top:calc(50% - 30px);width:min(36vw,58vh)}
+  .wc-nombre{bottom:10px;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;width:min(64vw,560px)}
+  .wc-nombre label{flex-direction:row;gap:8px}
+  .wc-nombre input{width:170px;padding:5px 8px}
+  .wc-nombre .error{order:9;width:100%;text-align:center;min-height:0}
+  .wc-nombre .wbtn.enorme{font-size:16px;padding:8px 22px}
+  .wow-crear .ws-der{bottom:10px}
+  .wc-izq{left:8px;right:auto;width:min(230px,30vw);top:8px}.wc-iconos{grid-template-columns:repeat(4,1fr)}
+  .wc-der{display:block;right:8px;top:8px;width:min(240px,30vw);max-height:calc(100% - 130px);overflow:auto;font-size:12px}
+  .wc-der h3{font-size:16px}
+}
 
 /* ---------- Ventanas del juego ---------- */
 .wv{position:fixed;z-index:6;display:flex;flex-direction:column;color:var(--wtx);font:500 14px Rajdhani,sans-serif;
@@ -542,6 +558,14 @@ body.jugando #buffs{display:flex}
 .wl-h.bloq b{color:#7a6a50}
 .wl-sec{grid-column:1/-1;font:600 15px "Marcellus",Georgia,serif;color:#5a3a10;border-bottom:1px solid rgba(90,60,20,.4);margin-top:4px}
 .wl-nota{grid-column:1/-1;font-size:12px;color:#5a3a10}
+.wl-tal{grid-column:1/-1}
+.wl-tal>div{flex:1}
+.wl-rango{font:700 12px Rajdhani,sans-serif;color:#8a5a10;margin-left:4px}
+.wl-pts{font:700 12px Rajdhani,sans-serif;color:#8a5a10;margin-left:6px}
+.wl-mas{flex-shrink:0;width:30px;height:30px;border-radius:50%;cursor:pointer;font:700 18px Rajdhani,sans-serif;color:#ffd100;background:radial-gradient(#5a0b08,#2a0503);border:2px solid #c9a43c;box-shadow:0 1px 3px rgba(0,0,0,.6)}
+.wl-mas:disabled{filter:grayscale(1) brightness(.6);cursor:default}
+.wl-mas:not(:disabled):hover{filter:brightness(1.3)}
+.wl-reini{margin-left:6px;padding:2px 8px;cursor:pointer;font:700 12px Rajdhani,sans-serif;color:#5a3a10;background:rgba(255,255,255,.35);border:1px solid #8a6a30;border-radius:3px}
 .accion.soltar{border-color:#1eff00 !important;box-shadow:0 0 12px #1eff00 !important}
 @media (max-width:520px){
   body.tactil #panelAccion{left:50%}
@@ -753,3 +777,48 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
   body.tactil .wv-retrato.ico{font-size:20px}
   body.tactil .wv-x{width:28px;height:24px;top:4px}
 }
+
+/* ---------- Mascota: nivel, barriga y habilidad ---------- */
+.pet-caja{text-align:center}
+.pet-caja h4 small{font:600 12px Rajdhani,sans-serif;color:#ffd100;margin-left:4px}
+.pet-hab{margin:4px 0 8px;color:#7dffa8;font-weight:600}
+.pet-barra{display:grid;grid-template-columns:78px 1fr 52px;align-items:center;gap:6px;margin:4px 0;font:600 12px Rajdhani,sans-serif;text-align:left}
+.pet-barra i{display:block;height:9px;background:#120d0a;border:1px solid #5a4a2a;image-rendering:pixelated}
+.pet-barra i b{display:block;height:100%}
+.pet-barra small{color:#cfc4a8;text-align:right}
+.pet-aviso{color:#ff8a8a;font-weight:700;margin:4px 0}
+.pet-bot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+
+/* ---------- Desafíos: diarias, titán, logros ---------- */
+.des-caja{margin-bottom:8px}
+.des-caja h4 small{font:600 11px Rajdhani,sans-serif;color:#9d9d9d;margin-left:6px}
+.des-mis{display:flex;align-items:center;gap:8px;margin:6px 0}
+.des-mis>div{flex:1;min-width:0}
+.des-mis b{display:block;font:700 13px Rajdhani,sans-serif}
+.des-mis i{display:block;height:8px;margin:3px 0;background:#120d0a;border:1px solid #5a4a2a}
+.des-mis i b{height:100%;background:#ffd100}
+.des-mis small{font:600 11px Rajdhani,sans-serif;color:#cfc4a8}
+.des-mis.hecha b{color:#7dffa8}
+.des-mis .wbtn{min-width:0;padding:4px 10px;font-size:13px}
+.des-ok{color:#7dffa8;font-size:20px;font-weight:700}
+.des-titulo{display:flex;align-items:center;gap:8px;margin:4px 0 8px;font:700 13px Rajdhani,sans-serif}
+.des-titulo select{flex:1;padding:3px;background:#120d0a;color:#ffd100;border:1px solid #5a4a2a;font:600 13px Rajdhani,sans-serif}
+.des-logros{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.des-logro{display:flex;gap:6px;align-items:center;padding:4px;border:1px solid rgba(201,164,60,.35);border-radius:4px;background:rgba(255,209,0,.05)}
+.des-logro .ic3{width:32px;height:32px;flex-shrink:0;image-rendering:pixelated}
+.des-logro b{display:block;font:700 12px Rajdhani,sans-serif;color:#ffd100}
+.des-logro small{display:block;font:500 11px Rajdhani,sans-serif;color:#cfc4a8;line-height:1.15}
+.des-logro .des-tit{color:#ff8000}
+.des-logro.bloq{opacity:.45;filter:grayscale(1)}
+@media (max-width:520px){.des-logros{grid-template-columns:1fr}}
+/* ---------- Tintes ---------- */
+.tintes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tinte{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;cursor:pointer;background:rgba(0,0,0,.35);border:2px solid #5a4a2a;border-radius:4px;color:#eee;font:600 12px Rajdhani,sans-serif}
+.tinte canvas{width:64px;height:72px;image-rendering:pixelated}
+.tinte small{color:#f2c46d;font-size:11px}
+.tinte.sel{border-color:#ffd100;box-shadow:0 0 8px rgba(255,209,0,.6)}
+.tinte:disabled{opacity:.5;cursor:default}
+@media (max-width:520px){.tintes{grid-template-columns:repeat(3,1fr)}}
+
+.ayuda-lista{margin:8px 0 0 18px;line-height:1.45}
+.ayuda-lista li{margin-bottom:4px}

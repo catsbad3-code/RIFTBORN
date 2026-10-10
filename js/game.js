@@ -1,6 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
+const VERSION = '1.6.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 const TAU = Math.PI * 2;
 const T = 48; // tamaño de casilla
@@ -121,6 +122,48 @@ const PODERES = {
   domo:     { n:'Erupción del abismo', d:'Las sombras estallan a tu alrededor y lanzan lejos a los enemigos.', nivel:16, cd:12, coste:50, ic:'domo' },
   ejercito: { n:'Ejército de sombras', d:'Levantas a tres soldados de sombra y recuperas parte de tu vida.', nivel:20, cd:60, coste:80, ic:'pilar' }
 };
+// Talentos de cada clase: 1 punto cada 2 niveles (desde el 3), hasta 3 rangos por talento
+const TALENTOS = {
+  guerrero: [
+    { id:'piel',    n:'Piel de hierro',   d:'+6% de vida máxima por rango.',              ic:'domo',  f:(D, r) => D.maxHp = Math.round(D.maxHp * (1 + .06 * r)) },
+    { id:'furia',   n:'Furia',            d:'+7% de daño físico por rango.',              ic:'corte', f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'muralla', n:'Muralla',          d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'vigor',   n:'Vigor',            d:'+35% de regeneración de vida por rango.',    ic:'pilar', f:(D, r) => D.regHp *= 1 + .35 * r },
+    { id:'ritmo',   n:'Ritmo de batalla', d:'-6% de tiempo de recarga por rango.',        ic:'luna',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  sombra: [
+    { id:'filo',    n:'Filo oculto',      d:'+3% de golpe crítico por rango.',            ic:'corte', f:(D, r) => D.crit = Math.min(.65, D.crit + .03 * r) },
+    { id:'letal',   n:'Golpe letal',      d:'+7% de daño físico por rango.',              ic:'luna',  f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'viento',  n:'Pies de viento',   d:'+4% de velocidad por rango.',                ic:'tp',    f:(D, r) => D.vel = Math.min(340, D.vel * (1 + .04 * r)) },
+    { id:'evasion', n:'Evasión',          d:'+3% de defensa por rango.',                  ic:'tp',    f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Danza de sombras', d:'-6% de tiempo de recarga por rango.',        ic:'ola',   f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  mago: [
+    { id:'mente',   n:'Mente vasta',      d:'+10% de energía máxima por rango.',          ic:'bola',  f:(D, r) => D.maxEn = Math.round(D.maxEn * (1 + .1 * r)) },
+    { id:'arcano',  n:'Poder arcano',     d:'+7% de daño mágico por rango.',              ic:'rayo',  f:(D, r) => D.mag *= 1 + .07 * r },
+    { id:'flujo',   n:'Flujo',            d:'+20% de regeneración de energía por rango.', ic:'lluvia',f:(D, r) => D.regEn *= 1 + .2 * r },
+    { id:'escudo',  n:'Escudo de maná',   d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Tiempo arcano',    d:'-6% de tiempo de recarga por rango.',        ic:'bola',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ]
+};
+const MAX_RANGO_TAL = 3;
+const puntosTalento = pj => Math.max(0, Math.floor((pj.nivel - 1) / 2));
+const talentosGastados = pj => Object.values(pj.talentos || {}).reduce((a, b) => a + b, 0);
+function aplicarTalentos(D){
+  for (const t of TALENTOS[PJ.clase] || []){ const r = (PJ.talentos || {})[t.id] || 0; if (r) t.f(D, r); }
+}
+function subirTalento(id){
+  const t = (TALENTOS[PJ.clase] || []).find(x => x.id === id), r = PJ.talentos[id] || 0;
+  if (!t || r >= MAX_RANGO_TAL || talentosGastados(PJ) >= puntosTalento(PJ)) return;
+  PJ.talentos[id] = r + 1;
+  const hpAntes = D.maxHp, enAntes = D.maxEn;
+  derivar(); P.hp += Math.max(0, D.maxHp - hpAntes); P.en += Math.max(0, D.maxEn - enAntes);
+  texto(P.x, P.y - 78, `${t.n} ${r + 1}/${MAX_RANGO_TAL}`, '#ffd100', 14);
+  guardar(); renderLibro();
+}
+function reiniciarTalentos(){
+  PJ.talentos = {}; derivar(); P.hp = Math.min(P.hp, D.maxHp); P.en = Math.min(P.en, D.maxEn); guardar(); renderLibro();
+}
 const TECLAS = ['Q','F','R','1','2','3','4'];
 const CODIGO_TECLA = { KeyQ:'Q', KeyF:'F', KeyR:'R', Digit1:'1', Digit2:'2', Digit3:'3', Digit4:'4' };
 
@@ -149,8 +192,8 @@ const TAM_BOLSA = 24;
 
 let uidObj = 0;
 // íconos de objetos de uso, cofre y minerales
-const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24};
-const IC3_URL = 'img/ic3.png';
+const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27};
+const IC3_URL = 'img/ic3.png?v=' + VERSION;
 const IC3_N = Object.keys(IC3).length;
 const IC3_IMG = new Image(); IC3_IMG.src = IC3_URL;
 const ic3 = k => `<span class="ic3" style="background-image:url(${IC3_URL});background-position:${(IC3[k] / (IC3_N - 1) * 100).toFixed(4)}% 0"></span>`;
@@ -161,6 +204,7 @@ const APILABLES = {
   seta:      { n:'Seta saltarina',          d:'Obtienes Celeridad durante 30 segundos.', valor:400, usa:true, r:1 },
   libro:     { n:'Tomo de furia',           d:'Obtienes Furia de sombras durante 30 segundos.', valor:800, usa:true, r:2 },
   pergamino: { n:'Pergamino de protección', d:'Obtienes Coraza de sombras durante 30 segundos.', valor:800, usa:true, r:2 },
+  queso:     { n:'Galleta de queso',        d:'Alimenta a tu mascota: llena su barriga y le da experiencia.', valor:150, usa:true, r:1 },
   tetera:    { n:'Té de la posada',         d:'Recupera la mitad de tu energía y te deja Descansado 2 minutos.', valor:300, usa:true, r:1 },
   farol:     { n:'Farol purificador',       d:'Elimina todos tus efectos negativos (veneno, lentitud...).', valor:600, usa:true, r:1 },
   bomba:     { n:'Bomba de sombras',        d:'Explota a tu alrededor y daña a los enemigos cercanos. Solo dentro de los portales.', valor:700, usa:true, r:2 },
@@ -195,6 +239,7 @@ function usarApilable(k){
   else if (k === 'pergamino') ponerEfecto('def_up', 30);
   else if (k === 'tetera'){ P.en = Math.min(D.maxEn, P.en + D.maxEn * .5); ponerEfecto('spi_up', 120); }
   else if (k === 'farol'){ limpiarEfectos(true); texto(P.x, P.y - 70, 'Purificado', '#ffe3a1', 15); }
+  else if (k === 'queso'){ if (!alimentarMascota()) return; }
   PJ.mats[k]--; if (PJ.mats[k] <= 0) delete PJ.mats[k];
   chat(`Usas [${A.n}].`, '#ffe3a1'); guardar(); renderBolsa();
 }
@@ -331,6 +376,9 @@ function migrar(pj){
   if (pj.hermandad === undefined) pj.hermandad = null;
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
+  pj.talentos = pj.talentos || {};
+  pj.logros = pj.logros || {}; pj.tintes = pj.tintes || [];
+  if (pj.mascota){ pj.mascota.nivel = pj.mascota.nivel || 1; pj.mascota.xp = pj.mascota.xp || 0; if (pj.mascota.hambre === undefined) pj.mascota.hambre = 100; }
   return pj;
 }
 
@@ -462,7 +510,7 @@ function runasPixel(b, cx, py, col, t){
 }
 
 // escena 3/4 con pedestal al estilo de la pantalla de personajes de WoW
-function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
+function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null, tinte = null){
   const a = cv.getContext('2d'), w = cv.width, h = cv.height, cx = w / 2, pie = h * .8;
   a.clearRect(0, 0, w, h);
   const col = CLASES[clase].color;
@@ -488,7 +536,10 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
   // pixel art: sin estirar (respira subiendo un píxel); los demás respiran escalando
   if (px){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); a.scale(flip ? -1 : 1, 1); }
   else a.scale((flip ? -1 : 1) * (1 - .01 * r), 1 + .018 * r);
-  a.drawImage(imgGato(gato), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
+  const frE = [sx, sy, fw, fh, ax, ay], setE = g['q_' + set] && g['q_' + set].length ? 'q_' + set : set;
+  if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'atras');
+  a.drawImage(hojaGato(gato, tinte), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
+  if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'frente');
   a.restore();
   if (mascota && ratasListo){
     const q = cuadroRata(mascota.tipo, 'abajo', false, 0, true);
@@ -575,6 +626,8 @@ function derivar(){
     regEn: 6 + s.int * .3,
     regHp: s.vit * .06
   };
+  D.cdK = 1;
+  aplicarTalentos(D);
   D.poder = Math.max(D.fis, D.mag);
 }
 
@@ -606,7 +659,7 @@ function guardar(){
 }
 
 function limpiarEscena(){
-  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = [];
+  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = [];
   jefeVivo = null; campo = null; $('jefe').classList.add('oculto');
   if (P) P.objetivo = null;
   interCerca = null; $('btnInteractuar').classList.add('oculto');
@@ -1043,6 +1096,8 @@ function abrirTienda(msg){
       <button class="btn" id="cP5" ${PJ.oro < p * 5 ? 'disabled' : ''}><span>Comprar 5 pociones</span><span>${dinero(p * 5)}</span></button>
       <button class="btn" id="cTe" ${PJ.oro < 600 ? 'disabled' : ''}><span class="tienda-ic">${ic3('tetera')}Té de la posada</span><span>${dinero(600)}</span></button>
       <button class="btn" id="cFarol" ${PJ.oro < 1200 ? 'disabled' : ''}><span class="tienda-ic">${ic3('farol')}Farol purificador</span><span>${dinero(1200)}</span></button>
+      <button class="btn" id="cQueso" ${PJ.oro < 300 ? 'disabled' : ''}><span class="tienda-ic">${ic3('queso')}Galleta de queso (mascota)</span><span>${dinero(300)}</span></button>
+      <button class="btn" id="cTintes"><span class="tienda-ic">${ic3('tinte')}Tintes de ropa</span><span>${dinero(PRECIO_TINTE)}</span></button>
       ${botonEncargo('tendera')}
       <button class="btn dorado" id="cMin" ${valorMinerales() ? '' : 'disabled'}><span>Vender todos los minerales</span><span>${dinero(valorMinerales())}</span></button>
     </div>
@@ -1050,6 +1105,8 @@ function abrirTienda(msg){
   enlazarEncargo('tendera');
   $('cTe').onclick = () => { if (PJ.oro >= 600){ PJ.oro -= 600; darApilable('tetera'); guardar(); abrirTienda('Compraste un Té de la posada.'); } };
   $('cFarol').onclick = () => { if (PJ.oro >= 1200){ PJ.oro -= 1200; darApilable('farol'); guardar(); abrirTienda('Compraste un Farol purificador.'); } };
+  $('cTintes').onclick = () => abrirTintes();
+  $('cQueso').onclick = () => { if (PJ.oro >= 300){ PJ.oro -= 300; darApilable('queso'); guardar(); abrirTienda('Compraste una Galleta de queso.'); } };
   $('cMin').onclick = () => { const v = valorMinerales(); if (!v) return; for (const k in PJ.mats) if (k.startsWith('m_')) delete PJ.mats[k]; PJ.oro += v; guardar(); abrirTienda(`Vendiste tus minerales por ${dineroTxt(v)}.`); };
   const comprar = n => { if (PJ.oro >= p * n){ PJ.oro -= p * n; PJ.pociones += n; guardar(); abrirTienda(`Compraste ${n} ${n > 1 ? 'pociones' : 'poción'}.`); } };
   $('cP1').onclick = () => comprar(1);
@@ -1211,6 +1268,7 @@ function entrarPortal(portal){
       for (let k = 0; k < n; k++) crearEnemigo(R.enemigos[Math.random() * R.enemigos.length | 0], (x + .5) * T + rand(-20, 20), (y + .5) * T + rand(-20, 20));
     }
     crearJefe();
+    if (portal.semanal) hacerTitan();
     $('fundido').classList.remove('ver');
     banner(`Portal de rango ${R.l}`, R.tema);
     chat(`Entras en un portal de rango ${R.l}: ${R.tema}.`, R.color);
@@ -1225,7 +1283,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
-  PJ.limpias[R.l]++; PJ.jefesTotal++;
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); premioTitan();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });
@@ -1628,12 +1686,21 @@ function renderPj(){
     cuerpo.querySelectorAll('.pd-mas').forEach(b => b.onclick = () => { if (PJ.puntos <= 0) return; PJ.stats[b.dataset.stat]++; PJ.puntos--; recalcular(); });
   } else if (wTab === 'mascota'){
     cuerpo.innerHTML = PJ.mascota
-      ? `<div class="pd-caja" style="text-align:center"><h4>${escapar(PJ.mascota.nombre)}</h4><p>${TIPOS_RATA[PJ.mascota.tipo]}</p>
-         <p class="gris" style="color:#9d9d9d;margin:6px 0">${M ? 'Te acompaña ahora mismo.' : 'Está descansando en las sombras.'}</p>
-         <button class="wbtn" id="wPet">${M ? 'Guardar mascota' : 'Invocar mascota'}</button></div>`
+      ? (() => { const m = PJ.mascota, H = HAB_MASCOTA[m.tipo], g = (PJ.mats || {}).queso || 0, sig = xpMascotaSig(m.nivel);
+         return `<div class="pd-caja pet-caja"><h4>${escapar(m.nombre)} <small>nivel ${m.nivel}</small></h4><p>${TIPOS_RATA[m.tipo]} · <b>${H.n}</b></p>
+         <p class="pet-hab">${H.d(m.nivel)}</p>
+         <div class="pet-barra"><span>Experiencia</span><i><b style="width:${m.nivel >= MAX_NV_MASCOTA ? 100 : Math.round(m.xp / sig * 100)}%;background:#ffd100"></b></i><small>${m.nivel >= MAX_NV_MASCOTA ? 'máximo' : `${m.xp}/${sig}`}</small></div>
+         <div class="pet-barra"><span>Barriga</span><i><b style="width:${Math.round(m.hambre)}%;background:${m.hambre < 20 ? '#ff5a5a' : '#7dffa8'}"></b></i><small>${Math.round(m.hambre)}%</small></div>
+         ${m.hambre < 20 ? '<p class="pet-aviso">Tiene hambre: no te ayudará hasta que coma.</p>' : ''}
+         <p class="gris" style="color:#9d9d9d;margin:6px 0">${M ? 'Te acompaña ahora mismo. Gana experiencia cuando derrotas monstruos.' : 'Está descansando en las sombras.'}</p>
+         <div class="pet-bot"><button class="wbtn" id="wPet">${M ? 'Guardar mascota' : 'Invocar mascota'}</button>
+         <button class="wbtn" id="wPetQueso" ${g ? '' : 'disabled'}>Dar galleta (${g})</button></div>
+         ${g ? '' : '<p class="nota">Compra galletas de queso en el mercado.</p>'}</div>`; })()
       : `<div class="pd-caja" style="text-align:center"><h4>Sin mascota</h4><p>Pulsa G o el botón de la huella para elegir tu primera mascota.</p></div>`;
     const b = $('wPet'); if (b) b.onclick = () => { toggleMascota(); renderPj(); };
-  } else cuerpo.innerHTML = htmlRegistro();
+    const bq = $('wPetQueso'); if (bq) bq.onclick = () => { usarApilable('queso'); renderPj(); };
+  } else if (wTab === 'desafios'){ cuerpo.innerHTML = htmlDesafios(); enlazarDesafios(); }
+  else cuerpo.innerHTML = htmlRegistro();
 }
 
 // ---------- mochila ----------
@@ -1665,8 +1732,20 @@ function renderLibro(){
     h += `<div class="wl-h ${bloq ? 'bloq' : ''}" data-hz="${id}" title="${pw.d}"><canvas data-icono="${pw.ic}" width="80" height="80" ${bloq ? '' : `draggable="true" data-arrastra="${id}"`}></canvas>
       <div><b>${pw.n}</b><small>${bloq ? `Nivel ${pw.nivel}` : `${pw.coste} energía · ${pw.cd} s${tecla ? ` · tecla ${tecla}` : ''}`}</small></div></div>`;
   }
-  h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p></div>';
+  h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p>';
+  // talentos de la clase
+  const libres = puntosTalento(PJ) - talentosGastados(PJ);
+  h += `<div class="wl-sec">Talentos <small class="wl-pts">${libres} ${libres === 1 ? 'punto libre' : 'puntos libres'}</small></div>`;
+  for (const t of TALENTOS[PJ.clase] || []){
+    const r = PJ.talentos[t.id] || 0, puede = libres > 0 && r < MAX_RANGO_TAL;
+    h += `<div class="wl-h wl-tal ${r ? '' : 'bloq'}" title="${t.d}"><canvas data-icono="${t.ic}" width="80" height="80"></canvas>
+      <div><b>${t.n} <span class="wl-rango">${r}/${MAX_RANGO_TAL}</span></b><small>${t.d}</small></div>
+      <button class="wl-mas" data-tal="${t.id}" ${puede ? '' : 'disabled'} aria-label="Subir ${t.n}">+</button></div>`;
+  }
+  h += `<p class="wl-nota">Ganas un punto de talento cada 2 niveles. ${talentosGastados(PJ) ? '<button class="wl-reini" id="btnReiniTal">Reiniciar talentos</button>' : ''}</p></div>`;
   const cu = $('wLibroCuerpo'); cu.innerHTML = h;
+  cu.querySelectorAll('[data-tal]').forEach(b => b.onclick = e => { e.stopPropagation(); subirTalento(b.dataset.tal); });
+  if ($('btnReiniTal')) $('btnReiniTal').onclick = reiniciarTalentos;
   cu.querySelectorAll('canvas[data-icono]').forEach(cv => pintarIcono(cv, cv.dataset.icono));
   cu.querySelectorAll('[data-arrastra]').forEach(cv => cv.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', cv.dataset.arrastra); e.dataTransfer.effectAllowed = 'copy'; }));
   cu.querySelectorAll('.wl-h[data-hz]:not(.bloq)').forEach(el => el.onclick = e => {
@@ -1860,7 +1939,10 @@ function dibujarFigura(t){
   a.save(); a.translate(110, 274);
   if (gatoPx(PJ.gato)){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); }
   else a.scale(1 - .012 * r, 1 + .025 * r);
-  a.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  const frF = [sx, sy, w, h, ax, ay];
+  if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'atras');
+  a.drawImage(hojaJugador(), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'frente');
   a.restore();
   if (PJ.mascota && ratasListo){
     // ciclo: despierto mirando a los lados, luego se duerme
@@ -1939,7 +2021,7 @@ function actualizarBarra(){
 function abrirPanelPortal(portal){
   const R = RANGOS[portal.rango], mio = rangoCazador();
   $('poLetra').textContent = R.l; $('poLetra').style.color = R.color;
-  $('poTitulo').textContent = `Portal de rango ${R.l}`;
+  $('poTitulo').textContent = portal.semanal ? `Portal dorado: ${titanDeLaSemana()}` : `Portal de rango ${R.l}`;
   let aviso = '';
   if (portal.rango > mio + 1) aviso = '<p class="aviso" style="margin-top:10px">Este portal supera por mucho tu rango. Lo más probable es que no salgas con vida.</p>';
   else if (portal.rango > mio) aviso = '<p class="aviso" style="margin-top:10px">Este portal está por encima de tu rango. Entra con cuidado.</p>';
@@ -1950,7 +2032,10 @@ function abrirPanelPortal(portal){
     <div class="linea"><span>Tu rango</span><b style="color:${RANGOS[mio].color}">${RANGOS[mio].l} (nivel ${PJ.nivel})</b></div>
     <div class="linea"><span>Jefe</span><b>${R.jefe}</b></div>
     <div class="linea"><span>Recompensa al despejar</span><b>${dinero(Math.round(80 * R.escala) * 100)} y más</b></div>
-    <div class="linea"><span>Se cierra en</span><b>${formatoTiempo(portal.cierra)}</b></div>${aviso}`;
+    ${portal.semanal ? `<div class="linea"><span>Titán semanal</span><b style="color:#ffd100">${titanDeLaSemana()}</b></div>
+    <div class="linea"><span>Cofre de la semana</span><b>${titanHecho() ? 'Ya lo abriste' : 'Mucho dinero y un objeto legendario'}</b></div>
+    <p class="aviso" style="margin-top:10px">El titán es tres veces más resistente que un jefe normal.</p>`
+    : `<div class="linea"><span>Se cierra en</span><b>${formatoTiempo(portal.cierra)}</b></div>`}${aviso}`;
   const btn = $('btnEntrarPortal');
   btn.className = 'btn ' + (portal.rango > mio ? 'peligro' : 'principal');
   btn.onclick = () => entrarPortal(portal);
@@ -2004,11 +2089,11 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005));
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
   } else {
     if (P.cd2 > 0) return;
     if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd; P.en -= c.h2.coste; vibrar(15);
+    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; vibrar(15); sfx('poder');
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -2057,7 +2142,7 @@ function usarPoder(id){
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
   if ((P.cdP[id] || 0) > 0) return;
   if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd; vibrar(15);
+  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; vibrar(15); sfx('poder');
   apuntar();
   PODER_FN[id]();
 }
@@ -2143,6 +2228,7 @@ function golpeLinea(x1, y1, x2, y2, ancho, dmg){
 }
 
 function herir(e, dmg, critExtra = 0){
+  sfx('golpe', .06);
   if (e.muerto) return;
   dmg *= rand(.9, 1.1) * efMod.dmg();
   const crit = Math.random() < D.crit + critExtra;
@@ -2154,7 +2240,8 @@ function herir(e, dmg, critExtra = 0){
 }
 
 function matar(e){
-  e.muerto = true; PJ.kills++;
+  e.muerto = true; PJ.kills++; sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
+  if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
   ganarXP(e.xp);
@@ -2197,6 +2284,7 @@ function ganarXP(x, sinFactor){
     PJ.xpSig = xpNecesaria(PJ.nivel); subio = true;
   }
   if (subio){
+    sfx('nivel');
     derivar(); P.hp = D.maxHp; P.en = D.maxEn;
     const rDesp = rangoCazador();
     chat(`¡Has alcanzado el nivel ${PJ.nivel}!`, '#ffd76a');
@@ -2285,7 +2373,7 @@ function golpearJugador(d, src){
   } else if (src && src.jefe && Math.random() < .25){
     const db = DEBUFF_MONSTRUO[sprDe(src)]; if (db) ponerEfecto(db[0], db[1] + 2);
   }
-  P.hp -= d; P.inv = .45; P.golpe = .2; shake = Math.max(shake, 7);
+  P.hp -= d; P.inv = .45; P.golpe = .2; shake = Math.max(shake, 7); sfx('dano', .1);
   texto(P.x, P.y - 70, Math.round(d), '#ff6b7f', 15);
   chispas(P.x, P.y - 20, '#e2445c', 8, 150);
   if (P.hp <= 0){
@@ -2393,6 +2481,7 @@ function update(dt){
   const rapidez = Math.hypot(P.vx, P.vy);
   P.mx = P.vx / vel; P.my = P.vy / vel;
   P.paso = (P.paso || 0) + rapidez * dt;
+  ambientePaso();
   // cambiar de lado solo con un movimiento claro (evita parpadeos)
   if (Math.abs(P.vx) > 30) P.mira = P.vx < 0;
   P.pose.t -= dt;
@@ -2407,6 +2496,7 @@ function update(dt){
   // portales de la ciudad (avanzan siempre)
   timerPortal -= dt;
   if (timerPortal <= 0){ timerPortal = 30; if (portales.length < 5) crearPortal(); }
+  asegurarPortalTitan();
   for (const p of portales){ p.cierra -= dt; p.nace += dt; }
   for (const p of portales.filter(p => p.cierra <= 0)) quitarPortal(p);
 
@@ -2426,6 +2516,8 @@ function update(dt){
   if (E.tipo === 'mazmorra') updateMazmorra(dt);
   updateMascota(dt);
   if (E.npcs) updateCaminantes(dt);
+  updateCallejeros(dt);
+  updateHuellas(dt);
 
   // botín
   for (const o of botin){
@@ -2434,11 +2526,11 @@ function update(dt){
     if (d < P.r + 8){
       if (o.t === 'obj'){
         if (PJ.bolsa.length >= TAM_BOLSA){ if (!o.aviso){ texto(P.x, P.y - 74, 'Tu bolsa está llena', '#ff8a9b', 14); chat('Tu bolsa está llena.', '#ff8a9b'); o.aviso = true; } continue; }
-        PJ.bolsa.push(o.obj); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
+        PJ.bolsa.push(o.obj); sfx('botin'); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
         chat(`Recibes botín: [${o.obj.nombre}]`, RAREZAS[o.obj.rareza].c);
       }
-      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm())); PJ.oro += c; texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
-      else if (o.t === 'cons'){ darApilable(o.k); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
+      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; contar('oro', c); sfx('moneda', .05); texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
+      else if (o.t === 'cons'){ darApilable(o.k); if (o.k.startsWith('p_')) contar('partes'); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
       else { PJ.pociones++; texto(P.x, P.y - 74, '+1 poción', '#7dffa8', 15); chat('Recibes botín: [Poción de vida]', '#7dffa8'); }
       o.tomado = true;
     }
@@ -2684,7 +2776,7 @@ function dibujarAvatar(){
   // cabeza del gato
   const [sx, sy, w] = cuadroGato(PJ.gato, GATOS_DIR[PJ.gato].q_ab ? 'q_ab' : 'ab', 0), lado = Math.min(w, Math.round(70 / (GATOS_DIR[PJ.gato].k || 1)));
   a.imageSmoothingEnabled = !gatoPx(PJ.gato);
-  a.drawImage(imgGato(PJ.gato), sx + (w - lado) / 2, sy, lado, lado, 4, 8, 104, 104);
+  a.drawImage(hojaJugador(), sx + (w - lado) / 2, sy, lado, lado, 4, 8, 104, 104);
 }
 
 const ALTO_GATO_PJ = 62;
@@ -2695,8 +2787,96 @@ function cuadroGato(tipo, dir, i){
   if (!set || !set.length) set = dir === 'ar' ? (g.lado.length ? g.lado : g.ab) : g.ab;
   return set[((i % set.length) + set.length) % set.length];
 }
+// =====================================================
+//  EQUIPO VISIBLE (pixel art dibujado píxel a píxel)
+// =====================================================
+// o contorno, W/S hoja clara/oscura, G/g oro, H mango, B/b madera, P páginas, R color de la rareza, r rareza oscura
+const EQ_PIX = {
+  Espada:   { agarre:15, filas:['...o...','..oWo..','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','ooGRGoo','oGGGGGo','.oogoo.','..oHo..','..oHo..','..oGo..','...o...'] },
+  Daga:     { agarre:8,  filas:['..o..','.oWo.','.oWSo','.oWSo','.oWSo','oGRGo','.oHo.','.oHo.','.oGo.','..o..'] },
+  Báculo:   { agarre:14, filas:['..ooo..','.oRRWo.','oRRRRWo','oRRRRRo','orRRRro','.orrro.','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','...o...'] },
+  Grimorio: { agarre:4,  filas:['ooooooooo','oRRRRRRRo','oRRGGGRRo','oRRGrGRRo','oRRGGGRRo','oRRRRRRRo','oPPPPPPPo','ooooooooo'] },
+  Yelmo:    { filas:['......oooooo......','....ooSSSSSSoo....','...oSWWWWWWWSSo...','..oSWWWWWWWWWSSo..','.oSWWWWWWWWWWWSSo.','.oSSSSSSSSSSSSSSo.','oGGGGGGGRRGGGGGGGo','oooooooooooooooooo'] },
+  Diadema:  { filas:['o.....o.....o','Go...oRo...oG','oGo.oGGGo.oGo','oGGGGGGGGGGGo','oGRGGGRGGGRGo','ooooooooooooo'] },
+  Capucha:  { filas:['.........oo......','........oRRo.....','.......oRRRo.....','......oRRRRo.....','.....oRRRRRRo....','....oRRRRRRRo....','...oRRRRRRRRRo...','...oRRRRRRRRRo...','..oGGGGGGGGGGGo..','.orRRRRRRRRRRRro.','ooooooooooooooooo'] }
+};
+const EQ_COL = { o:'#1a1210', W:'#eef2f6', S:'#9aa6b4', G:'#e8b84a', g:'#9a6a1c', H:'#6b3f1f', B:'#8a5a2b', b:'#5a3816', P:'#efe3c4' };
+const EQ_CACHE = new Map();
+function pixEquipo(base, rareza){
+  const clave = base + rareza;
+  if (EQ_CACHE.has(clave)) return EQ_CACHE.get(clave);
+  const def = EQ_PIX[base], filas = def.filas, w = Math.max(...filas.map(f => f.length));
+  const c = document.createElement('canvas'); c.width = w; c.height = filas.length;
+  const a = c.getContext('2d'), R = RAREZAS[rareza] ? RAREZAS[rareza].c : '#9a9a9a';
+  // rareza oscura: el mismo color a media luz
+  const r = '#' + [1, 3, 5].map(i => Math.round(parseInt(R.slice(i, i + 2), 16) * .55).toString(16).padStart(2, '0')).join('');
+  filas.forEach((f, y) => [...f].forEach((ch, x) => { if (ch === '.') return; a.fillStyle = ch === 'R' ? R : ch === 'r' ? r : EQ_COL[ch]; a.fillRect(x, y, 1, 1); }));
+  const out = { c, w, h:filas.length, agarre:def.agarre || 0 };
+  EQ_CACHE.set(clave, out);
+  return out;
+}
+// tope de la cabeza de un cuadro (fila del primer píxel opaco en la columna del ancla), leído una vez
+const TOPE_CACHE = new Map();
+function topeCabeza(img, fr){
+  const clave = img.src + '|' + fr[0] + ',' + fr[1];
+  if (TOPE_CACHE.has(clave)) return TOPE_CACHE.get(clave);
+  const [sx, sy, w, h, ax] = fr, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const a = c.getContext('2d'); a.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+  const d = a.getImageData(0, 0, w, h).data, x = Math.round(ax);
+  let y = 0;
+  while (y < h && d[(y * w + x) * 4 + 3] < 128) y++;
+  TOPE_CACHE.set(clave, y);
+  return y;
+}
+const baseObjeto = o => o && Object.keys(EQ_PIX).find(b => o.nombre.startsWith(b));
+// dibuja casco y arma alrededor del gato. El contexto ya está en los pies del gato (y reflejado si mira a la derecha).
+// capa 'atras': lo que va detrás del cuerpo (arma en la espalda); 'frente': casco y arma en la mano
+function dibujarEquipoGato(c, img, fr, set, esc, equipo, capa){
+  if (!equipo || !img.complete) return;
+  const [, , w, h, ax, ay] = fr, vista = set.replace('q_', '');
+  const arma = equipo.arma, bArma = baseObjeto(arma), cab = equipo.cabeza, bCab = baseObjeto(cab);
+  const pinta = (p, x, y) => c.drawImage(p.c, 0, 0, p.w, p.h, Math.round(x), Math.round(y), p.w * esc, p.h * esc);
+  const arriba = -ay * esc, mano = arriba + Math.round(h * .74) * esc;
+  if (bArma && ((capa === 'atras') === (vista === 'ar'))){
+    const p = pixEquipo(bArma, arma.rareza);
+    const x = vista === 'ab' ? (w - ax - 7) * esc : vista === 'ar' ? (-ax + 1) * esc - p.w * esc : 3 * esc;
+    pinta(p, x, mano - p.agarre * esc);
+  }
+  if (bCab && capa === 'frente'){
+    const p = pixEquipo(bCab, cab.rareza), tope = topeCabeza(img, fr);
+    pinta(p, -Math.round(p.w / 2) * esc, arriba + (tope + 5) * esc - p.h * esc);
+  }
+}
+
+// silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
+const SILUETAS = new Map();
+function siluetaBlanca(img){
+  let c = SILUETAS.get(img);
+  if (!c && img.naturalWidth){
+    c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const a = c.getContext('2d'); a.drawImage(img, 0, 0); a.globalCompositeOperation = 'source-in'; a.fillStyle = '#fff'; a.fillRect(0, 0, c.width, c.height);
+    SILUETAS.set(img, c);
+  }
+  return c || img;
+}
+// zarpazo en pixel art: tres garras que barren un arco delante del gato
+function zarpazoPixel(x, y, ang, k, col){
+  if (k <= .05 || k >= .95) return;
+  const tam = 3, arco = 1.7, ini = ang - arco / 2;
+  for (let g = 0; g < 3; g++){
+    const r = 30 + g * 7, fin = ini + arco * Math.min(1, k * 1.6), desde = Math.max(ini, fin - .9);
+    for (let a = desde; a <= fin; a += .07){
+      const px = Math.round((x + Math.cos(a) * r) / tam) * tam, py = Math.round((y + Math.sin(a) * r * .6) / tam) * tam;
+      const cola = (a - desde) / Math.max(.01, fin - desde);
+      ctx.globalAlpha = Math.min(1, .35 + cola) * (k > .7 ? (1 - k) / .3 : 1);
+      ctx.fillStyle = cola > .7 ? '#ffffff' : col;
+      ctx.fillRect(px, py, tam, tam);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
 function dibujarJugador(t){
-  if (P.inv > 0 && P.golpe > -0.25 && Math.floor(t / 60) % 2) return;
+  if (P.inv > 0 && P.golpe > -0.25 && Math.floor(t / 60) % 2 && !gatoPx(PJ.gato)) return;
   const pie = P.y + 13;
   if (!gatosListo){
     ctx.fillStyle = '#120d24'; ctx.strokeStyle = CLASES[PJ.clase].color; ctx.lineWidth = 3;
@@ -2709,7 +2889,7 @@ function dibujarJugador(t){
     ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 30, 7, 0, 0, TAU); ctx.fill();
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(P.x), Math.round(pie - w * escG / 2)); ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -w * escG / 2, -h * escG / 2, w * escG, h * escG);
+    ctx.drawImage(hojaJugador(), sx, sy, w, h, -w * escG / 2, -h * escG / 2, w * escG, h * escG);
     ctx.restore();
     return;
   }
@@ -2756,31 +2936,45 @@ function dibujarJugador(t){
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
   if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
   // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
+  let dxA = 0, dyA = 0, kAtk = 0;
   if (GD.px){
     alza = mov && !pose ? 0 : Math.round(alza);
     if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
     rot = 0; kx = 1; ky = 1;
+    // ataque: estocada hacia donde apunta (en píxeles enteros); al recibir un golpe, retrocede y tiembla
+    if (pose === 'atk'){ kAtk = 1 - P.pose.t / P.pose.dur; const s2 = Math.sin(kAtk * Math.PI); dxA = Math.round(Math.cos(P.ang) * 5 * s2); dyA = Math.round(Math.sin(P.ang) * 3 * s2); alza = 0; }
+    if (P.golpe > 0) dxA += Math.floor(t / 45) % 2 ? 2 : -2;
   }
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, setV, fV), esc = escG;
   // sombra y aro con el color de la clase
   ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
-  if (P.golpe > 0) ctx.globalAlpha = .65;
+  if (P.golpe > 0 && !GD.px) ctx.globalAlpha = .65;
+  // pixel art: tras el destello blanco, parpadea semitransparente mientras es invulnerable
+  if (GD.px && P.inv > 0 && P.golpe <= 0 && Math.floor(t / 60) % 2) ctx.globalAlpha = .45;
   ctx.save();
-  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x), Math.round(pie + alza)); }
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza) + dyA); }
   else ctx.translate(P.x, pie + alza);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
-  ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
+  const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : hojaJugador();
+  const frG = [sx, sy, w, h, ax, ay];
+  if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'atras');
+  ctx.drawImage(hojaG, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'frente');
   ctx.restore();
   ctx.globalAlpha = 1;
+  if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
   const ny = pie - ALTO_GATO_PJ - 10;
   ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center';
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(PJ.nombre, P.x, ny);
   ctx.fillStyle = '#7fc8ff'; ctx.fillText(PJ.nombre, P.x, ny);
+  const tit = tituloActual();
+  if (tit){ ctx.font = '600 12px Rajdhani, sans-serif'; ctx.strokeText(`«${tit}»`, P.x, ny - 15); ctx.fillStyle = '#ffd100'; ctx.fillText(`«${tit}»`, P.x, ny - 15); }
   if (PJ.hermandad){
-    const hy = ny - 15; ctx.font = '600 12px Rajdhani, sans-serif';
+    const hy = ny - (tit ? 30 : 15); ctx.font = '600 12px Rajdhani, sans-serif';
     const tx = `<${PJ.hermandad.nombre}>`;
     ctx.strokeText(tx, P.x, hy); ctx.fillStyle = '#7dffa8'; ctx.fillText(tx, P.x, hy);
   }
@@ -3044,6 +3238,9 @@ const GATOS_IMG = new Image();
 // k: cuánto más chica es su hoja que las de 96 px; px: se dibuja con escala entera y sin suavizar para que los píxeles queden limpios
 const MIST_IMG = new Image();
 GATOS_DIR[0] = Object.assign({"ab": [[2, 2, 39, 64, 19, 64], [43, 2, 39, 64, 17, 64], [84, 2, 40, 64, 19, 64], [126, 3, 39, 63, 18, 63]], "ar": [[2, 70, 38, 62, 18, 62], [42, 69, 36, 63, 17, 63], [80, 70, 37, 62, 18, 62], [119, 68, 36, 64, 18, 64]], "lado": [[2, 136, 40, 59, 16, 59], [44, 135, 36, 60, 13, 60], [82, 135, 39, 60, 16, 60], [123, 134, 35, 61, 12, 61]]}, { img:MIST_IMG, k:96 / 62, px:true });
+// los demás gatos también tienen su hoja propia en pixel art (4 cuadros por vista, 64 px de alto)
+const HOJAS_GATO = [[1, 'img/gato-ejecutivo.png', {"ab": [[2, 2, 39, 64, 19, 64], [43, 2, 39, 64, 19, 64], [84, 2, 39, 64, 19, 64], [125, 2, 39, 64, 19, 64]], "ar": [[2, 68, 38, 64, 19, 64], [42, 68, 38, 64, 19, 64], [82, 68, 38, 64, 19, 64], [122, 68, 38, 64, 19, 64]], "lado": [[2, 135, 41, 64, 17, 64], [45, 134, 39, 65, 15, 65], [86, 135, 41, 64, 17, 64], [129, 134, 39, 65, 15, 65]]}], [2, 'img/gato-calico.png', {"ab": [[2, 2, 63, 65, 24, 65], [67, 2, 63, 65, 24, 65], [132, 2, 63, 65, 24, 65], [197, 2, 63, 65, 24, 65]], "ar": [[2, 69, 63, 66, 24, 66], [67, 69, 63, 66, 24, 66], [132, 69, 63, 66, 24, 66], [197, 69, 63, 66, 24, 66]], "lado": [[2, 139, 62, 65, 23, 65], [66, 138, 62, 66, 23, 66], [130, 138, 62, 66, 23, 66], [194, 137, 62, 67, 23, 67]]}], [3, 'img/gato-misterioso.png', {"ab": [[2, 2, 49, 65, 20, 65], [53, 2, 49, 65, 20, 65], [104, 2, 49, 65, 20, 65], [155, 2, 49, 65, 20, 65]], "ar": [[2, 69, 47, 65, 19, 65], [51, 69, 47, 65, 19, 65], [100, 69, 47, 65, 19, 65], [149, 69, 47, 65, 19, 65]], "lado": [[2, 137, 46, 65, 18, 65], [50, 136, 46, 66, 18, 66], [98, 137, 46, 65, 18, 65], [146, 136, 46, 66, 18, 66]]}]];
+for (const [i, src, dir] of HOJAS_GATO){ const img = new Image(); img.dataset.src = src; GATOS_DIR[i] = Object.assign(dir, { img, k:96 / 62, px:true }); }
 const imgGato = tipo => (GATOS_DIR[tipo] && GATOS_DIR[tipo].img) || GATOS_IMG;
 const gatoPx = tipo => !!(GATOS_DIR[tipo] && GATOS_DIR[tipo].px);
 // escala de dibujo de un gato a partir de la escala pensada para hojas de 96 px
@@ -3051,19 +3248,21 @@ function escGato(tipo, base){
   const g = GATOS_DIR[tipo] || {}, e = base * (g.k || 1);
   return g.px ? Math.max(1, Math.round(e)) : e;
 }
-let gatosListo = false, gatosPend = 2;
+let gatosListo = false, gatosPend = 2 + HOJAS_GATO.length;
 const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
+for (const [i] of HOJAS_GATO){ const im = GATOS_DIR[i].img; im.onload = gatoCargado; im.src = im.dataset.src + '?v=' + VERSION; }
 GATOS_IMG.src = 'img/gatos.png';
-MIST_IMG.src = 'img/mist.png?v=1.5.0';
+MIST_IMG.src = 'img/mist.png?v=' + VERSION;
 const TIPOS_GATO = ['Gato Carmesí', 'Gato Ejecutivo', 'Gato Calicó', 'Gato Misterioso'];
 // Mascotas: 4 ratas con 4 direcciones (ar arriba, ab abajo, iz izquierda, de derecha) de 4 cuadros
 // cada cuadro: [x, y, ancho, alto, anclaX, anclaY]
-const RATAS_DIR = [{"ar":[[0,0,55,84,26.0,82],[57,0,56,84,26.5,82],[115,0,57,84,28.5,82],[174,0,53,84,25.5,82]],"ab":[[229,0,53,84,25.0,82],[284,0,56,84,27.0,82],[342,0,54,84,25.5,82],[398,0,52,84,26.0,82]],"iz":[[452,0,49,84,24.5,82],[503,0,49,84,24.0,82],[554,0,47,84,24.0,82],[603,0,42,84,19.5,82]],"de":[[647,0,51,84,21.5,82],[700,0,52,84,21.5,82],[754,0,51,84,22.0,82],[807,0,49,84,17.5,82]]},{"ar":[[858,0,53,84,24.5,82],[913,0,55,84,25.5,82],[970,0,52,84,25.5,82],[1024,0,52,84,26.0,82]],"ab":[[0,86,52,84,26.0,82],[54,86,54,84,25.5,82],[110,86,52,84,25.0,82],[164,86,51,84,25.5,82]],"iz":[[217,86,54,84,30.5,82],[273,86,51,84,30.5,82],[326,86,51,84,30.5,82],[379,86,48,84,31.0,82]],"de":[[429,86,46,84,18.0,82],[477,86,46,84,17.5,82],[525,86,47,84,21.0,82],[574,86,48,84,19.0,82]]},{"ar":[[624,86,54,84,24.5,82],[680,86,53,84,24.5,82],[735,86,58,84,27.5,82],[795,86,54,84,27.0,82]],"ab":[[851,86,54,84,25.5,82],[907,86,62,84,30.5,82],[971,86,56,84,27.5,82],[1029,86,55,84,27.5,82]],"iz":[[0,172,59,84,34.0,82],[61,172,57,84,33.0,82],[120,172,56,84,32.5,82],[178,172,53,84,30.0,82]],"de":[[233,172,59,84,23.0,82],[294,172,58,84,25.5,82],[354,172,58,84,27.5,82],[414,172,58,84,25.5,82]]},{"ar":[[474,172,55,84,25.5,82],[531,172,55,84,25.0,82],[588,172,55,84,26.0,81],[645,172,53,84,27.5,82]],"ab":[[700,172,52,84,25.0,82],[754,172,53,84,25.0,82],[809,172,53,84,26.0,82],[864,172,52,84,24.5,82]],"iz":[[918,172,55,84,29.0,81],[975,172,54,84,29.5,82],[1031,172,51,84,28.0,82],[0,258,51,84,26.5,82]],"de":[[53,258,55,84,21.5,82],[110,258,54,84,20.5,82],[166,258,53,84,23.5,82],[221,258,53,84,21.5,81]]}];
+const RATAS_DIR = [{"ar": [[2, 2, 24, 38, 11, 38], [28, 2, 25, 38, 12, 38], [55, 2, 25, 38, 12, 38], [82, 2, 23, 38, 11, 38]], "ab": [[2, 42, 23, 38, 11, 38], [27, 42, 25, 38, 12, 38], [54, 42, 24, 38, 11, 38], [80, 42, 23, 38, 11, 38]], "iz": [[2, 82, 21, 38, 10, 38], [25, 82, 21, 38, 10, 38], [48, 82, 20, 38, 9, 38], [70, 82, 19, 38, 9, 38]], "de": [[2, 122, 22, 38, 10, 38], [26, 122, 23, 38, 11, 38], [51, 122, 22, 38, 10, 38], [75, 122, 21, 38, 9, 38]]}, {"ar": [[2, 162, 23, 38, 11, 38], [27, 162, 24, 38, 11, 38], [53, 162, 23, 38, 11, 38], [78, 162, 23, 38, 11, 38]], "ab": [[2, 202, 23, 38, 11, 38], [27, 202, 24, 38, 11, 38], [53, 202, 23, 38, 11, 38], [78, 202, 22, 38, 11, 38]], "iz": [[2, 242, 24, 38, 12, 38], [28, 243, 22, 37, 11, 37], [52, 242, 22, 38, 10, 38], [76, 242, 21, 38, 10, 38]], "de": [[2, 282, 20, 38, 9, 38], [24, 282, 20, 38, 9, 38], [46, 282, 19, 38, 8, 38], [67, 282, 20, 38, 9, 38]]}, {"ar": [[2, 322, 24, 39, 11, 39], [28, 323, 23, 38, 11, 38], [53, 323, 26, 38, 13, 38], [81, 322, 24, 39, 12, 39]], "ab": [[2, 363, 24, 38, 11, 38], [28, 363, 28, 38, 13, 38], [58, 363, 25, 38, 12, 38], [85, 363, 24, 38, 12, 38]], "iz": [[2, 403, 26, 38, 14, 38], [30, 403, 25, 38, 13, 38], [57, 403, 25, 38, 13, 38], [84, 403, 24, 38, 12, 38]], "de": [[2, 443, 26, 38, 12, 38], [30, 443, 26, 38, 12, 38], [58, 443, 26, 38, 12, 38], [86, 443, 26, 38, 12, 38]]}, {"ar": [[2, 484, 24, 38, 11, 38], [28, 483, 24, 39, 11, 39], [54, 484, 24, 38, 11, 38], [80, 484, 23, 38, 12, 38]], "ab": [[2, 524, 23, 38, 11, 38], [27, 524, 24, 38, 12, 38], [53, 524, 23, 38, 11, 38], [78, 524, 23, 38, 11, 38]], "iz": [[2, 565, 24, 38, 12, 38], [28, 564, 24, 39, 12, 39], [54, 565, 22, 38, 11, 38], [78, 565, 22, 38, 11, 38]], "de": [[2, 605, 24, 38, 12, 38], [28, 605, 24, 38, 11, 38], [54, 605, 23, 38, 11, 38], [79, 605, 23, 38, 10, 38]]}];
 const RATAS_IMG = new Image();
 let ratasListo = false;
 RATAS_IMG.onload = () => ratasListo = true;
-RATAS_IMG.src = 'img/ratas.png';
+RATAS_IMG.src = 'img/ratas.png?v=' + VERSION;
+const ALTO_RATA = 40; // alto de la hoja de ratas en pixel art (se dibuja a escala entera)
 const TIPOS_RATA = ['Rata Mensajera', 'Rata Quesera', 'Rata Ejecutiva', 'Rata Misteriosa'];
 const ALTO_GATO = 40; // altura de la mascota en el mundo
 let M = null, gatoElegido = 0;
@@ -3106,8 +3305,8 @@ function abrirElegirMascota(){
     b.append(c, document.createTextNode(nombre));
     b.onclick = () => { gatoElegido = i; cont.querySelectorAll('.gato').forEach(x => x.setAttribute('aria-pressed', x === b)); };
     cont.appendChild(b);
-    const pintar = () => { const [sx, sy, w, h] = RATAS_DIR[i].ab[0], a = c.getContext('2d'), k = Math.min(c.width / w, c.height / h) * .9;
-      a.clearRect(0, 0, c.width, c.height); a.drawImage(RATAS_IMG, sx, sy, w, h, (c.width - w * k) / 2, (c.height - h * k) / 2, w * k, h * k); };
+    const pintar = () => { const [sx, sy, w, h] = RATAS_DIR[i].ab[0], a = c.getContext('2d'), k = Math.max(1, Math.floor(Math.min(c.width / w, c.height / h) * .9));
+      a.clearRect(0, 0, c.width, c.height); a.imageSmoothingEnabled = false; a.drawImage(RATAS_IMG, sx, sy, w, h, (c.width - w * k) / 2, (c.height - h * k) / 2, w * k, h * k); };
     if (ratasListo) pintar(); else RATAS_IMG.addEventListener('load', pintar, { once:true });
   });
   pantalla('pMascota');
@@ -3115,7 +3314,7 @@ function abrirElegirMascota(){
 $('btnInvocarPet').onclick = () => {
   const n = $('mNombre').value.trim();
   if (n.length < 2){ $('mErr').textContent = 'Ponle un nombre de al menos 2 letras.'; return; }
-  PJ.mascota = { tipo:gatoElegido, nombre:n };
+  PJ.mascota = { tipo:gatoElegido, nombre:n, nivel:1, xp:0, hambre:100 };
   if (window.pintarIcoPet) pintarIcoPet();
   pantalla(null);
   invocarMascota(false);
@@ -3123,8 +3322,67 @@ $('btnInvocarPet').onclick = () => {
   guardar();
 };
 
+// cada rata ayuda a su manera; sube hasta nivel 10 y con hambre no ayuda
+const HAB_MASCOTA = [
+  { n:'Recolectora', d:nv => `Atrae hacia ti las monedas y el botín a ${110 + nv * 12} px.` },
+  { n:'Curandera',   d:nv => `Cada 25 s te cura un ${(2 + nv * .5).toFixed(1)}% de vida.` },
+  { n:'Negociante',  d:nv => `Ganas un ${4 + nv}% más de dinero.` },
+  { n:'Sombra',      d:nv => `Muerde a los enemigos cercanos (${12 + nv * 2}% de tu poder).` }
+];
+const MAX_NV_MASCOTA = 10, xpMascotaSig = nv => 20 * nv;
+const mascotaActiva = () => M && PJ.mascota && PJ.mascota.hambre >= 20;
+const bonoOroMascota = () => mascotaActiva() && PJ.mascota.tipo === 2 ? (4 + PJ.mascota.nivel) / 100 : 0;
+function ganarXPMascota(n){
+  const m = PJ.mascota; if (m.nivel >= MAX_NV_MASCOTA) return;
+  m.xp += n;
+  while (m.nivel < MAX_NV_MASCOTA && m.xp >= xpMascotaSig(m.nivel)){
+    m.xp -= xpMascotaSig(m.nivel); m.nivel++;
+    if (M){ chispas(M.x, M.y - 15, '#ffd100', 24, 160); texto(M.x, M.y - 50, `¡${m.nombre} sube a nivel ${m.nivel}!`, '#ffd100', 14); }
+    chat(`${m.nombre} sube a nivel ${m.nivel}.`, '#ffd100');
+  }
+  if (m.nivel >= MAX_NV_MASCOTA) m.xp = 0;
+}
+function alimentarMascota(){
+  const m = PJ.mascota;
+  if (!m){ texto(P.x, P.y - 74, 'No tienes mascota', '#9a91c2', 14); return false; }
+  if (m.hambre >= 100){ texto(P.x, P.y - 74, `${m.nombre} no tiene hambre`, '#9a91c2', 14); return false; }
+  m.hambre = 100; ganarXPMascota(15); contar('comida'); sfx('comer');
+  const x = M ? M.x : P.x, y = M ? M.y : P.y;
+  chispas(x, y - 15, '#ff8fc8', 18, 120); texto(x, y - 50, '♥ ¡Ñam!', '#ff8fc8', 15);
+  if (abierta('wPj')) renderPj();
+  return true;
+}
+function habilidadMascota(dt){
+  const m = PJ.mascota;
+  m.hambre = Math.max(0, m.hambre - dt / 30); // se vacía en unos 50 minutos de juego
+  M.tHab = (M.tHab || 0) - dt; M.tHambre = (M.tHambre || 0) - dt;
+  if (m.hambre < 20){
+    if (M.tHambre <= 0){ M.tHambre = 25; M.frase = '¡Tengo hambre!'; M.tFrase = 3; }
+    return;
+  }
+  if (m.tipo === 0){
+    const r = 110 + m.nivel * 12;
+    for (const o of botin){
+      const dx = P.x - o.x, dy = P.y - o.y, d = Math.hypot(dx, dy);
+      if (d >= 100 && Math.hypot(M.x - o.x, M.y - o.y) < r){ o.x += dx / d * 260 * dt; o.y += dy / d * 260 * dt; }
+    }
+  } else if (m.tipo === 1){
+    if (M.tHab <= 0){
+      M.tHab = 25;
+      if (P.hp < D.maxHp){ const c = Math.round(D.maxHp * (2 + m.nivel * .5) / 100); P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x, P.y - 74, '+' + c, '#7dffa8', 14); chispas(P.x, P.y - 20, '#7dffa8', 10, 100); }
+    }
+  } else if (m.tipo === 3 && E.tipo === 'mazmorra'){
+    if (M.tHab <= 0){
+      let obj = null, md = 80;
+      for (const e of enemigos){ if (e.muerto) continue; const d = Math.hypot(e.x - M.x, e.y - M.y); if (d < md){ md = d; obj = e; } }
+      if (obj){ M.tHab = 1.6; herir(obj, D.poder * (12 + m.nivel * 2) / 100); chispas(obj.x, obj.y - 10, '#b98bff', 10, 140); }
+    }
+  }
+}
 function updateMascota(dt){
   if (!M) return;
+  M.tFrase = (M.tFrase || 0) - dt;
+  habilidadMascota(dt);
   const dx = P.x - M.x, dy = P.y - M.y, d = Math.hypot(dx, dy);
   if (d > 450){ M.x = P.x - 34; M.y = P.y + 8; colisiones(M); return; }
   M.mov = false;
@@ -3152,15 +3410,20 @@ function updateMascota(dt){
 function pintarGato(c, tipo, x, pie, alto, t, mov, flip, quieto, atlas = GATOS, img = GATOS_IMG, cuadro = null){
   const f = mov ? Math.floor(t / 1000 * 10) % 6 : 0;
   const [sx, sy, w, h, ax, ay] = cuadro || atlas[tipo * 6 + f];
-  const esc = alto / 84, dormido = !mov && quieto > 6;
-  let kx = 1, ky = 1;
-  if (!mov){
+  // las ratas son pixel art: escala entera, sin estirar; respiran subiendo un píxel
+  const px = img === RATAS_IMG, esc = px ? Math.max(1, Math.round(alto / ALTO_RATA)) : alto / 84, dormido = !mov && quieto > 6;
+  let kx = 1, ky = 1, sube = 0;
+  if (px){ if (!mov) sube = Math.sin(t / (dormido ? 750 : 420)) > .5 ? -esc : 0; }
+  else if (!mov){
     const fase = Math.sin(t / (dormido ? 750 : 420));
     if (dormido){ ky = .86 + .025 * fase; kx = 1.07 - .012 * fase; }
     else { ky = 1 + .025 * fase; kx = 1 - .012 * fase; }
   }
   c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, pie, alto * .29 * kx, alto * .1, 0, 0, TAU); c.fill();
-  c.save(); c.translate(x, pie); c.scale(flip ? -kx : kx, ky);
+  c.save();
+  if (px){ c.imageSmoothingEnabled = false; c.translate(Math.round(x), Math.round(pie) + sube); }
+  else c.translate(x, pie);
+  c.scale(flip ? -kx : kx, ky);
   c.drawImage(img, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   c.restore();
   if (dormido){
@@ -3191,6 +3454,7 @@ function dibujarMascota(t){
   ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
   ctx.fillStyle = '#000'; ctx.fillText(PJ.mascota.nombre, M.x + 1, pie - ALTO_GATO - 3);
   ctx.fillStyle = '#e9e4ff'; ctx.fillText(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4);
+  if (M.tFrase > 0) burbuja(M.x, pie - ALTO_GATO - 18, M.frase, Math.min(1, M.tFrase));
 }
 
 // =====================================================
@@ -3336,7 +3600,7 @@ function dibujarCiudad(t){
 function dibujarLucesCiudad(t){
   if (E.tipo !== 'ciudad') return;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  const parpadeo = 1;
+  const parpadeo = .7 + oscuridad() * 1.2;
   for (const f of E.farolas) for (const [dx, dy] of f.luces){
     const x = f.x + dx, y = f.y + dy;
     const g = ctx.createRadialGradient(x, y, 1, x, y, 34);
@@ -3351,11 +3615,12 @@ function dibujarPortalCiudad(p, t){
   dibujarPortal(p.x, p.y, p.rango, t, esc);
   ctx.textAlign = 'center';
   ctx.font = '28px Marcellus, Georgia, serif';
-  ctx.fillStyle = '#000'; ctx.fillText(R.l, p.x + 1, p.y - 117 * esc + 1);
-  ctx.fillStyle = R.color; ctx.fillText(R.l, p.x, p.y - 117 * esc);
+  const letra = p.semanal ? '♛' : R.l;
+  ctx.fillStyle = '#000'; ctx.fillText(letra, p.x + 1, p.y - 117 * esc + 1);
+  ctx.fillStyle = p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
   ctx.font = '600 13px Rajdhani, sans-serif'; ctx.fillStyle = p.cierra < 30 ? '#ff8a9b' : '#e9e4ff';
   ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
-  const txt = `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
+  const txt = p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
   ctx.strokeText(txt, p.x, p.y + 66); ctx.fillText(txt, p.x, p.y + 66);
 }
 
@@ -3672,6 +3937,485 @@ function dibujarMazmorra(t){
 }
 
 // =====================================================
+//  PROGRESO: MISIONES DIARIAS, TITÁN SEMANAL, LOGROS, TÍTULOS Y TINTES
+// =====================================================
+const diaHoy = () => Math.floor(Date.now() / 86400000);
+const semanaHoy = () => Math.floor((Date.now() / 86400000 + 3) / 7); // semanas que empiezan el lunes
+const DIARIAS_POOL = [
+  { id:'kills',     n:'Derrota 40 monstruos',             meta:40 },
+  { id:'mazmorras', n:'Despeja 2 mazmorras',              meta:2 },
+  { id:'jefes',     n:'Derrota a un jefe',                meta:1 },
+  { id:'oro',       n:'Recoge 50 de plata en monedas',    meta:5000 },
+  { id:'partes',    n:'Recoge 6 partes de monstruo',      meta:6 },
+  { id:'pasos',     n:'Recorre la ciudad y las cuevas',   meta:300 },
+  { id:'comida',    n:'Dale de comer a tu mascota',       meta:1 }
+];
+// las 3 misiones del día salen de la fecha: son las mismas para todos ese día
+function diariasDeHoy(){
+  let x = diaHoy() * 9301 + 49297; const pool = DIARIAS_POOL.slice(), elegidas = [];
+  while (elegidas.length < 3){ x = (x * 9301 + 49297) % 233280; elegidas.push(pool.splice(x % pool.length, 1)[0]); }
+  return elegidas;
+}
+function estadoDiarias(){
+  if (!PJ.diarias || PJ.diarias.dia !== diaHoy()) PJ.diarias = { dia:diaHoy(), prog:{}, cobradas:{} };
+  return PJ.diarias;
+}
+function contar(id, n = 1){
+  if (!PJ) return;
+  const d = estadoDiarias(), mis = diariasDeHoy().find(m => m.id === id);
+  if (!mis || d.cobradas[id]) return;
+  const antes = d.prog[id] || 0;
+  d.prog[id] = Math.min(mis.meta, antes + n);
+  if (antes < mis.meta && d.prog[id] >= mis.meta){ chat(`Misión diaria completada: ${mis.n}. Cóbrala en Desafíos (C).`, '#ffd100'); texto(P.x, P.y - 84, '¡Diaria completada!', '#ffd100', 15); }
+}
+const premioDiaria = () => ({ oro:3000 * (1 + rangoCazador()), xp:Math.round(PJ.xpSig * .15) });
+function cobrarDiaria(id){
+  const d = estadoDiarias(), mis = diariasDeHoy().find(m => m.id === id);
+  if (!mis || d.cobradas[id] || (d.prog[id] || 0) < mis.meta) return;
+  d.cobradas[id] = true; PJ.diariasTotal = (PJ.diariasTotal || 0) + 1;
+  const pr = premioDiaria(); PJ.oro += pr.oro; darApilable('queso');
+  chat(`Recompensa diaria: ${dineroTxt(pr.oro)}, ${pr.xp} de experiencia y una Galleta de queso.`, '#ffd100');
+  ganarXP(pr.xp, true); guardar(); renderPj();
+}
+
+// Titán semanal: un portal dorado en la ciudad con un jefe mucho más fuerte; su cofre se cobra una vez por semana
+const TITANES = ['Titán de Obsidiana', 'Reina Plaga', 'Coloso Errante', 'Devorador de Lunas'];
+const titanDeLaSemana = () => TITANES[semanaHoy() % TITANES.length];
+const titanHecho = () => PJ.semanal === semanaHoy();
+function asegurarPortalTitan(){
+  if (E.tipo !== 'ciudad' || portales.some(p => p.semanal)) return;
+  const libres = CIUDAD.puntosPortal.filter(p => p.libre);
+  if (!libres.length) return;
+  const punto = libres[0]; punto.libre = false;
+  portales.push({ x:punto.x, y:punto.y, punto, rango:Math.min(5, rangoCazador()), cierra:Infinity, nace:0, semanal:true });
+}
+function hacerTitan(){
+  const j = jefeVivo; if (!j) return;
+  j.hp = j.maxHp = Math.round(j.maxHp * 3); j.dmg *= 1.4; j.r = Math.round(j.r * 1.25); j.xp *= 3; j.oro *= 3;
+  j.nombre = titanDeLaSemana(); j.color = '#ffd100'; E.semanal = true;
+  $('jefeNombre').textContent = j.nombre;
+}
+function premioTitan(){
+  if (!E.semanal || titanHecho()) return;
+  PJ.semanal = semanaHoy(); PJ.semanalesTotal = (PJ.semanalesTotal || 0) + 1;
+  const oro = 20000 * (1 + E.rango);
+  PJ.oro += oro;
+  botin.push({ t:'obj', x:E.jefePos.x, y:E.jefePos.y + 20, obj:crearObjeto(E.rango, 0, null, 4) });
+  banner(`¡${titanDeLaSemana()} derrotado!`, `Cofre semanal: ${dineroTxt(oro)} y un objeto legendario.`);
+  chat(`Cofre del titán semanal: ${dineroTxt(oro)} y un objeto legendario.`, '#ff8000');
+}
+
+// Logros: cada uno da un título que puedes llevar sobre el nombre
+const LOGROS = [
+  { id:'k1',      n:'Primera presa',          d:'Derrota a tu primer monstruo.',       titulo:'el Novato',             ok:p => p.kills >= 1 },
+  { id:'k100',    n:'Exterminador',           d:'Derrota 100 monstruos.',             titulo:'Exterminador',          ok:p => p.kills >= 100 },
+  { id:'k1000',   n:'Azote de monstruos',     d:'Derrota 1000 monstruos.',            titulo:'Azote de monstruos',    ok:p => p.kills >= 1000 },
+  { id:'j1',      n:'Matajefes',              d:'Derrota a tu primer jefe.',          titulo:'Matajefes',             ok:p => p.jefesTotal >= 1 },
+  { id:'j25',     n:'Leyenda de los portales',d:'Derrota 25 jefes.',                  titulo:'Leyenda de los portales', ok:p => p.jefesTotal >= 25 },
+  { id:'s1',      n:'Señor del Abismo',       d:'Despeja una grieta de rango S.',     titulo:'Señor del Abismo',      ok:p => (p.limpias.S || 0) >= 1 },
+  { id:'n10',     n:'Veterano',               d:'Llega al nivel 10.',                 titulo:'el Veterano',           ok:p => p.nivel >= 10 },
+  { id:'n30',     n:'Maestro de las sombras', d:'Llega al nivel 30.',                 titulo:'Maestro de las sombras', ok:p => p.nivel >= 30 },
+  { id:'rico',    n:'Gato rico',              d:'Junta 50 de oro.',                   titulo:'el Adinerado',          ok:p => p.oro >= 500000 },
+  { id:'pet10',   n:'Amigo de las ratas',     d:'Sube a tu mascota a nivel 10.',      titulo:'Amigo de las ratas',    ok:p => p.mascota && p.mascota.nivel >= 10 },
+  { id:'d10',     n:'Constante',              d:'Cobra 10 misiones diarias.',         titulo:'el Constante',          ok:p => (p.diariasTotal || 0) >= 10 },
+  { id:'t1',      n:'Cazatitanes',            d:'Derrota a un titán semanal.',        titulo:'Cazatitanes',           ok:p => (p.semanalesTotal || 0) >= 1 },
+  { id:'h1',      n:'Trasnochador',           d:'Juega una hora con este personaje.', titulo:'el Trasnochador',       ok:p => p.tiempo >= 3600 },
+  { id:'tal',     n:'Erudito',                d:'Reparte 5 puntos de talento.',       titulo:'el Erudito',            ok:p => talentosGastados(p) >= 5 },
+  { id:'moda',    n:'A la moda',              d:'Tiñe tu ropa en el mercado.',        titulo:'el Elegante',           ok:p => (p.tintes || []).length > 0 }
+];
+function revisarLogros(){
+  if (!PJ || !P) return;
+  PJ.logros = PJ.logros || {};
+  for (const L of LOGROS){
+    if (PJ.logros[L.id] || !L.ok(PJ)) continue;
+    PJ.logros[L.id] = true; sfx('logro');
+    banner(`Logro: ${L.n}`, `Nuevo título: «${L.titulo}». Elígelo en Desafíos (C).`);
+    chat(`Logro conseguido: [${L.n}]. Título desbloqueado: ${L.titulo}.`, '#ff8000');
+    chispas(P.x, P.y - 30, '#ffd100', 30, 200);
+    guardar();
+  }
+}
+const tituloActual = () => { const L = PJ && PJ.titulo && LOGROS.find(x => x.id === PJ.titulo); return L && PJ.logros && PJ.logros[L.id] ? L.titulo : ''; };
+
+// Tintes de ropa: cambian el color de la chaqueta, la corbata o la sudadera (cada gato su prenda)
+const TINTES = [
+  { id:'carmesi',   n:'Carmesí',   c:[200, 40, 48] },
+  { id:'cobalto',   n:'Cobalto',   c:[52, 96, 220] },
+  { id:'esmeralda', n:'Esmeralda', c:[36, 160, 84] },
+  { id:'dorado',    n:'Dorado',    c:[222, 168, 40] },
+  { id:'lavanda',   n:'Lavanda',   c:[156, 110, 228] },
+  { id:'nieve',     n:'Nieve',     c:[226, 226, 236] },
+  { id:'rosa',      n:'Rosa',      c:[232, 108, 170] }
+];
+const PRECIO_TINTE = 3000;
+const PRENDA_GATO = ['chaqueta', 'corbata y parche', null, 'sudadera'];
+function esRopa(tipo, r, g, b){
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, lum = r * .3 + g * .59 + b * .11;
+  if (tipo === 0) return sat < .2 && lum >= 24 && lum < 110;
+  if (tipo === 1) return sat < .16 && lum >= 14 && lum < 80;
+  if (tipo === 3){ if (sat < .25 || mx < 40) return false; const h = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn); const hue = (h * 60 + 360) % 360; return hue > 235 && hue < 305; }
+  return false;
+}
+const HOJAS_TENIDAS = new Map();
+function hojaGato(tipo, tinte){
+  const img = imgGato(tipo), T = tinte && TINTES.find(x => x.id === tinte);
+  if (!T || !PRENDA_GATO[tipo] || !img.complete || !img.naturalWidth) return img;
+  const clave = tipo + '|' + tinte;
+  if (HOJAS_TENIDAS.has(clave)) return HOJAS_TENIDAS.get(clave);
+  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const a = c.getContext('2d'); a.drawImage(img, 0, 0);
+  const id = a.getImageData(0, 0, c.width, c.height), d = id.data;
+  // máscara de ropa; en el Gato Ejecutivo se quitan las líneas finas del contorno (apertura 3×3): quedan la corbata y el parche
+  const W0 = c.width, H0 = c.height, ropa = new Uint8Array(W0 * H0);
+  for (let j = 0; j < W0 * H0; j++) ropa[j] = d[j * 4 + 3] >= 128 && esRopa(tipo, d[j * 4], d[j * 4 + 1], d[j * 4 + 2]) ? 1 : 0;
+  if (tipo === 1){
+    const todos = (m, x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W0 || yy >= H0 || !m[yy * W0 + xx]) return false; } return true; };
+    const alguno = (m, x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W0 && yy < H0 && m[yy * W0 + xx]) return true; } return false; };
+    const ero = new Uint8Array(W0 * H0);
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) ero[y * W0 + x] = ropa[y * W0 + x] && todos(ropa, x, y) ? 1 : 0;
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) ropa[y * W0 + x] = ropa[y * W0 + x] && alguno(ero, x, y) ? 1 : 0;
+  }
+  for (let i = 0; i < d.length; i += 4){
+    if (!ropa[i / 4]) continue;
+    const L = (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11) / 255, k = tipo === 3 ? .3 + 1.3 * L : .35 + 1.9 * L;
+    d[i] = Math.min(255, T.c[0] * k); d[i + 1] = Math.min(255, T.c[1] * k); d[i + 2] = Math.min(255, T.c[2] * k);
+  }
+  a.putImageData(id, 0, 0);
+  HOJAS_TENIDAS.set(clave, c);
+  return c;
+}
+const hojaJugador = () => hojaGato(PJ.gato, PJ.tinte);
+function abrirTintes(msg){
+  const prenda = PRENDA_GATO[PJ.gato], mios = PJ.tintes || [];
+  let h = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p><div class="linea"><span>Tu dinero</span><b>${dinero(PJ.oro)}</b></div>`;
+  if (!prenda) h += '<p class="nota" style="margin-top:10px">Tu gato no lleva ropa que se pueda teñir.</p>';
+  else {
+    h += `<p class="nota" style="margin:8px 0">Tiñe tu ${prenda}. Cada color se paga una vez; después puedes cambiarlo gratis.</p><div class="tintes">`;
+    h += `<button class="tinte ${!PJ.tinte ? 'sel' : ''}" data-tinte=""><canvas width="64" height="72"></canvas><span>Original</span></button>`;
+    for (const T of TINTES){
+      const tiene = mios.includes(T.id);
+      h += `<button class="tinte ${PJ.tinte === T.id ? 'sel' : ''}" data-tinte="${T.id}" ${!tiene && PJ.oro < PRECIO_TINTE ? 'disabled' : ''}><canvas width="64" height="72"></canvas><span>${T.n}</span><small>${tiene ? 'Tuyo' : dineroTxt(PRECIO_TINTE).replace(/ de /g, ' ')}</small></button>`;
+    }
+    h += '</div>';
+  }
+  h += '<button class="btn" id="tVolver" style="margin-top:10px">Volver al mostrador</button>';
+  $('tiendaCuerpo').innerHTML = h;
+  $('tVolver').onclick = () => abrirTienda();
+  $('tiendaCuerpo').querySelectorAll('.tinte').forEach(b => {
+    const id = b.dataset.tinte, cv = b.querySelector('canvas'), a = cv.getContext('2d'), fr = cuadroGato(PJ.gato, 'ab', 0), [sx, sy, w, hh] = fr;
+    a.imageSmoothingEnabled = false; a.drawImage(hojaGato(PJ.gato, id || null), sx, sy, w, hh, Math.round((64 - w) / 2), 72 - hh - 4, w, hh);
+    b.onclick = () => {
+      if (id && !mios.includes(id)){
+        if (PJ.oro < PRECIO_TINTE) return;
+        PJ.oro -= PRECIO_TINTE; PJ.tintes = [...mios, id];
+      }
+      PJ.tinte = id || null; guardar(); dibujarAvatar();
+      abrirTintes(id ? `Tu ${prenda} ahora es ${TINTES.find(x => x.id === id).n.toLowerCase()}.` : `Tu ${prenda} vuelve a su color original.`);
+    };
+  });
+}
+
+// pestaña Desafíos de la ventana de personaje
+function htmlDesafios(){
+  const d = estadoDiarias(), mis = diariasDeHoy(), pr = premioDiaria();
+  const resta = 86400 - (Date.now() / 1000 % 86400), hRes = Math.floor(resta / 3600), mRes = Math.floor(resta / 60) % 60;
+  let h = `<div class="pd-caja des-caja"><h4>Misiones diarias <small>se renuevan en ${hRes} h ${mRes} min</small></h4>`;
+  for (const m of mis){
+    const v = d.prog[m.id] || 0, hecha = v >= m.meta, cobrada = d.cobradas[m.id];
+    const txt = m.id === 'oro' ? `${Math.floor(v / 100)}/${m.meta / 100}` : `${v}/${m.meta}`;
+    h += `<div class="des-mis ${cobrada ? 'hecha' : ''}"><div><b>${m.n}</b><i><b style="width:${Math.round(v / m.meta * 100)}%"></b></i><small>${cobrada ? 'Cobrada' : txt}</small></div>
+      ${cobrada ? '<span class="des-ok">✓</span>' : `<button class="wbtn" data-cobrar="${m.id}" ${hecha ? '' : 'disabled'}>Cobrar</button>`}</div>`;
+  }
+  h += `<p class="nota">Cada una da ${dineroTxt(pr.oro)}, ${pr.xp} de experiencia y una Galleta de queso.</p></div>`;
+  h += `<div class="pd-caja des-caja"><h4>Titán semanal</h4><p><b style="color:#ffd100">${titanDeLaSemana()}</b> espera tras el portal dorado de la ciudad.</p>
+    <p class="nota">${titanHecho() ? 'Ya lo derrotaste esta semana. El próximo titán llega el lunes.' : 'Derrótalo para abrir el cofre semanal: mucho dinero y un objeto legendario.'}</p></div>`;
+  const logros = PJ.logros || {}, n = LOGROS.filter(L => logros[L.id]).length;
+  h += `<div class="pd-caja des-caja"><h4>Logros <small>${n}/${LOGROS.length}</small></h4>
+    <label class="des-titulo">Título <select id="selTitulo"><option value="">Sin título</option>${LOGROS.filter(L => logros[L.id]).map(L => `<option value="${L.id}" ${PJ.titulo === L.id ? 'selected' : ''}>${L.titulo}</option>`).join('')}</select></label><div class="des-logros">`;
+  for (const L of LOGROS) h += `<div class="des-logro ${logros[L.id] ? '' : 'bloq'}" title="${L.d}">${ic3('trofeo')}<div><b>${L.n}</b><small>${L.d}</small><small class="des-tit">Título: ${L.titulo}</small></div></div>`;
+  return h + '</div></div>';
+}
+function enlazarDesafios(){
+  document.querySelectorAll('[data-cobrar]').forEach(b => b.onclick = () => cobrarDiaria(b.dataset.cobrar));
+  const s = $('selTitulo'); if (s) s.onchange = () => { PJ.titulo = s.value || null; guardar(); };
+}
+
+// =====================================================
+//  SONIDO: efectos y música chiptune generados en el navegador (sin archivos)
+// =====================================================
+const SON = { ctx:null, master:null, mus:null, fx:null, musica:true, efectos:true, pista:null, sig:0, paso:0, ult:{} };
+try { const g = JSON.parse(localStorage.getItem('rb_sonido') || '{}'); if (g.musica === false) SON.musica = false; if (g.efectos === false) SON.efectos = false; } catch (e) {}
+function guardarSonido(){ try { localStorage.setItem('rb_sonido', JSON.stringify({ musica:SON.musica, efectos:SON.efectos })); } catch (e) {} }
+// el navegador sólo deja sonar después de un toque o una tecla
+function iniciarAudio(){
+  if (SON.ctx){ if (SON.ctx.state === 'suspended') SON.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  SON.ctx = new AC();
+  SON.master = SON.ctx.createGain(); SON.master.gain.value = .8; SON.master.connect(SON.ctx.destination);
+  SON.mus = SON.ctx.createGain(); SON.mus.gain.value = SON.musica ? .22 : 0; SON.mus.connect(SON.master);
+  SON.fx = SON.ctx.createGain(); SON.fx.gain.value = SON.efectos ? .5 : 0; SON.fx.connect(SON.master);
+  setInterval(programarMusica, 100);
+}
+addEventListener('pointerdown', iniciarAudio); addEventListener('keydown', iniciarAudio);
+function tono(f, dur, { tipo = 'square', vol = .3, desde = 0, hasta = null, destino = null, ataque = .005 } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, o = c.createOscillator(), g = c.createGain();
+  o.type = tipo; o.frequency.setValueAtTime(f, t);
+  if (hasta) o.frequency.exponentialRampToValueAtTime(hasta, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + ataque); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  o.connect(g); g.connect(destino || SON.fx); o.start(t); o.stop(t + dur + .02);
+}
+function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, n = Math.ceil(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = b; f.type = tipoF; f.frequency.value = filtro; f.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t); s.stop(t + dur + .02);
+}
+const SFX = {
+  ataque(){ ruido(.12, { vol:.35, filtro:2600, q:.8 }); tono(520, .08, { tipo:'triangle', vol:.12, hasta:260 }); },
+  poder(){ ruido(.35, { vol:.25, filtro:900, q:2 }); tono(220, .35, { tipo:'sawtooth', vol:.12, hasta:660 }); },
+  golpe(){ tono(160, .09, { tipo:'square', vol:.18, hasta:70 }); ruido(.06, { vol:.2, filtro:1800 }); },
+  dano(){ tono(110, .2, { tipo:'sawtooth', vol:.25, hasta:55 }); ruido(.12, { vol:.25, filtro:500, tipoF:'lowpass' }); },
+  muere(){ tono(440, .25, { tipo:'square', vol:.14, hasta:90 }); },
+  jefe(){ [196, 247, 294, 392].forEach((f, i) => tono(f, .5, { tipo:'square', vol:.14, desde:i * .12 })); ruido(.6, { vol:.2, filtro:300, tipoF:'lowpass' }); },
+  moneda(){ tono(988, .06, { vol:.12 }); tono(1319, .14, { vol:.12, desde:.06 }); },
+  botin(){ [523, 659, 784].forEach((f, i) => tono(f, .12, { tipo:'triangle', vol:.18, desde:i * .06 })); },
+  nivel(){ [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tono(f, .18, { tipo:'square', vol:.12, desde:i * .09 })); },
+  logro(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.2, desde:i * .1 })); },
+  comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
+  paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
+  click(){ tono(1200, .03, { vol:.06 }); }
+};
+// reproduce un efecto (con un mínimo de tiempo entre repeticiones del mismo)
+function sfx(n, minimo = .03){
+  if (!SON.ctx || !SON.efectos || SON.ctx.state !== 'running') return;
+  const ahora = SON.ctx.currentTime;
+  if (ahora - (SON.ult[n] || 0) < minimo) return;
+  SON.ult[n] = ahora; SFX[n]();
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn,.wbtn,.wv-x,.micro-btn')) sfx('click'); });
+
+// música: cada lugar tiene su pista (escala, tempo y melodía); se programan las notas un poco por adelantado
+const NOTA = n => 440 * Math.pow(2, (n - 69) / 12);
+const PISTAS = {
+  posada:   { bpm:84,  raiz:57, escala:[0, 2, 4, 7, 9],      mel:[0, 2, 4, 2, 1, 2, 0, -1, 0, 4, 3, 2, 1, 0, 1, -1], bajo:[0, 0, -3, -3, -5, -5, -2, -2], onda:'triangle' },
+  ciudad:   { bpm:112, raiz:60, escala:[0, 2, 4, 5, 7, 9, 11], mel:[0, 2, 4, 5, 4, 2, 4, -1, 3, 4, 5, 7, 6, 4, 2, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'square' },
+  noche:    { bpm:76,  raiz:57, escala:[0, 2, 3, 5, 7, 8, 10], mel:[4, -1, 2, 3, 2, -1, 0, -1, 4, 5, 4, 2, 3, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' },
+  mazmorra: { bpm:100, raiz:50, escala:[0, 1, 3, 5, 7, 8, 10], mel:[0, -1, 2, 1, 0, -1, 4, 3, 2, -1, 1, 0, -1, 0, 1, 2], bajo:[0, 0, 0, 0, 5, 5, 4, 4], onda:'square' },
+  titan:    { bpm:138, raiz:50, escala:[0, 1, 3, 5, 6, 8, 10], mel:[0, 0, 4, 3, 0, 0, 5, 4, 0, 0, 6, 5, 4, 3, 2, 1], bajo:[0, 0, 0, 0, 1, 1, 0, 0], onda:'sawtooth' },
+  menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
+};
+function pistaActual(){
+  if (!enJuego) return 'menu';
+  if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
+  if (E.tipo === 'ciudad') return oscuridad() > .3 ? 'noche' : 'ciudad';
+  return 'posada';
+}
+function programarMusica(){
+  if (!SON.ctx || SON.ctx.state !== 'running') return;
+  SON.mus.gain.setTargetAtTime(SON.musica ? .22 : 0, SON.ctx.currentTime, .3);
+  const nueva = pistaActual();
+  if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
+  const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
+  const nota = (grado, oct = 0) => { const L = P0.escala.length, o = Math.floor(grado / L); return NOTA(P0.raiz + 12 * (o + oct) + P0.escala[((grado % L) + L) % L]); };
+  while (SON.sig < SON.ctx.currentTime + .3){
+    const i = SON.paso, desde = SON.sig - SON.ctx.currentTime, m = P0.mel[i % P0.mel.length];
+    if (m >= 0) tono(nota(m, 1), corchea * .9, { tipo:P0.onda, vol:.16, desde, destino:SON.mus, ataque:.01 });
+    if (i % 2 === 0) tono(nota(P0.bajo[(i >> 1) % P0.bajo.length], -1), corchea * 1.8, { tipo:'triangle', vol:.3, desde, destino:SON.mus, ataque:.01 });
+    if (SON.pista === 'mazmorra' || SON.pista === 'titan' || SON.pista === 'ciudad'){
+      if (i % 4 === 0) tono(90, .12, { tipo:'sine', vol:.35, hasta:45, desde, destino:SON.mus });
+      if (i % 4 === 2) ruido(.05, { vol:.12, filtro:6000, tipoF:'highpass', desde, destino:SON.mus });
+    }
+    SON.sig += corchea; SON.paso++;
+  }
+}
+function botonesSonido(){
+  $('btnMusica').textContent = `Música: ${SON.musica ? 'Sí' : 'No'}`;
+  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Sí' : 'No'}`;
+  if (SON.fx) SON.fx.gain.value = SON.efectos ? .5 : 0;
+}
+$('btnMusica').onclick = () => { SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+$('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); botonesSonido(); };
+botonesSonido();
+
+// =====================================================
+//  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE, CLIMA Y GATOS CALLEJEROS
+// =====================================================
+let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
+const CICLO_DIA = 600; // segundos reales que dura un día completo en la ciudad
+// 0 = mediodía, .5 = medianoche
+const horaDelDia = () => (Date.now() / 1000 % CICLO_DIA) / CICLO_DIA;
+// oscuridad de la noche (0 de día, hasta .62 a medianoche)
+const oscuridad = () => Math.pow(Math.max(0, -Math.cos(horaDelDia() * TAU)), .7) * .62;
+// llueve en la ciudad en tandas de 3 minutos (una de cada cuatro, siempre las mismas para todos)
+const lloviendo = () => { const b = Math.floor(Date.now() / 180000); return (Math.imul(b, 2654435761) >>> 16) % 4 === 0; };
+const sueloConHuellas = () => E.tipo === 'ciudad' || E.tipo === 'mazmorra';
+
+// al caminar: una huella cada 20 px y un poco de polvo en los pies
+function ambientePaso(){
+  if (!sueloConHuellas() || P.paso - ultimaHuella < 20) return;
+  ultimaHuella = P.paso; ladoHuella = -ladoHuella; contar('pasos'); sfx('paso');
+  const v = Math.hypot(P.vx, P.vy) || 1, nx = -P.vy / v, ny = P.vx / v, pie = P.y + 12;
+  huellas.push({ x:Math.round(P.x + nx * 4 * ladoHuella), y:Math.round(pie + ny * 3 * ladoHuella), t:0 });
+  if (huellas.length > 60) huellas.shift();
+  const polvo = E.tipo === 'mazmorra' ? (RANGOS[E.rango] && RANGOS[E.rango].cara) || '#8a7a64' : '#c9b89a';
+  for (let i = 0; i < 2 && particulas.length < 500; i++)
+    particulas.push({ x:P.x - P.vx / v * 6 + rand(-4, 4), y:pie + rand(-1, 2), vx:-P.vx * .15 + rand(-12, 12), vy:rand(-22, -8), vida:rand(.25, .45), max:.45, color:polvo, r:2 });
+}
+function updateHuellas(dt){ for (const h of huellas) h.t += dt; huellas = huellas.filter(h => h.t < 5); }
+function dibujarHuellas(){
+  if (!sueloConHuellas()) return;
+  for (const h of huellas){
+    ctx.globalAlpha = .45 * (1 - h.t / 5);
+    ctx.fillStyle = '#1a120a';
+    ctx.fillRect(h.x - 2, h.y - 1, 4, 3); ctx.fillRect(h.x - 3, h.y - 4, 2, 2); ctx.fillRect(h.x + 1, h.y - 4, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// noche en la ciudad: se oscurece la pantalla y se recortan círculos de luz en farolas, portales y alrededor del gato
+const NOCHE = { cv:null };
+function dibujarNocheCiudad(){
+  if (E.tipo !== 'ciudad') return;
+  const d = oscuridad();
+  if (d < .02) return;
+  if (!NOCHE.cv) NOCHE.cv = document.createElement('canvas');
+  const c = NOCHE.cv, w = Math.ceil(W / 2), h = Math.ceil(H / 2);
+  if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+  const a = c.getContext('2d');
+  a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
+  a.fillStyle = `rgba(12,16,48,${d})`; a.fillRect(0, 0, w, h);
+  a.globalCompositeOperation = 'destination-out';
+  const hueco = (x, y, r, k = 1) => {
+    x = (x - cam.x) / 2; y = (y - cam.y) / 2; r /= 2;
+    if (x < -r || y < -r || x > w + r || y > h + r) return;
+    const g = a.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    a.fillStyle = g; a.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
+  for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
+  hueco(P.x, P.y - 20, 120, .55);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(c, 0, 0, W, H); ctx.restore();
+}
+
+// clima en partículas de pantalla: lluvia en la ciudad y uno propio en cada tipo de cueva
+const CLIMA_CUEVA = ['esporas', 'arena', 'nieve', 'brasas', 'vacio', 'brasas'];
+function tipoClima(){
+  if (E.tipo === 'ciudad') return lloviendo() ? 'lluvia' : null;
+  if (E.tipo === 'mazmorra') return CLIMA_CUEVA[E.rango] || null;
+  return null;
+}
+function dibujarClima(t){
+  const dt = Math.min(.05, Math.max(0, (t - tClima) / 1000)); tClima = t;
+  const tipo = tipoClima();
+  if (!tipo){ clima.length = 0; return; }
+  const tasa = { lluvia:420, nieve:50, arena:80, brasas:30, esporas:18, vacio:24 }[tipo];
+  // al entrar, el clima ya está repartido por la pantalla
+  let n = clima.length ? tasa * dt + Math.random() : tasa * 2.5, previo = !clima.length;
+  while (n-- >= 1 && clima.length < 400){
+    const p = { tipo, x:rand(-40, W + 40), y:-10, vida:0 };
+    if (tipo === 'lluvia'){ p.vx = -60; p.vy = rand(520, 640); p.y = rand(-40, H * .3); p.fin = rand(H * .2, H); }
+    else if (tipo === 'nieve'){ p.vx = rand(-15, 15); p.vy = rand(30, 60); p.y = rand(-20, H * .2); p.fase = rand(0, TAU); }
+    else if (tipo === 'arena'){ p.x = -10; p.y = rand(0, H); p.vx = rand(260, 420); p.vy = rand(-10, 20); }
+    else if (tipo === 'brasas' || tipo === 'vacio' || tipo === 'esporas'){ p.y = H + 10; p.vx = rand(-12, 12); p.vy = -rand(25, tipo === 'brasas' ? 70 : 35); p.fase = rand(0, TAU); }
+    if (previo){ if (tipo === 'arena') p.x = rand(0, W); else if (tipo !== 'lluvia') p.y = rand(0, H); }
+    clima.push(p);
+  }
+  ctx.save();
+  for (const p of clima){
+    p.vida += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    const x = Math.round(p.x), y = Math.round(p.y);
+    if (p.tipo === 'lluvia'){
+      if (p.y > p.fin){ p.muere = true; ctx.fillStyle = 'rgba(200,220,255,.45)'; ctx.fillRect(x - 2, Math.round(p.fin), 4, 1); continue; }
+      ctx.fillStyle = 'rgba(190,210,255,.5)'; ctx.fillRect(x, y, 1, 7);
+    } else if (p.tipo === 'nieve'){
+      p.x += Math.sin(p.vida * 2 + p.fase) * 12 * dt;
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(x, y, 2, 2);
+    } else if (p.tipo === 'arena'){
+      ctx.fillStyle = 'rgba(230,200,140,.45)'; ctx.fillRect(x, y, 3, 1);
+    } else {
+      p.x += Math.sin(p.vida * 1.6 + p.fase) * 10 * dt;
+      const parp = .5 + .5 * Math.sin(p.vida * 6 + p.fase);
+      ctx.globalAlpha = (p.tipo === 'brasas' ? .5 + .5 * parp : .35 + .35 * parp);
+      ctx.fillStyle = p.tipo === 'brasas' ? (parp > .5 ? '#ffb347' : '#ff5a1f') : p.tipo === 'vacio' ? '#b98bff' : '#9be37a';
+      ctx.fillRect(x, y, 2, 2); ctx.globalAlpha = 1;
+    }
+    if (p.y > H + 20 || p.y < -30 || p.x > W + 50 || p.x < -50 || p.vida > 12) p.muere = true;
+  }
+  ctx.restore();
+  clima = clima.filter(p => !p.muere);
+  // en la ciudad, de noche y con lluvia, el cielo se ve más gris
+  if (tipo === 'lluvia'){ ctx.fillStyle = 'rgba(40,50,70,.12)'; ctx.fillRect(0, 0, W, H); }
+}
+
+// gatos callejeros que pasean por la ciudad y saludan al pasar
+const FRASES_CALLEJERO = ['¡Miau! Buenas, cazador.', 'De noche las farolas espantan a las sombras.', 'Cuando llueve, los portales brillan más.', 'Yo una vez vi una rata con sombrero.', '¿Tienes algo de pescado?', 'Dicen que el Rey Gato aún vigila la ciudad.', 'Dormir en la posada lo cura todo.'];
+function crearCallejeros(){
+  const lista = [];
+  for (let i = 0; i < 4; i++){
+    let x = 0, y = 0, k = 0;
+    do { x = rand(2, E.w / T - 2) * T; y = rand(2, E.h / T - 2) * T; k++; } while (k < 200 && (solidoEn(x, y) || solidoEn(x, y + 12)));
+    lista.push({ tipo:1 + (i % 3), x, y, r:10, dest:null, espera:rand(0, 3), mov:false, paso:0, dir:'ab', flip:false, dicho:0, frase:'', tFrase:0 });
+  }
+  return lista;
+}
+function updateCallejeros(dt){
+  if (E.tipo !== 'ciudad') return;
+  if (!E.callejeros) E.callejeros = crearCallejeros();
+  for (const g of E.callejeros){
+    g.dicho -= dt; g.tFrase -= dt;
+    const dP = Math.hypot(P.x - g.x, P.y - g.y);
+    if (dP < 70){
+      g.mov = false; const dx = P.x - g.x, dy = P.y - g.y;
+      g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
+      if (g.dicho <= 0){ g.frase = FRASES_CALLEJERO[Math.random() * FRASES_CALLEJERO.length | 0]; g.tFrase = 3.2; g.dicho = 12; }
+      continue;
+    }
+    if (g.espera > 0){ g.espera -= dt; g.mov = false; continue; }
+    if (!g.dest){
+      for (let k = 0; k < 12; k++){
+        const a = rand(0, TAU), d = rand(60, 200), x = g.x + Math.cos(a) * d, y = g.y + Math.sin(a) * d;
+        if (!solidoEn(x, y) && !solidoEn(x, y + 12) && lineaVision(g.x, g.y, x, y)){ g.dest = { x, y }; break; }
+      }
+      if (!g.dest){ g.espera = 1; continue; }
+    }
+    const dx = g.dest.x - g.x, dy = g.dest.y - g.y, d = Math.hypot(dx, dy);
+    if (d < 4){ g.dest = null; g.espera = rand(1.5, 5); g.mov = false; g.dir = 'ab'; continue; }
+    const v = Math.min(d, 55 * dt), ox = g.x, oy = g.y;
+    g.x += dx / d * v; g.y += dy / d * v;
+    colisiones(g);
+    if (Math.hypot(g.x - ox, g.y - oy) < v * .3){ g.dest = null; g.espera = .5; }
+    g.mov = true; g.paso += v;
+    g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
+  }
+}
+function dibujarCallejero(g, t){
+  if (!gatosListo) return;
+  const GD = GATOS_DIR[g.tipo], img = imgGato(g.tipo), pie = Math.round(g.y + 12);
+  const fr = cuadroGato(g.tipo, g.dir, g.mov ? Math.floor(g.paso / 14) : 0), [sx, sy, w, h, ax, ay] = fr;
+  const flip = g.dir === 'lado' && g.flip, sube = !g.mov && Math.sin(t / 420 + g.x) > .6 ? -1 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(g.x, pie, 15, 5, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(g.x), pie + sube); ctx.scale(flip ? -1 : 1, 1);
+  ctx.drawImage(img, sx, sy, w, h, -ax, -ay, w, h);
+  ctx.restore();
+  if (g.tFrase > 0) burbuja(g.x, pie - h - 8, g.frase, Math.min(1, g.tFrase));
+}
+// globo de diálogo en pixel art (bordes rectos)
+function burbuja(x, y, txt, alfa = 1){
+  ctx.save(); ctx.globalAlpha = alfa;
+  ctx.font = '600 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
+  const w = Math.ceil(ctx.measureText(txt).width) + 14, h = 20, x0 = Math.round(x - w / 2), y0 = Math.round(y - h);
+  ctx.fillStyle = '#1a1210'; ctx.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+  ctx.fillStyle = '#f4ead2'; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#1a1210'; ctx.fillRect(Math.round(x) - 3, y0 + h + 2, 6, 2); ctx.fillRect(Math.round(x) - 1, y0 + h + 4, 2, 2);
+  ctx.fillStyle = '#f4ead2'; ctx.fillRect(Math.round(x) - 2, y0 + h, 4, 2);
+  ctx.fillStyle = '#2a1a08'; ctx.fillText(txt, x, y0 + 14);
+  ctx.restore();
+}
+
+// =====================================================
 //  DIBUJO PRINCIPAL
 // =====================================================
 function draw(t){
@@ -3686,6 +4430,7 @@ function draw(t){
   else if (E.tipo === 'tienda') dibujarTiendaInt(t);
   else if (E.tipo === 'asociacion') dibujarAsociacionInt(t);
   else dibujarMazmorra(t);
+  dibujarHuellas();
 
   for (const o of botin){
     if (o.t === 'oro'){
@@ -3728,6 +4473,7 @@ function draw(t){
   if (E.props) for (const pr of E.props){ if (pr.x > cam.x - 200 && pr.x < cam.x + W + 200 && pr.y > cam.y - 40 && pr.y < cam.y + H + 300) lista.push({ y:pr.y, f:() => dibujarProp(pr) }); }
   for (const s of soldados) lista.push({ y:s.y, f:() => dibujarSoldado(s, t) });
   if (E.npcs) for (const n of E.npcs) lista.push({ y:n.y, f:() => (n.spr || n.cam) ? dibujarNPCSprite(n, t) : dibujarNPC(n.x, n.y, n.ropa, n.pelo, t) });
+  if (E.tipo === 'ciudad' && E.callejeros) for (const g of E.callejeros){ if (g.x > cam.x - 80 && g.x < cam.x + W + 80 && g.y > cam.y - 80 && g.y < cam.y + H + 120) lista.push({ y:g.y, f:() => dibujarCallejero(g, t) }); }
   const ahora = performance.now();
   cadaveres = cadaveres.filter(c => ahora - c.t0 < 1100);
   if (E.tipo === 'mazmorra') for (const c of cadaveres) lista.push({ y:c.pie - 30, f:() => dibujarCadaver(c) });
@@ -3790,6 +4536,8 @@ function draw(t){
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 
+  dibujarNocheCiudad();
+  dibujarClima(t);
   dibujarMinimapa();
 
   if (sticks.mov){
@@ -3954,11 +4702,12 @@ let last = performance.now();
 let firmaBolsa = '', firmaPj = '', tSeg = 0;
 function loop(t){
   if (++tSeg % 15 === 0){ actualizarSeguimiento(); if (abierta('wMis') && enJuego) renderMisiones(); }
+  if (tSeg % 60 === 0 && enJuego) revisarLogros();
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (enJuego && !pantallaActual) update(dt);
   draw(t);
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
-  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota); }
+  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
   if (pantallaActual === 'pCrear') dibujarEscenaPj($('crearCv'), gatoPj, claseElegida, t, rotSel, null);
   if (enJuego && PJ){
