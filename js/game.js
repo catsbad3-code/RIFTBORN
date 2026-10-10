@@ -1434,7 +1434,7 @@ addEventListener('keydown', e => {
   if (!enJuego) return;
   if (e.code === 'Escape'){
     if (!$('wMenu').classList.contains('oculto')){ $('wMenu').classList.add('oculto'); return; }
-    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else if (objetivoValido()) P.objetivo = null; else pausar(); }
+    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else if (objetivoValido()) P.objetivo = null; else if (amigoValido()) P.amigo = null; else pausar(); }
     else if (PANELES_JUEGO.includes(pantallaActual)) pantalla(null);
     return;
   }
@@ -1462,6 +1462,7 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse'){
     mouse.x = e.clientX; mouse.y = e.clientY;
     if (E.tipo === 'mazmorra'){ const en = enemigoEnPantalla(e.clientX, e.clientY); if (en) fijarObjetivo(en); }
+    else { const n = npcEnPantalla(e.clientX, e.clientY); if (n){ P.amigo = n; sfx('click'); } }
     if (e.button === 0) mouse.izq = true;
     if (e.button === 2) usarHab(2);
     return;
@@ -1471,7 +1472,7 @@ cv.addEventListener('pointerdown', e => {
   if (E.tipo === 'mazmorra'){
     const toc = enemigoEnPantalla(e.clientX, e.clientY, 70);
     if (toc){ fijarObjetivo(toc); vibrar(10); return; }
-  }
+  } else { const n = npcEnPantalla(e.clientX, e.clientY); if (n){ P.amigo = n; vibrar(10); sfx('click'); return; } }
   if (e.clientX < W * .6 && !sticks.mov) sticks.mov = { id:e.pointerId, ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY };
 });
 cv.addEventListener('pointermove', e => {
@@ -2102,6 +2103,40 @@ function enemigoEnPantalla(sx, sy, radio = 46){
 // a quién ataca un enemigo (objetivo del objetivo)
 const unidadJugador = () => ({ nombre:PJ.nombre, hp:P.hp, maxHp:D.maxHp, color:'#7fc8ff' });
 function objetivoDe(e){ return e && e.objetivo && e.objetivo !== P ? e.objetivo : unidadJugador(); }
+// personaje amistoso seleccionado (ciudad e interiores)
+const amigoValido = () => !!(P && P.amigo && E.npcs && E.npcs.includes(P.amigo));
+function npcEnPantalla(sx, sy){
+  if (!E.npcs) return null;
+  const wx = sx + cam.x, wy = sy + cam.y; let toc = null, md = 44 * 44;
+  for (const n of E.npcs){ const d = (n.x - wx) ** 2 + (n.y - 22 - wy) ** 2; if (d < md){ md = d; toc = n; } }
+  return toc;
+}
+// retrato pixelado del objetivo: el dibujo del monstruo o del personaje
+let retratoDe = null;
+function pintarRetratoObjetivo(u){
+  if (u === retratoDe) return; retratoDe = u;
+  const c = $('oRetrato'); if (!c) return;
+  const a = c.getContext('2d'), W = c.width;
+  a.clearRect(0, 0, W, W);
+  const g = a.createRadialGradient(W / 2, W / 2, 4, W / 2, W / 2, W / 2);
+  g.addColorStop(0, u && (u.cam || u.spr) ? '#2a4a2a' : '#4a1a20'); g.addColorStop(1, '#0c0812'); a.fillStyle = g; a.fillRect(0, 0, W, W);
+  if (!u) return;
+  a.imageSmoothingEnabled = false;
+  let img = null, sx, sy, w, h, cabeza = false;
+  if (u.cam && CAM[u.cam]){ img = CAM_IMG; [sx, sy, w, h] = CAM[u.cam].ab[0]; cabeza = true; }
+  else if (u.spr && NPC_SPR[u.spr]){ img = NPC_IMG; [sx, sy, w, h] = NPC_SPR[u.spr]; cabeza = true; }
+  else {
+    const n = sprDe(u); if (!n || !MON.tipos[n]) return;
+    const idx = (u.jefe && n === 'arana') ? MON.tipos.arana_jefe : (u.jefe && n === 'jabali') ? MON.tipos.jabali_jefe : MON.tipos[n].walk[0];
+    img = MON_IMG; [sx, sy, w, h] = MON.cuadros[idx];
+  }
+  if (!img.complete || !img.naturalWidth){ retratoDe = null; return; }
+  // personajes: la cabeza y los hombros; monstruos: entero
+  if (cabeza){ h = Math.min(h, Math.round(w * .95)); }
+  const k = Math.max(1, Math.floor(Math.min((W - 6) / w, (W - 6) / h)));
+  const dw = w * k, dh = h * k;
+  a.drawImage(img, sx, sy, w, h, Math.round((W - dw) / 2), cabeza ? 4 : Math.round(W - dh - 4), dw, dh);
+}
 function objetivoTactil(max = 360){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < Math.max(max, 420)) return P.objetivo;
   return enemigoCercano(P.x, P.y, max);
@@ -2895,19 +2930,27 @@ function actualizarHUD(){
   if ($('combo').dataset.n !== String(cb)){ $('combo').dataset.n = cb; $('combo').innerHTML = cb < 0 ? '' : [0, 1, 2, 3, 4].map(i => `<i class="${i < cb ? 'on' : ''}"></i>`).join(''); }
   $('xpFill').style.width = (PJ.xp / PJ.xpSig * 100) + '%';
   $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
-  // marco de objetivo: el jefe en combate, o el último enemigo golpeado
+  // marco de objetivo: tu objetivo, el jefe en combate, o el personaje amistoso que seleccionaste
   let ob = null;
   if (objetivoValido()) ob = P.objetivo;
   else if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
+  const amigo = !ob && amigoValido() ? P.amigo : null;
   const mo = $('marcoObjetivo');
-  mo.classList.toggle('oculto', !ob);
+  mo.classList.toggle('oculto', !ob && !amigo);
+  mo.classList.toggle('amistoso', !!amigo);
+  pintarRetratoObjetivo(ob || amigo);
+  if (amigo){
+    mo.classList.remove('elite');
+    $('oNombre').textContent = amigo.nombre;
+    $('oRango').textContent = 'Amistoso'; $('oRango').style.color = '#7dffa8';
+    $('oFill').style.width = '100%'; $('oTxt').textContent = amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria';
+  }
   if (ob){
     mo.classList.toggle('elite', !!ob.jefe);
     $('oNombre').textContent = ob.nombre;
     $('oRango').textContent = ob.jefe ? 'Jefe' : (E.R ? E.R.l : ''); $('oRango').style.color = E.R ? E.R.color : '#fff';
     $('oFill').style.width = Math.max(0, ob.hp / ob.maxHp * 100) + '%';
     $('oTxt').textContent = `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`;
-    $('oColor').style.background = ob.color;
     const oo = objetivoDe(ob);
     $('odoNombre').textContent = oo.nombre;
     $('odoFill').style.width = Math.max(0, oo.hp / oo.maxHp * 100) + '%';
@@ -4065,6 +4108,7 @@ function updateCaminantes(dt){
 function dibujarNPCSprite(n, t){
   const pie = n.y + 12;
   ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(n.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
+  if (P && n === P.amigo){ ctx.strokeStyle = 'rgba(125,255,168,.9)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t / 50; ctx.beginPath(); ctx.ellipse(n.x, pie, 22, 8, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
   const alto = 66;
   if (n.cam){
     if (!camListo) return;
