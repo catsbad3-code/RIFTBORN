@@ -903,7 +903,33 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .cas-ficha{display:inline-flex !important;align-items:center;gap:4px}
 .cas-ficha i{width:14px;height:14px;border-radius:50%;border:3px dashed;display:inline-block}
 .cas-sim{display:inline-block;width:28px;height:28px;background:url(../img/casino.png) no-repeat;image-rendering:pixelated;flex:none}
-@media (max-width:600px){.cas-ventana{width:100vw;height:100vh;height:100dvh;border-radius:0;border-width:0}.casp-premios{display:none}.cas-cab h2{font-size:1.05rem}}
+#casCan{min-width:0}
+/* teléfono (de pie o acostado) y pantallas bajas: la mesa ocupa toda la pantalla y los controles son más pequeños */
+@media (max-width:600px),(max-height:520px){
+  .cas-ventana{width:100vw;height:100vh;height:100dvh;border-radius:0;border-width:0}
+  .casp-premios{display:none}
+  .cas-cab{padding:3px 10px;padding-top:calc(3px + env(safe-area-inset-top,0px))}
+  .cas-cab h2{font-size:1rem}
+  .cas-cab .tenue{display:none}
+  .cas-pie{gap:4px 8px;padding:5px 6px;padding-bottom:calc(5px + env(safe-area-inset-bottom,0px))}
+  .casp-grupo>span{font-size:.75rem}
+  .casp-acc{flex-wrap:nowrap}
+  .casp-acc .btn{padding:.2rem .55rem !important;font-size:.85rem;border-width:7px !important}
+  .btn.cas-ap{font-size:.75rem}
+}
+/* teléfono acostado (pantalla completa): los controles van en una columna a la derecha y el juego usa toda la altura */
+@media (orientation:landscape) and (max-height:520px){
+  .cas-ventana{display:grid;grid-template-columns:minmax(0,1fr) clamp(150px,22vw,210px);grid-template-rows:auto minmax(0,1fr)}
+  .cas-cab{grid-column:1 / -1;grid-row:1;padding-left:calc(10px + env(safe-area-inset-left,0px));padding-right:calc(10px + env(safe-area-inset-right,0px))}
+  #casCan{grid-column:1;grid-row:2;width:100%;height:100%}
+  .cas-pie{grid-column:2;grid-row:2;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;
+    border-top:none;border-left:2px solid #6a4a1a;overflow-y:auto;padding-right:calc(6px + env(safe-area-inset-right,0px))}
+  .casp-grupo{justify-content:center;gap:4px}
+  .casp-grupo>span{width:100%;text-align:center}
+  .casp-acc{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:auto}
+  .casp-acc .btn{padding:.2rem .3rem !important;width:100%}
+  .casp-acc .btn.principal{grid-column:1 / -1;order:9;padding:.45rem .3rem !important;font-size:1rem}
+}
 .btn.chef-plato{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;text-align:left;padding:.4rem .6rem !important}
 .chef-plato small{display:block;opacity:.75;font-size:.75rem;font-weight:400;line-height:1.2}
 .chef-plato .ic3{width:32px !important;height:32px !important;flex:none}

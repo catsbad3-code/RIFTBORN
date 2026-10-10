@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.11.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.11.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -1331,10 +1331,13 @@ function abrirTragaperras(maq){
     const { w, h } = medir();
     c.clearRect(0, 0, w, h);
     // la máquina (y su palanca a la derecha) cabe siempre en el lienzo, también en el teléfono
-    const pad = w < 600 ? 70 : 110, sep = w < 600 ? 4 : 8;
-    const s = Math.floor(Math.min((w - pad - 50 - sep * (N - 1)) / N, (h - 230) / 3, 150));
+    // en pantallas bajas (teléfono acostado) el letrero, los marcadores y el mensaje son más finos y no hay bandeja
+    const comp = h < 460, pad = w < 600 || comp ? 70 : 110, sep = w < 600 || comp ? 4 : 8;
+    const lh = comp ? 30 : 46, mh = comp ? 26 : 34, msgH = comp ? 24 : 34, bandeja = comp ? 0 : 26;
+    const extra = 10 + lh + 6 + mh + 24 + 20 + msgH + 8 + bandeja + 10;   // todo lo que no son rodillos
+    const s = Math.max(20, Math.floor(Math.min((w - pad - 50 - sep * (N - 1)) / N, (h - extra - 12) / 3, 150)));
     const vw = s * N + sep * (N - 1), vh = s * 3;
-    const cabW = vw + pad, cabH = vh + 215, cx = Math.round((w - cabW - 40) / 2), cy = Math.round((h - cabH) / 2);
+    const cabW = vw + pad, cabH = vh + extra, cx = Math.round((w - cabW - 40) / 2), cy = Math.max(4, Math.round((h - cabH) / 2));
     // mueble
     c.fillStyle = 'rgba(0,0,0,.4)'; rRect(c, cx + 8, cy + 10, cabW, cabH, 26); c.fill();
     const col = enGratis || gratis ? '#b02a90' : M.color;
@@ -1343,30 +1346,31 @@ function abrirTragaperras(maq){
     c.fillStyle = gr; rRect(c, cx, cy, cabW, cabH, 24); c.fill();
     c.strokeStyle = '#f2c14e'; c.lineWidth = 5; rRect(c, cx + 3, cy + 3, cabW - 6, cabH - 6, 22); c.stroke();
     // letrero con bombillas
-    const lx = cx + 24, ly = cy + 14, lw = cabW - 48, lh = 46;
+    const lx = cx + 24, ly = cy + 10, lw = cabW - 48;
     c.fillStyle = '#1c0a14'; rRect(c, lx, ly, lw, lh, 10); c.fill();
     c.strokeStyle = '#b8862f'; c.lineWidth = 3; rRect(c, lx, ly, lw, lh, 10); c.stroke();
     const nb = Math.floor(lw / 16), fase = Math.floor(ahora / 160), fiesta = (ganado && !girando) || gratis;
     for (let i = 0; i < nb; i++){
       const on = (i + fase) % 3 === 0 || (fiesta && Math.floor(ahora / 120) % 2);
       c.fillStyle = on ? '#fff3b0' : '#8a6a2a';
-      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + 6, 3, 0, TAU); c.fill();
-      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + lh - 6, 3, 0, TAU); c.fill();
+      const rb = comp ? 2 : 3, yb = comp ? 4 : 6;
+      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + yb, rb, 0, TAU); c.fill();
+      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + lh - yb, rb, 0, TAU); c.fill();
     }
-    c.fillStyle = '#ffe9a0'; c.font = `700 ${Math.min(24, lw / 16)}px Marcellus, Georgia, serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = '#ffe9a0'; c.font = `700 ${Math.min(comp ? 13 : 24, lw / 16)}px Marcellus, Georgia, serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText(gratis || enGratis ? `GIROS GRATIS · x${MULT_GRATIS}` : `${NL} LÍNEAS · ${N} RODILLOS`, lx + lw / 2, ly + lh / 2 + 1);
     // marcadores: crédito, apuesta y ganancia (la ganancia sube poco a poco, como en las máquinas)
-    const my0 = ly + lh + 8, mw = (lw - 16) / 3;
+    const my0 = ly + lh + 6, mw = (lw - 16) / 3;
     if (!girando && ganado > contador) contador = Math.min(ganado, contador + Math.max(1, ganado / 45));
     [['CRÉDITO', dineroTxtCorto(PJ.oro - pendiente)], ['APUESTA', gratis || (enGratis && girando) ? 'GRATIS' : dineroTxtCorto(total())], ['GANANCIA', dineroTxtCorto(girando ? 0 : contador)]].forEach(([t, v], k) => {
       const x = lx + k * (mw + 8);
-      c.fillStyle = '#0c0408'; rRect(c, x, my0, mw, 34, 6); c.fill();
-      c.strokeStyle = '#6a4a1a'; c.lineWidth = 2; rRect(c, x, my0, mw, 34, 6); c.stroke();
-      c.fillStyle = '#b8a070'; c.font = '700 9px Rajdhani, sans-serif'; c.fillText(t, x + mw / 2, my0 + 9);
-      c.fillStyle = k === 2 && contador > 0 && !girando ? '#7dffa8' : '#ff4a3c'; c.font = `700 ${w < 600 ? 13 : 16}px "Courier New", monospace`; c.fillText(v, x + mw / 2, my0 + 23);
+      c.fillStyle = '#0c0408'; rRect(c, x, my0, mw, mh, 6); c.fill();
+      c.strokeStyle = '#6a4a1a'; c.lineWidth = 2; rRect(c, x, my0, mw, mh, 6); c.stroke();
+      c.fillStyle = '#b8a070'; c.font = `700 ${comp ? 7 : 9}px Rajdhani, sans-serif`; c.fillText(t, x + mw / 2, my0 + mh * .26);
+      c.fillStyle = k === 2 && contador > 0 && !girando ? '#7dffa8' : '#ff4a3c'; c.font = `700 ${w < 600 || comp ? 12 : 16}px "Courier New", monospace`; c.fillText(v, x + mw / 2, my0 + mh * .68);
     });
     // ventana de rodillos
-    const vx = cx + (cabW - vw) / 2, vy = my0 + 34 + 18;
+    const vx = cx + (cabW - vw) / 2, vy = my0 + mh + 14 + 10;
     c.fillStyle = '#1c1424'; rRect(c, vx - 12, vy - 10, vw + 24, vh + 20, 12); c.fill();
     c.strokeStyle = '#f2c14e'; c.lineWidth = 4; rRect(c, vx - 12, vy - 10, vw + 24, vh + 20, 12); c.stroke();
     const ganadoras = new Set();
@@ -1430,16 +1434,20 @@ function abrirTragaperras(maq){
       } else if (ganado) msg = mensajeGanado();
     }
     // mensaje
-    const my = vy + vh + 28;
-    c.fillStyle = '#1c0a14'; rRect(c, vx - 12, my - 16, vw + 24, 34, 8); c.fill();
-    c.fillStyle = ganado && !girando ? '#7dffa8' : gratis || enGratis ? '#ff8af0' : '#ffe9a0'; c.font = `700 ${w < 600 ? 13 : 17}px Rajdhani, sans-serif`;
+    const my = vy + vh + 10 + 10 + msgH / 2;
+    c.fillStyle = '#1c0a14'; rRect(c, vx - 12, my - msgH / 2, vw + 24, msgH, 8); c.fill();
+    c.fillStyle = ganado && !girando ? '#7dffa8' : gratis || enGratis ? '#ff8af0' : '#ffe9a0';
+    let fs = w < 600 || comp ? 13 : 17;
+    do { c.font = `700 ${fs}px Rajdhani, sans-serif`; } while (c.measureText(msg).width > vw + 16 && --fs > 8);
     c.fillText(msg, vx + vw / 2, my + 1);
     // bandeja de monedas y palanca
-    c.fillStyle = '#2a1a10'; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.fill();
-    c.strokeStyle = '#b8862f'; c.lineWidth = 3; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.stroke();
+    if (bandeja){
+      c.fillStyle = '#2a1a10'; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.fill();
+      c.strokeStyle = '#b8862f'; c.lineWidth = 3; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.stroke();
+    }
     palanca = Math.max(0, palanca - .02);
     // la palanca baja al girar y vuelve sola
-    const px = cx + cabW + 20, py0 = cy + cabH * .32, largo = Math.min(110, cabH * .3);
+    const largo = Math.min(110, cabH * .3), px = cx + cabW + 20, py0 = cy + cabH * .5 - 75 + largo * .5;
     const bx = px, by = py0 + 75 - Math.cos(palanca * 2.6) * largo;
     c.fillStyle = '#5a5f6a'; rRect(c, px - 10, py0 + 50, 24, 50, 6); c.fill();
     c.strokeStyle = '#b8c0c8'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(px + 2, py0 + 75); c.lineTo(bx + 2, by); c.stroke(); c.lineCap = 'butt';
@@ -1701,13 +1709,15 @@ function abrirRuleta(){
     const vertical = w / h < 1.1;
     let R, cxR, cyR, u, ox, oy;
     if (!vertical){
-      R = Math.min(h * .42, w * .22); cxR = 20 + R; cyR = h / 2 + 10;
-      const aw = w - (cxR + R + 40) - 20, ah = h - 90;
-      u = Math.min(aw / 14.9, ah / 5.9); ox = cxR + R + 40 + (aw - 14 * u) / 2; oy = 70 + (ah - 5 * u) / 2;
+      // rueda a la izquierda y paño a la derecha; arriba quedan el historial y el mensaje
+      R = Math.min(h * .44, w * (h < 520 ? .16 : .2)); cxR = 14 + R; cyR = h / 2 + 8;
+      const arriba = h < 360 ? 58 : 70, aw = w - (cxR + R + 30) - 14, ah = h - arriba - 14;
+      u = Math.min(aw / 14.9, ah / 5.9); ox = cxR + R + 30 + (aw - 14 * u) / 2; oy = arriba + (ah - 5 * u) / 2;
     } else {
-      R = Math.min(w * .3, h * .17); cxR = w / 2; cyR = 50 + R;
-      const top = cyR + R + 20, ah = h - top - 10, aw = w - 30;
-      u = Math.min(aw / 5.9, ah / 14.9); ox = (w - 5 * u) / 2; oy = top + (ah - 14 * u) / 2;
+      // en el teléfono de pie: la rueda arriba, más pequeña, y el paño (de pie) aprovecha el resto
+      R = Math.min(w * .24, h * .13); cxR = w / 2; cyR = 38 + R;
+      const top = cyR + R + 26, ah = h - top - 8, aw = w - 24;
+      u = Math.min(aw / 5.9, ah / 14.6); ox = (w - 5 * u) / 2; oy = top + (ah - 14 * u) / 2;
     }
     rueda(cxR, cyR, R, ahora);
     pano(ox, oy, u, vertical);
@@ -1722,7 +1732,7 @@ function abrirRuleta(){
       c.fillStyle = '#fff'; c.font = '700 12px Rajdhani, sans-serif'; c.textAlign = 'center'; c.fillText(n, x, hy + 1);
     });
     c.textAlign = vertical ? 'center' : 'left';
-    c.fillStyle = res && !girando ? (res.gana ? '#7dffa8' : '#ff8a9b') : '#ffe9a0'; c.font = '700 18px Rajdhani, sans-serif';
+    c.fillStyle = res && !girando ? (res.gana ? '#7dffa8' : '#ff8a9b') : '#ffe9a0'; c.font = `700 ${vertical || h < 360 ? 15 : 18}px Rajdhani, sans-serif`;
     c.fillText(msg, vertical ? w / 2 : hx0, vertical ? cyR + R + 10 : hy + 30);
   }
   function bucle(){
