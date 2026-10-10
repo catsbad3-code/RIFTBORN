@@ -1171,6 +1171,24 @@ function abrirForja(msg){
 // =====================================================
 //  MAZMORRAS (CUEVAS)
 // =====================================================
+// línea libre entre dos casillas de una grilla (para las rutas de patrulla)
+function lineaGrilla(G, [x1, y1], [x2, y2]){
+  const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) * 2);
+  for (let i = 1; i < n; i++){ const x = Math.round(x1 + (x2 - x1) * i / n), y = Math.round(y1 + (y2 - y1) * i / n); if (G.solido[y * G.cols + x]) return false; }
+  return true;
+}
+// coloca un grupo de 1 a 3 monstruos en formación alrededor de una casilla, sin encimarse
+function crearGrupoMonstruos(R, [cx, cy], idGrupo, patrulla){
+  const n = Math.random() < .4 ? 1 : Math.random() < .67 ? 2 : 3, tipo = R.enemigos[Math.random() * R.enemigos.length | 0];
+  const a0 = rand(0, TAU);
+  for (let k = 0; k < n; k++){
+    const a = a0 + k * TAU / n, d = n === 1 ? 0 : 30 + n * 6;
+    const t = Math.random() < .7 ? tipo : R.enemigos[Math.random() * R.enemigos.length | 0];
+    crearEnemigo(t, (cx + .5) * T + Math.cos(a) * d, (cy + .5) * T + Math.sin(a) * d * .8);
+    const e = enemigos[enemigos.length - 1]; e.grupo = idGrupo;
+    if (patrulla){ e.ruta = [{ x:e.x, y:e.y }, { x:(patrulla[0] + .5) * T + Math.cos(a) * d, y:(patrulla[1] + .5) * T + Math.sin(a) * d * .8 }]; e.tramo = 1; }
+  }
+}
 function crearMazmorra(rango){
   const R = RANGOS[rango];
   let G, region, intentos = 0;
@@ -1268,21 +1286,31 @@ function crearMazmorra(rango){
     G.deco.push({ x:(i % G.cols + Math.random()) * T, y:(((i / G.cols) | 0) + Math.random()) * T, t:Math.random() * 3 | 0, s:rand(.6, 1.3) });
   }
 
-  // enemigos
+  // enemigos repartidos por toda la cueva (como en WoW): cada grupo en una zona abierta y lo más lejos posible de los demás
+  const abierta = (x, y) => { for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if (G.solido[(y + oy) * G.cols + x + ox]) return false; return true; };
   const candidatos = [];
   for (let i = 0; i < dist.length; i++){
-    if (dist[i] < 10) continue;
+    if (dist[i] < 9) continue;
     const x = i % G.cols, y = (i / G.cols) | 0;
-    if (Math.hypot(x - jx, y - jy) < 7) continue;
-    candidatos.push(i);
+    if (Math.hypot(x - jx, y - jy) < 7 || !abierta(x, y)) continue;
+    candidatos.push([x, y]);
   }
-  candidatos.sort(() => Math.random() - .5);
-  const puestos = [], total = 12 + rango;
-  for (const i of candidatos){
-    if (puestos.length >= total) break;
-    const x = i % G.cols, y = (i / G.cols) | 0;
-    if (puestos.some(([px, py]) => Math.hypot(px - x, py - y) < 5)) continue;
-    puestos.push([x, y]);
+  // muestreo por el punto más lejano: cubre toda la cueva sin amontonar grupos
+  const puestos = [], total = 14 + rango, fijos = [[sx + 1, sy], [jx, jy]];
+  const minDist = ([x, y]) => Math.min(...[...fijos, ...puestos].map(([px, py]) => Math.hypot(px - x, py - y)));
+  while (puestos.length < total && candidatos.length){
+    let mejor = null, md = -1;
+    for (let k = 0; k < 60; k++){ const c = candidatos[Math.random() * candidatos.length | 0], d = minDist(c); if (d > md){ md = d; mejor = c; } }
+    if (md < 5) break;
+    puestos.push(mejor);
+  }
+  // algunos grupos patrullan entre su sitio y otro lejano
+  G.patrullas = [];
+  for (let k = 0; k < 2 + (rango > 2 ? 1 : 0) && candidatos.length; k++){
+    const a = puestos[Math.random() * puestos.length | 0]; if (!a) break;
+    let b = null, md = 0;
+    for (let n = 0; n < 40; n++){ const c = candidatos[Math.random() * candidatos.length | 0], d = Math.hypot(c[0] - a[0], c[1] - a[1]); if (d > md && d < 18 && lineaGrilla(G, a, c)){ md = d; b = c; } }
+    if (b && md > 6) G.patrullas.push([a, b]);
   }
   G.manadas = puestos;
 
@@ -1301,10 +1329,10 @@ function entrarPortal(portal){
     E = crearMazmorra(portal.rango); limpiarEscena(); modoCombate(true);
     colocar(E.inicio.x + 70, E.inicio.y);
     const R = E.R;
-    for (const [x, y] of E.manadas){
-      const n = 1 + (Math.random() * 3 | 0);
-      for (let k = 0; k < n; k++) crearEnemigo(R.enemigos[Math.random() * R.enemigos.length | 0], (x + .5) * T + rand(-20, 20), (y + .5) * T + rand(-20, 20));
-    }
+    E.manadas.forEach((pos, i) => {
+      const pat = (E.patrullas || []).find(([a]) => a === pos);
+      crearGrupoMonstruos(R, pos, i, pat ? pat[1] : null);
+    });
     crearJefe();
     if (portal.semanal) hacerTitan();
     GRUPO = []; if (portal.grupo){ crearGrupo(); E.lfd = true; } else pintarGrupo(true);
@@ -2810,6 +2838,8 @@ function updateMazmorra(dt){
     if (e.jefe){ actualizarJefe(e, dx, dy, d, dt); continue; }
 
     if (!e.aggro && d < 300 && lineaVision(e.x, e.y, U.x, U.y)) e.aggro = true;
+    // si un monstruo del grupo entra en combate, sus compañeros también (como en WoW)
+    if (e.aggro && e.grupo !== undefined && !e.avisoGrupo){ e.avisoGrupo = true; for (const o of enemigos) if (o !== e && o.grupo === e.grupo && !o.aggro){ o.aggro = true; o.avisoGrupo = true; } }
     if (e.aggro && d > 900) e.aggro = false;
 
     let vx = 0, vy = 0, vel = e.vel * lento;
@@ -2828,12 +2858,20 @@ function updateMazmorra(dt){
           proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * (tela ? 200 : 260), vy:Math.sin(a) * (tela ? 200 : 260), r:tela ? 10 : 6, dmg:e.dmg * (tela ? .5 : 1), vida:2.6, color:tela ? '#f2f2f2' : e.color, src:e, tela });
         }
       }
+    } else if (e.ruta){
+      // patrulla: va y vuelve entre dos puntos, despacio
+      vel *= .35;
+      const p = e.ruta[e.tramo], wd = Math.hypot(p.x - e.x, p.y - e.y);
+      if (wd < 12){ e.tramo = 1 - e.tramo; e.cd = Math.max(e.cd, rand(1, 2.5)); }
+      else if (e.cd < 0){ vx = (p.x - e.x) / wd; vy = (p.y - e.y) / wd; }
     } else {
-      vel *= .3;
+      // quieto en su sitio, con algún paso corto (no se van juntando con otros grupos)
+      vel *= .25;
       const wd = Math.hypot(e.wx - e.x, e.wy - e.y);
-      if (wd < 10 || Math.random() < .004){ e.wx = e.hx + rand(-90, 90); e.wy = e.hy + rand(-90, 90); }
+      if (wd < 6 || Math.random() < .003){ if (Math.random() < .5){ e.wx = e.hx + rand(-34, 34); e.wy = e.hy + rand(-34, 34); } else { e.wx = e.x; e.wy = e.y; } }
       else { vx = (e.wx - e.x) / wd; vy = (e.wy - e.y) / wd; }
     }
+    if (!e.aggro && e.avisoGrupo) e.avisoGrupo = false;
     if (e.raiz > 0){ vx = 0; vy = 0; }
     e.x += vx * vel * dt; e.y += vy * vel * dt;
     e.mueve = Math.abs(vx) + Math.abs(vy) > .05;
