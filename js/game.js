@@ -192,7 +192,7 @@ const TAM_BOLSA = 24;
 
 let uidObj = 0;
 // íconos de objetos de uso, cofre y minerales
-const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27, "emblema": 28};
+const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27, "emblema": 28, "caramelo": 29, "regalo": 30, "bombon": 31, "brasa": 32};
 const IC3_URL = 'img/ic3.png?v=' + VERSION;
 const IC3_N = Object.keys(IC3).length;
 const IC3_IMG = new Image(); IC3_IMG.src = IC3_URL;
@@ -314,8 +314,8 @@ function dineroTxt(c){
 // =====================================================
 //  NAVEGACIÓN
 // =====================================================
-const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas'];
-const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas'];
+const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas', 'pEvento'];
+const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas','pEvento'];
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
@@ -1282,6 +1282,7 @@ function entrarPortal(portal){
     crearJefe();
     if (portal.semanal) hacerTitan();
     GRUPO = []; if (portal.grupo){ crearGrupo(); E.lfd = true; } else pintarGrupo(true);
+    if (portal.mundo) hacerJefeMundo();
     $('fundido').classList.remove('ver');
     banner(`Portal de rango ${R.l}`, R.tema);
     chat(`Entras en un portal de rango ${R.l}: ${R.tema}.`, R.color);
@@ -1296,7 +1297,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
-  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD();
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD(); premioJefeMundo();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });
@@ -2050,7 +2051,7 @@ function actualizarBarra(){
 function abrirPanelPortal(portal){
   const R = RANGOS[portal.rango], mio = rangoCazador();
   $('poLetra').textContent = R.l; $('poLetra').style.color = R.color;
-  $('poTitulo').textContent = portal.semanal ? `Portal dorado: ${titanDeLaSemana()}` : `Portal de rango ${R.l}`;
+  $('poTitulo').textContent = portal.mundo ? `Grieta roja: ${jefeMundoNombre()}` : portal.semanal ? `Portal dorado: ${titanDeLaSemana()}` : `Portal de rango ${R.l}`;
   let aviso = '';
   if (portal.rango > mio + 1) aviso = '<p class="aviso" style="margin-top:10px">Este portal supera por mucho tu rango. Lo más probable es que no salgas con vida.</p>';
   else if (portal.rango > mio) aviso = '<p class="aviso" style="margin-top:10px">Este portal está por encima de tu rango. Entra con cuidado.</p>';
@@ -2061,7 +2062,10 @@ function abrirPanelPortal(portal){
     <div class="linea"><span>Tu rango</span><b style="color:${RANGOS[mio].color}">${RANGOS[mio].l} (nivel ${PJ.nivel})</b></div>
     <div class="linea"><span>Jefe</span><b>${R.jefe}</b></div>
     <div class="linea"><span>Recompensa al despejar</span><b>${dinero(Math.round(80 * R.escala) * 100)} y más</b></div>
-    ${portal.semanal ? `<div class="linea"><span>Titán semanal</span><b style="color:#ffd100">${titanDeLaSemana()}</b></div>
+    ${portal.mundo ? `<div class="linea"><span>Jefe de mundo</span><b style="color:#ff4f6b">${jefeMundoNombre()}</b></div>
+    <div class="linea"><span>Botín</span><b>${jefeMundoHecho() ? 'Ya lo derrotaste esta hora' : '5 emblemas, mucho dinero y un objeto épico'}</b></div>
+    <p class="aviso" style="margin-top:10px">Es seis veces más resistente que un jefe normal. Un tanque y una sanadora irán contigo. La grieta se cierra a los 20 minutos de cada hora.</p>`
+    : portal.semanal ? `<div class="linea"><span>Titán semanal</span><b style="color:#ffd100">${titanDeLaSemana()}</b></div>
     <div class="linea"><span>Cofre de la semana</span><b>${titanHecho() ? 'Ya lo abriste' : 'Mucho dinero y un objeto legendario'}</b></div>
     <p class="aviso" style="margin-top:10px">El titán es tres veces más resistente que un jefe normal.</p>`
     : `<div class="linea"><span>Se cierra en</span><b>${formatoTiempo(portal.cierra)}</b></div>`}${aviso}`;
@@ -2401,6 +2405,7 @@ function herir(e, dmg, critExtra = 0){
 function matar(e){
   e.muerto = true; PJ.kills++; sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
+  botinEvento(e);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
   ganarXP(e.xp);
@@ -2661,7 +2666,7 @@ function update(dt){
   // portales de la ciudad (avanzan siempre)
   timerPortal -= dt;
   if (timerPortal <= 0){ timerPortal = 30; if (portales.length < 5) crearPortal(); }
-  asegurarPortalTitan();
+  asegurarPortalTitan(); asegurarGrietaMundo(); asegurarPuesto();
   for (const p of portales){ p.cierra -= dt; p.nace += dt; }
   for (const p of portales.filter(p => p.cierra <= 0)) quitarPortal(p);
 
@@ -2976,9 +2981,11 @@ const EQ_PIX = {
   Grimorio: { agarre:4,  filas:['ooooooooo','oRRRRRRRo','oRRGGGRRo','oRRGrGRRo','oRRGGGRRo','oRRRRRRRo','oPPPPPPPo','ooooooooo'] },
   Yelmo:    { filas:['......oooooo......','....ooSSSSSSoo....','...oSWWWWWWWSSo...','..oSWWWWWWWWWSSo..','.oSWWWWWWWWWWWSSo.','.oSSSSSSSSSSSSSSo.','oGGGGGGGRRGGGGGGGo','oooooooooooooooooo'] },
   Diadema:  { filas:['o.....o.....o','Go...oRo...oG','oGo.oGGGo.oGo','oGGGGGGGGGGGo','oGRGGGRGGGRGo','ooooooooooooo'] },
+  Calabaza: { filas:['.......gg.......','......g.........','..oooooooooooo..','.oOOOOOOOOOOOOo.','oOOyyOOOOOOyyOOo','oOOOyyOOOOyyOOOo','oOOOOOOOOOOOOOOo','oOOyOyyOOyyOyOOo','.oOOyyyyyyyyOOo.','..oooooooooooo..'] },
+  Gorro:    { filas:['...........WW...','..........WWW...','........orrro...','......orrrro....','.....orrrrro....','....orrrrrrro...','...orrrrrrrrro..','..WWWWWWWWWWWWW.','.WWWWWWWWWWWWWWW'] },
   Capucha:  { filas:['.........oo......','........oRRo.....','.......oRRRo.....','......oRRRRo.....','.....oRRRRRRo....','....oRRRRRRRo....','...oRRRRRRRRRo...','...oRRRRRRRRRo...','..oGGGGGGGGGGGo..','.orRRRRRRRRRRRro.','ooooooooooooooooo'] }
 };
-const EQ_COL = { o:'#1a1210', W:'#eef2f6', S:'#9aa6b4', G:'#e8b84a', g:'#9a6a1c', H:'#6b3f1f', B:'#8a5a2b', b:'#5a3816', P:'#efe3c4' };
+const EQ_COL = { O:'#ff8a1e', y:'#ffe25a', r:'#d8283c', o:'#1a1210', W:'#eef2f6', S:'#9aa6b4', G:'#e8b84a', g:'#9a6a1c', H:'#6b3f1f', B:'#8a5a2b', b:'#5a3816', P:'#efe3c4' };
 const EQ_CACHE = new Map();
 function pixEquipo(base, rareza){
   const clave = base + rareza;
@@ -3793,12 +3800,12 @@ function dibujarPortalCiudad(p, t){
   dibujarPortal(p.x, p.y, p.rango, t, esc);
   ctx.textAlign = 'center';
   ctx.font = '28px Marcellus, Georgia, serif';
-  const letra = p.semanal ? '♛' : R.l;
+  const letra = p.mundo ? '☠' : p.semanal ? '♛' : R.l;
   ctx.fillStyle = '#000'; ctx.fillText(letra, p.x + 1, p.y - 117 * esc + 1);
-  ctx.fillStyle = p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
+  ctx.fillStyle = p.mundo ? '#ff4f6b' : p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
   ctx.font = '600 13px Rajdhani, sans-serif'; ctx.fillStyle = p.cierra < 30 ? '#ff8a9b' : '#e9e4ff';
   ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
-  const txt = p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
+  const txt = p.mundo ? `Jefe de mundo: ${jefeMundoNombre()}${jefeMundoHecho() ? ' (derrotado)' : ''}` : p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
   ctx.strokeText(txt, p.x, p.y + 66); ctx.fillText(txt, p.x, p.y + 66);
 }
 
@@ -4274,6 +4281,7 @@ function abrirTintes(msg){
     h += `<button class="tinte ${!PJ.tinte ? 'sel' : ''}" data-tinte=""><canvas width="64" height="72"></canvas><span>Original</span></button>`;
     for (const T of TINTES){
       const tiene = mios.includes(T.id);
+      if (T.evento && !tiene) continue;
       h += `<button class="tinte ${PJ.tinte === T.id ? 'sel' : ''}" data-tinte="${T.id}" ${!tiene && PJ.oro < PRECIO_TINTE ? 'disabled' : ''}><canvas width="64" height="72"></canvas><span>${T.n}</span><small>${tiene ? 'Tuyo' : dineroTxt(PRECIO_TINTE).replace(/ de /g, ' ')}</small></button>`;
     }
     h += '</div>';
@@ -4711,6 +4719,144 @@ function abrirEmblemas(msg){
 }
 
 // =====================================================
+//  JEFES DE MUNDO Y EVENTOS DE TEMPORADA
+// =====================================================
+// jefe de mundo: los primeros 20 minutos de cada hora se abre una grieta roja en la ciudad
+// el nombre va con el dibujo del jefe de la cueva de tu rango, y cambia de título cada hora
+const JEFES_MUNDO = { slime:'Gelatinor', jabali:'Colmillo Ancestral', mantis:'la Mantis Emperatriz', arana:'la Viuda del Abismo' };
+const TITULOS_MUNDO = ['el Devorador', 'de la Grieta Roja', 'el Insaciable', 'el Eterno'];
+const horaMundo = () => Math.floor(Date.now() / 3600000);
+const jefeMundoActivo = () => new Date().getMinutes() < 20;
+const jefeMundoNombre = () => { const n = JEFES_MUNDO[JEFE_SPR[Math.min(5, rangoCazador())]] || 'Kragmor'; return `${n[0].toUpperCase() + n.slice(1)}, ${TITULOS_MUNDO[horaMundo() % TITULOS_MUNDO.length]}`; };
+const jefeMundoHecho = () => PJ.jefeMundo === horaMundo();
+let avisoJefeMundo = -1;
+function asegurarGrietaMundo(){
+  if (E.tipo !== 'ciudad') return;
+  const hay = portales.find(p => p.mundo);
+  if (!jefeMundoActivo()){ if (hay) quitarPortal(hay); return; }
+  if (hay) return;
+  const libres = CIUDAD.puntosPortal.filter(p => p.libre); if (!libres.length) return;
+  const punto = libres[libres.length - 1]; punto.libre = false;
+  portales.push({ x:punto.x, y:punto.y, punto, rango:Math.min(5, rangoCazador()), cierra:Infinity, nace:0, mundo:true });
+  if (avisoJefeMundo !== horaMundo()){ avisoJefeMundo = horaMundo(); banner('¡Un jefe de mundo ha aparecido!', `${jefeMundoNombre()} acecha tras la grieta roja`); chat(`${jefeMundoNombre()} ha abierto una grieta en la ciudad. Reúne fuerzas: es un jefe de mundo.`, '#ff4f6b'); sfx('jefe'); }
+}
+function hacerJefeMundo(){
+  // arena sin monstruos menores: sólo el jefe, mucho más grande y fuerte (vienes con grupo)
+  enemigos = enemigos.filter(e => e.jefe);
+  const j = jefeVivo; if (!j) return;
+  j.hp = j.maxHp = Math.round(j.maxHp * 6); j.dmg *= 1.6; j.r = Math.round(j.r * 1.4); j.xp *= 5; j.oro *= 5;
+  j.nombre = jefeMundoNombre(); j.color = '#ff4f6b'; j.mundo = true; E.mundo = true;
+  $('jefeNombre').textContent = j.nombre;
+  if (!GRUPO.length) crearGrupo();
+}
+function premioJefeMundo(){
+  if (!E.mundo || jefeMundoHecho()) return;
+  PJ.jefeMundo = horaMundo(); PJ.jefesMundoTotal = (PJ.jefesMundoTotal || 0) + 1;
+  darEmblemas(5, 'jefe de mundo');
+  const oro = 30000 * (1 + E.rango); PJ.oro += oro;
+  botin.push({ t:'obj', x:E.jefePos.x, y:E.jefePos.y + 20, obj:crearObjeto(E.rango, 3) });
+  banner(`¡${jefeMundoNombre()} ha caído!`, `Botín de jefe de mundo: ${dineroTxt(oro)}, 5 emblemas y un objeto épico o mejor.`);
+}
+
+// eventos de temporada (según la fecha real): adornos en la ciudad, un objeto que sueltan los monstruos y un puesto para canjearlo
+const EVENTOS = [
+  { id:'animas',   n:'Festival de las Ánimas', desde:[10, 1],  hasta:[11, 2],  objeto:'caramelo', adorno:'calabaza', col:'#ff8a1e',
+    ofertas:[{ n:'Sombrero de calabaza', d:'Pieza de cabeza del festival.', precio:15, dar:() => ({ slot:'cabeza', nombre:'Calabaza del festival', base:'Calabaza' }) },
+             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } },
+             { n:'Tinte Calabaza', d:'Tiñe tu ropa de naranja.', precio:10, dar:() => { if (!PJ.tintes.includes('calabaza')) PJ.tintes.push('calabaza'); } }] },
+  { id:'invierno', n:'Gran Invierno',          desde:[12, 15], hasta:[1, 2],   objeto:'regalo',   adorno:'arbol',    col:'#9fd8ff',
+    ofertas:[{ n:'Gorro de invierno', d:'Pieza de cabeza del festival.', precio:15, dar:() => ({ slot:'cabeza', nombre:'Gorro del Gran Invierno', base:'Gorro' }) },
+             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] },
+  { id:'amor',     n:'Amor en el aire',        desde:[2, 7],   hasta:[2, 14],  objeto:'bombon',   adorno:'corazon',  col:'#ff8fc8',
+    ofertas:[{ n:'Diadema de corazones', d:'Pieza de cabeza del festival.', precio:12, dar:() => ({ slot:'cabeza', nombre:'Diadema del amor', base:'Diadema' }) },
+             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] },
+  { id:'solsticio',n:'Fuegos del Solsticio',   desde:[6, 21],  hasta:[7, 5],   objeto:'brasa',    adorno:'hoguera',  col:'#ffb347',
+    ofertas:[{ n:'Corona de llamas', d:'Pieza de cabeza del festival.', precio:12, dar:() => ({ slot:'cabeza', nombre:'Corona del Solsticio', base:'Diadema' }) },
+             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] }
+];
+function eventoActual(){
+  const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate();
+  return EVENTOS.find(ev => { const a = ev.desde[0] * 100 + ev.desde[1], b = ev.hasta[0] * 100 + ev.hasta[1]; return a <= b ? md >= a && md <= b : md >= a || md <= b; }) || null;
+}
+Object.assign(APILABLES, {
+  caramelo: { n:'Caramelo de las Ánimas', d:'Moneda del Festival de las Ánimas. Se canjea en el puesto de la plaza.', valor:50, r:1 },
+  regalo:   { n:'Regalo del Gran Invierno', d:'Moneda del Gran Invierno. Se canjea en el puesto de la plaza.', valor:50, r:1 },
+  bombon:   { n:'Bombón', d:'Moneda de Amor en el aire. Se canjea en el puesto de la plaza.', valor:50, r:1 },
+  brasa:    { n:'Brasa del Solsticio', d:'Moneda de los Fuegos del Solsticio. Se canjea en el puesto de la plaza.', valor:50, r:1 }
+});
+TINTES.push({ id:'calabaza', n:'Calabaza', c:[240, 120, 20], evento:true });
+// los monstruos sueltan el objeto del evento
+function botinEvento(e){
+  const ev = eventoActual(); if (!ev) return;
+  if (Math.random() < (e.jefe ? 1 : .25)) botin.push({ t:'cons', x:e.x + rand(-16, 16), y:e.y + rand(-16, 16), k:ev.objeto });
+}
+// puesto del evento junto a la estatua
+const PUESTO = { x:16.6 * T, y:17.2 * T };
+function abrirPuestoEvento(msg){
+  const ev = eventoActual(); if (!ev) return;
+  const n = (PJ.mats || {})[ev.objeto] || 0;
+  let h = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p>
+    <div class="linea"><span>Tienes (${APILABLES[ev.objeto].n})</span><b style="color:${ev.col}">${ic3(ev.objeto) || ''} ${n}</b></div>
+    <p class="nota" style="margin:6px 0">Los monstruos sueltan ${APILABLES[ev.objeto].n.toLowerCase()}s mientras dure el festival (los jefes siempre).</p><div class="emb-lista">`;
+  ev.ofertas.forEach((o, i) => { h += `<div class="emb-fila"><div><b style="color:${ev.col}">${o.n}</b><small>${o.d}</small></div><button class="btn" data-of="${i}" ${n < o.precio ? 'disabled' : ''}>${o.precio}</button></div>`; });
+  $('evCuerpo').innerHTML = h + '</div>';
+  $('evTitulo').textContent = ev.n;
+  $('evCuerpo').querySelectorAll('[data-of]').forEach(b => b.onclick = () => {
+    const o = ev.ofertas[+b.dataset.of]; if (((PJ.mats || {})[ev.objeto] || 0) < o.precio) return;
+    const r = o.dar();
+    if (r && r.slot){
+      if (PJ.bolsa.length >= TAM_BOLSA){ abrirPuestoEvento('Tu mochila está llena.'); return; }
+      const nv = Math.max(1, PJ.nivel), it = asegurarDur({ id:'ev-' + Date.now().toString(36) + (uidObj++), slot:r.slot, nombre:r.nombre, rareza:2, nivel:nv, stats:{ vit:Math.round(3 + nv * .6) } });
+      PJ.bolsa.push(it);
+    }
+    PJ.mats[ev.objeto] -= o.precio; if (PJ.mats[ev.objeto] <= 0) delete PJ.mats[ev.objeto];
+    guardar(); sfx('botin'); abrirPuestoEvento(`Canjeaste: ${o.n}.`);
+  });
+  pantalla('pEvento');
+}
+// adornos en pixel art del evento (se dibujan en la ciudad)
+const ADORNOS = {
+  calabaza:['....gg....','...g......','.oooooooo.','oOOOOOOOOo','oOyOOOOyOo','oOyyOOyyOo','oOOOOOOOOo','oOyOyyOyOo','oOOyyyyOOo','.oooooooo.'],
+  arbol:   ['.....Y.....','....gGg....','...gGGGg...','....gGg....','...gGrGGg..','..gGGGGGGg.','...gGGbGg..','..gGgGGGGg.','.gGGGGrGGGg','gGGbGGGGGGg','.....tt....','....tttt...'],
+  corazon: ['.rr.rr.','rRRrRRr','rRRRRRr','.rRRRr.','..rRr..','...r...'],
+  hoguera: ['....y....','...yOy...','..yOOOy..','..OOrOO..','.yOrrrOy.','ttOrrrOtt','.tttttt..']
+};
+const ADORNO_COL = { o:'#3a1a04', O:'#ff8a1e', y:'#ffe25a', g:'#1f6a2a', G:'#2fa040', Y:'#ffe25a', r:'#e02a3a', b:'#4f8aff', t:'#6b3f1f', R:'#ff5a7a' };
+const ADORNO_CV = {};
+function lienzoAdorno(n){
+  if (ADORNO_CV[n]) return ADORNO_CV[n];
+  const f = ADORNOS[n], c = document.createElement('canvas'); c.width = Math.max(...f.map(r => r.length)); c.height = f.length;
+  const a = c.getContext('2d'); f.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.'){ a.fillStyle = ADORNO_COL[ch]; a.fillRect(x, y, 1, 1); } }));
+  return ADORNO_CV[n] = c;
+}
+function dibujarAdornosEvento(t){
+  const ev = eventoActual(); if (!ev || E.tipo !== 'ciudad') return;
+  const c = lienzoAdorno(ev.adorno), esc = ev.adorno === 'arbol' ? 4 : 3;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  const pon = (x, y, brillo) => {
+    x = Math.round(x); y = Math.round(y);
+    if (brillo){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + .1 * Math.sin(t / 300 + x); const g = ctx.createRadialGradient(x, y - c.height * esc / 2, 2, x, y - c.height * esc / 2, 34); g.addColorStop(0, ev.col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - 34, y - c.height * esc / 2 - 34, 68, 68); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+    ctx.drawImage(c, x - c.width * esc / 2, y - c.height * esc, c.width * esc, c.height * esc);
+  };
+  for (const f of E.farolas || []) pon(f.x + 22, f.y + 6, ev.adorno !== 'arbol');
+  // puesto del festival
+  ctx.fillStyle = '#5a3816'; ctx.fillRect(PUESTO.x - 30, PUESTO.y - 26, 60, 26);
+  ctx.fillStyle = ev.col; for (let i = 0; i < 6; i++) ctx.fillRect(PUESTO.x - 34 + i * 12, PUESTO.y - 40, 10, 12);
+  ctx.fillStyle = '#2a1608'; ctx.fillRect(PUESTO.x - 32, PUESTO.y - 28, 64, 3);
+  pon(PUESTO.x - 18, PUESTO.y - 26, false); pon(PUESTO.x + 18, PUESTO.y - 26, false);
+  ctx.restore();
+  ctx.font = '700 13px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+  ctx.strokeText(ev.n, PUESTO.x, PUESTO.y - 48); ctx.fillStyle = ev.col; ctx.fillText(ev.n, PUESTO.x, PUESTO.y - 48);
+}
+// la interacción del puesto existe sólo mientras dure un evento
+function asegurarPuesto(){
+  if (E.tipo !== 'ciudad') return;
+  const ev = eventoActual(), it = E.inter.find(i => i.puesto);
+  if (ev && !it) E.inter.push({ puesto:true, x:PUESTO.x, y:PUESTO.y + 10, r:60, texto:`Puesto del ${ev.n}`, accion:() => abrirPuestoEvento() });
+  if (!ev && it) E.inter = E.inter.filter(i => i !== it);
+}
+
+// =====================================================
 //  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE Y CLIMA
 // =====================================================
 let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
@@ -4850,6 +4996,7 @@ function draw(t){
   else if (E.tipo === 'asociacion') dibujarAsociacionInt(t);
   else dibujarMazmorra(t);
   dibujarHuellas();
+  dibujarAdornosEvento(t);
 
   for (const o of botin){
     if (o.t === 'oro'){
