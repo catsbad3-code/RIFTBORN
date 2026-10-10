@@ -2636,7 +2636,13 @@ function dibujarJugador(t){
   if (pose === 'oculto') return;
   // hacia dónde mira: al caminar, según el movimiento; al atacar, según donde apunta
   const dirDe = (vx, vy) => Math.abs(vy) > Math.abs(vx) * 1.15 ? (vy < 0 ? 'ar' : 'ab') : 'lado';
-  if (mov) { P.dirV = dirDe(P.mx, P.my); }
+  // en diagonal no cambia de vista a cada rato: hace falta un giro claro para pasar de lado a frente/espalda o al revés
+  if (mov){
+    const ax = Math.abs(P.mx), ay = Math.abs(P.my);
+    if (P.dirV === 'lado') { if (ay > ax * 1.5) P.dirV = P.my < 0 ? 'ar' : 'ab'; }
+    else if (ax > ay * .9) P.dirV = 'lado';
+    else P.dirV = P.my < 0 ? 'ar' : 'ab';
+  }
   let dir = P.dirV || 'ab', derecha = !P.mira;
   let f = 0, kx = 1, ky = 1, alza = 0, rot = 0;
   if (pose){
@@ -2646,8 +2652,12 @@ function dibujarJugador(t){
     else { alza = -12 * s; kx = 1 - .06 * s; ky = 1 + .1 * s; }
   } else if (mov){
     // los pasos avanzan según la distancia recorrida
-    f = Math.floor(P.paso / 16);
-    alza = -Math.abs(Math.sin(P.paso / 16 * Math.PI)) * 2.2;
+    // un cuadro cada 14 px; rebote suave en cada pisada y leve balanceo al ir de lado
+    const k = P.paso / 14;
+    f = Math.floor(k);
+    alza = -(1 - Math.cos(k * Math.PI * 2)) * 1.1;
+    if (dir === 'lado') rot = Math.sin(k * Math.PI) * .035;
+    ky = 1 + Math.cos(k * Math.PI * 2) * .015;
   } else {
     const r = Math.sin(t / 420); ky = 1 + .025 * r; kx = 1 - .012 * r;
   }
@@ -2934,15 +2944,15 @@ const TEXTURA_RANGO = [
 const GATOS_DIR = [{"muerto":[[0,0,128,65,63.5,65]],"q_ab":[[139,196,63,94,26.2,94],[204,196,62,94,26.2,94]],"ab":[[268,196,62,94,34.1,94],[332,196,64,94,36.1,94],[398,196,62,95,35.4,95],[462,196,63,94,35.1,94]],"q_ar":[[527,196,59,95,26.2,95],[588,196,59,95,26.2,95]],"ar":[[649,196,59,95,26.6,95],[710,196,59,95,26.8,95],[771,196,59,94,31.9,94],[832,196,59,95,31.9,95]],"q_lado":[[893,196,68,94,25.8,94],[963,196,68,94,25.9,94]],"lado":[[1033,196,69,95,25.7,95],[1104,196,69,95,26.3,95],[1175,196,69,95,25.9,95],[1246,196,70,95,26.7,95]],"q_de":[[1318,196,68,95,40.7,95],[0,294,62,95,19.8,95]],"de":[[64,294,70,95,42.4,95],[136,294,70,96,42.6,96],[208,294,69,95,42.1,95],[279,294,70,96,42.4,96]]},{"ab":[[130,0,76,96,32.0,96],[208,0,77,96,31.5,96],[287,0,77,96,31.5,96],[366,0,79,96,31.5,96]],"ar":[[447,0,86,96,48.5,96],[535,0,81,96,37.5,96],[618,0,75,96,35.0,96],[695,0,74,96,31.5,96],[771,0,73,96,32.0,96]],"lado":[[846,0,82,96,34.0,96],[930,0,82,96,32.0,96],[1014,0,84,96,33.0,96],[1100,0,85,96,36.5,96],[1187,0,80,96,35.5,96],[1269,0,80,96,35.0,96]],"de":[[0,98,86,96,49.5,96],[88,98,76,96,42.5,96],[166,98,87,96,50.0,96],[255,98,75,96,44.0,96],[332,98,77,96,43.5,96],[411,98,72,96,42.5,96]],"muerto":[[485,98,122,56,60.5,56]]},{"ab":[[609,98,95,96,36.5,96]],"ar":[[706,98,94,96,35.5,96]],"lado":[[802,98,92,96,32.5,96],[896,98,98,96,33.0,96],[996,98,93,96,34.0,96]]},{"ab":[[1091,98,73,96,30.5,96],[1166,98,72,96,28.0,96]],"ar":[[1240,98,70,96,28.0,96],[1312,98,66,96,36.5,96],[0,196,67,96,36.0,96]],"lado":[[69,196,68,96,25.0,96]]}];
 const GATOS = null;
 const GATOS_IMG = new Image();
-// Mist (Gato Carmesí) tiene su propia hoja: frente, espalda, izquierda y derecha, 4 cuadros cada una
+// Mist (Gato Carmesí) tiene su propia hoja: frente, espalda y lado (mirando a la izquierda; se refleja para la derecha), 4 cuadros cada una
 const MIST_IMG = new Image();
-GATOS_DIR[0] = Object.assign({"ab": [[2, 3, 59, 97, 29.5, 97], [63, 3, 59, 97, 29.5, 97], [124, 2, 61, 98, 30.5, 98], [187, 6, 59, 94, 29.5, 94]], "ar": [[2, 105, 57, 94, 28.5, 94], [61, 104, 53, 95, 26.5, 95], [116, 105, 56, 94, 28.0, 94], [174, 102, 53, 97, 26.5, 97]], "lado": [[2, 203, 60, 88, 25.2, 88], [64, 201, 60, 90, 25.2, 90], [126, 201, 59, 90, 24.8, 90], [187, 201, 58, 90, 24.4, 90]], "de": [[2, 295, 60, 88, 34.8, 88], [64, 293, 63, 90, 36.5, 90], [129, 295, 62, 88, 36.0, 88], [193, 294, 61, 89, 35.4, 89]]}, { img:MIST_IMG });
+GATOS_DIR[0] = Object.assign({"ab": [[2, 3, 59, 97, 28.3, 97], [63, 3, 59, 97, 26.6, 97], [124, 2, 61, 98, 28.6, 98], [187, 6, 59, 94, 28.0, 94]], "ar": [[2, 105, 57, 94, 27.6, 94], [61, 104, 53, 95, 25.2, 95], [116, 105, 56, 94, 27.2, 94], [174, 102, 53, 97, 26.2, 97]], "lado": [[2, 203, 60, 88, 25.0, 88], [64, 201, 60, 90, 26.5, 90], [126, 201, 59, 90, 25.1, 90], [187, 201, 58, 90, 24.3, 90]]}, { img:MIST_IMG });
 const imgGato = tipo => (GATOS_DIR[tipo] && GATOS_DIR[tipo].img) || GATOS_IMG;
 let gatosListo = false, gatosPend = 2;
 const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
 GATOS_IMG.src = 'img/gatos.png';
-MIST_IMG.src = 'img/mist.png?v=1.4.1';
+MIST_IMG.src = 'img/mist.png?v=1.4.2';
 const TIPOS_GATO = ['Gato Carmesí', 'Gato Ejecutivo', 'Gato Calicó', 'Gato Misterioso'];
 // Mascotas: 4 ratas con 4 direcciones (ar arriba, ab abajo, iz izquierda, de derecha) de 4 cuadros
 // cada cuadro: [x, y, ancho, alto, anclaX, anclaY]
@@ -2952,7 +2962,7 @@ let ratasListo = false;
 RATAS_IMG.onload = () => ratasListo = true;
 RATAS_IMG.src = 'img/ratas.png';
 const TIPOS_RATA = ['Rata Mensajera', 'Rata Quesera', 'Rata Ejecutiva', 'Rata Misteriosa'];
-const ALTO_GATO = 50; // altura de la mascota en el mundo
+const ALTO_GATO = 40; // altura de la mascota en el mundo
 let M = null, gatoElegido = 0;
 
 function toggleMascota(){
