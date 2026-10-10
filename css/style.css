@@ -688,8 +688,8 @@ body.jugando #seguimiento{display:flex}
   /* menús en partida: título más chico y botones en dos columnas para que todo quepa */
   .overlay{gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(10px + env(safe-area-inset-bottom,0px))}
   #pPausa h2,#pMuerte h2{font-size:1.8rem}
-  #pPausa .menu{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(560px,100%)}
-  #pPausa .menu .btn{padding:.5rem .8rem}
+  #pPausa .menu{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:min(640px,100%)}
+  #pPausa .menu .btn{padding:.45rem .5rem;font-size:.9rem}
 
   /* ventanas del juego: que quepan en la altura del teléfono */
   .wv{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
@@ -711,14 +711,26 @@ body.tactil .mbtn:active{transform:scale(.92);border-color:var(--corona)}
 
 /* =================== CHAT EN EL TELÉFONO =================== */
 /* chico, arriba a la izquierda bajo tu retrato, para no tapar el joystick ni los poderes */
-body.jugando.tactil #chat{display:flex;left:calc(8px + env(safe-area-inset-left,0px)) !important;right:auto !important;bottom:auto !important;
-  top:calc(92px + env(safe-area-inset-top,0px));width:min(260px,36vw) !important;height:96px !important;font-size:12px;
+/* lugar y tamaño por defecto; arrastrando la cabecera se mueve y con la esquina de abajo se cambia el tamaño */
+body.jugando.tactil #chat{display:flex;z-index:4;left:calc(8px + env(safe-area-inset-left,0px));right:auto;bottom:auto !important;
+  top:calc(92px + env(safe-area-inset-top,0px));width:min(260px,36vw);height:96px;font-size:12px;
   background:rgba(0,0,0,.28);border-color:rgba(201,164,60,.25)}
-body.jugando.tactil #chat.min{height:auto !important;width:auto !important}
-body.jugando.tactil #chat .chat-cab{cursor:default;padding:1px 4px 1px 6px;font-size:11px}
-body.jugando.tactil #chat .chat-cab button{width:26px;height:20px;line-height:16px}
-body.jugando.tactil #chat .chat-rs{display:none}
+body.jugando.tactil #chat.min{height:auto !important}
+body.jugando.tactil #chat .chat-cab{cursor:move;padding:3px 4px 3px 8px;font-size:11px;touch-action:none}
+body.jugando.tactil #chat .chat-cab::after{content:"⠿ mover";order:1;margin-left:auto;margin-right:8px;font:600 10px Rajdhani,sans-serif;color:rgba(255,209,0,.55)}
+body.jugando.tactil #chat .chat-cab button{order:2;width:28px;height:22px;line-height:18px}
+body.jugando.tactil #chat .chat-rs{top:auto;bottom:0;right:0;width:26px;height:26px;transform:none;touch-action:none;border-radius:0 0 6px 0;
+  background:linear-gradient(135deg,transparent 50%,rgba(201,164,60,.75) 50%,rgba(201,164,60,.75) 58%,transparent 58%,transparent 68%,rgba(201,164,60,.75) 68%,rgba(201,164,60,.75) 76%,transparent 76%)}
 body.jugando.tactil #chatLog{padding:2px 6px;line-height:1.15}
 @media (max-height:500px) and (pointer:coarse){
-  body.jugando.tactil #chat{top:calc(60px + env(safe-area-inset-top,0px));height:78px !important;font-size:11px}
+  body.jugando.tactil #chat{top:calc(60px + env(safe-area-inset-top,0px));height:78px;font-size:11px}
 }
+
+/* =================== AJUSTES DEL TELÉFONO =================== */
+.solo-tel{display:none}
+body.tactil .solo-tel{display:block}
+/* tamaño de botones elegido en el menú de pausa */
+body.tactil.bt-chico #movil{zoom:.82}
+body.tactil.bt-chico #panelAccion{zoom:.85}
+body.tactil.bt-grande #movil{zoom:1.22}
+body.tactil.bt-grande #panelAccion{zoom:1.15}
