@@ -463,7 +463,7 @@ function runasPixel(b, cx, py, col, t){
 }
 
 // escena 3/4 con pedestal al estilo de la pantalla de personajes de WoW
-function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
+function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null){
   const a = cv.getContext('2d'), w = cv.width, h = cv.height, cx = w / 2, pie = h * .8;
   a.clearRect(0, 0, w, h);
   const col = CLASES[clase].color;
@@ -489,7 +489,10 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
   // pixel art: sin estirar (respira subiendo un píxel); los demás respiran escalando
   if (px){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); a.scale(flip ? -1 : 1, 1); }
   else a.scale((flip ? -1 : 1) * (1 - .01 * r), 1 + .018 * r);
+  const frE = [sx, sy, fw, fh, ax, ay], setE = g['q_' + set] && g['q_' + set].length ? 'q_' + set : set;
+  if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'atras');
   a.drawImage(imgGato(gato), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
+  if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'frente');
   a.restore();
   if (mascota && ratasListo){
     const q = cuadroRata(mascota.tipo, 'abajo', false, 0, true);
@@ -1861,7 +1864,10 @@ function dibujarFigura(t){
   a.save(); a.translate(110, 274);
   if (gatoPx(PJ.gato)){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); }
   else a.scale(1 - .012 * r, 1 + .025 * r);
+  const frF = [sx, sy, w, h, ax, ay];
+  if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'atras');
   a.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'frente');
   a.restore();
   if (PJ.mascota && ratasListo){
     // ciclo: despierto mirando a los lados, luego se duerme
@@ -2696,6 +2702,67 @@ function cuadroGato(tipo, dir, i){
   if (!set || !set.length) set = dir === 'ar' ? (g.lado.length ? g.lado : g.ab) : g.ab;
   return set[((i % set.length) + set.length) % set.length];
 }
+// =====================================================
+//  EQUIPO VISIBLE (pixel art dibujado píxel a píxel)
+// =====================================================
+// o contorno, W/S hoja clara/oscura, G/g oro, H mango, B/b madera, P páginas, R color de la rareza, r rareza oscura
+const EQ_PIX = {
+  Espada:   { agarre:15, filas:['...o...','..oWo..','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','ooGRGoo','oGGGGGo','.oogoo.','..oHo..','..oHo..','..oGo..','...o...'] },
+  Daga:     { agarre:8,  filas:['..o..','.oWo.','.oWSo','.oWSo','.oWSo','oGRGo','.oHo.','.oHo.','.oGo.','..o..'] },
+  Báculo:   { agarre:14, filas:['..ooo..','.oRRWo.','oRRRRWo','oRRRRRo','orRRRro','.orrro.','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','...o...'] },
+  Grimorio: { agarre:4,  filas:['ooooooooo','oRRRRRRRo','oRRGGGRRo','oRRGrGRRo','oRRGGGRRo','oRRRRRRRo','oPPPPPPPo','ooooooooo'] },
+  Yelmo:    { filas:['......oooooo......','....ooSSSSSSoo....','...oSWWWWWWWSSo...','..oSWWWWWWWWWSSo..','.oSWWWWWWWWWWWSSo.','.oSSSSSSSSSSSSSSo.','oGGGGGGGRRGGGGGGGo','oooooooooooooooooo'] },
+  Diadema:  { filas:['o.....o.....o','Go...oRo...oG','oGo.oGGGo.oGo','oGGGGGGGGGGGo','oGRGGGRGGGRGo','ooooooooooooo'] },
+  Capucha:  { filas:['.........oo......','........oRRo.....','.......oRRRo.....','......oRRRRo.....','.....oRRRRRRo....','....oRRRRRRRo....','...oRRRRRRRRRo...','...oRRRRRRRRRo...','..oGGGGGGGGGGGo..','.orRRRRRRRRRRRro.','ooooooooooooooooo'] }
+};
+const EQ_COL = { o:'#1a1210', W:'#eef2f6', S:'#9aa6b4', G:'#e8b84a', g:'#9a6a1c', H:'#6b3f1f', B:'#8a5a2b', b:'#5a3816', P:'#efe3c4' };
+const EQ_CACHE = new Map();
+function pixEquipo(base, rareza){
+  const clave = base + rareza;
+  if (EQ_CACHE.has(clave)) return EQ_CACHE.get(clave);
+  const def = EQ_PIX[base], filas = def.filas, w = Math.max(...filas.map(f => f.length));
+  const c = document.createElement('canvas'); c.width = w; c.height = filas.length;
+  const a = c.getContext('2d'), R = RAREZAS[rareza] ? RAREZAS[rareza].c : '#9a9a9a';
+  // rareza oscura: el mismo color a media luz
+  const r = '#' + [1, 3, 5].map(i => Math.round(parseInt(R.slice(i, i + 2), 16) * .55).toString(16).padStart(2, '0')).join('');
+  filas.forEach((f, y) => [...f].forEach((ch, x) => { if (ch === '.') return; a.fillStyle = ch === 'R' ? R : ch === 'r' ? r : EQ_COL[ch]; a.fillRect(x, y, 1, 1); }));
+  const out = { c, w, h:filas.length, agarre:def.agarre || 0 };
+  EQ_CACHE.set(clave, out);
+  return out;
+}
+// tope de la cabeza de un cuadro (fila del primer píxel opaco en la columna del ancla), leído una vez
+const TOPE_CACHE = new Map();
+function topeCabeza(img, fr){
+  const clave = img.src + '|' + fr[0] + ',' + fr[1];
+  if (TOPE_CACHE.has(clave)) return TOPE_CACHE.get(clave);
+  const [sx, sy, w, h, ax] = fr, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const a = c.getContext('2d'); a.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+  const d = a.getImageData(0, 0, w, h).data, x = Math.round(ax);
+  let y = 0;
+  while (y < h && d[(y * w + x) * 4 + 3] < 128) y++;
+  TOPE_CACHE.set(clave, y);
+  return y;
+}
+const baseObjeto = o => o && Object.keys(EQ_PIX).find(b => o.nombre.startsWith(b));
+// dibuja casco y arma alrededor del gato. El contexto ya está en los pies del gato (y reflejado si mira a la derecha).
+// capa 'atras': lo que va detrás del cuerpo (arma en la espalda); 'frente': casco y arma en la mano
+function dibujarEquipoGato(c, img, fr, set, esc, equipo, capa){
+  if (!equipo || !img.complete) return;
+  const [, , w, h, ax, ay] = fr, vista = set.replace('q_', '');
+  const arma = equipo.arma, bArma = baseObjeto(arma), cab = equipo.cabeza, bCab = baseObjeto(cab);
+  const pinta = (p, x, y) => c.drawImage(p.c, 0, 0, p.w, p.h, Math.round(x), Math.round(y), p.w * esc, p.h * esc);
+  const arriba = -ay * esc, mano = arriba + Math.round(h * .74) * esc;
+  if (bArma && ((capa === 'atras') === (vista === 'ar'))){
+    const p = pixEquipo(bArma, arma.rareza);
+    const x = vista === 'ab' ? (w - ax - 7) * esc : vista === 'ar' ? (-ax + 1) * esc - p.w * esc : 3 * esc;
+    pinta(p, x, mano - p.agarre * esc);
+  }
+  if (bCab && capa === 'frente'){
+    const p = pixEquipo(bCab, cab.rareza), tope = topeCabeza(img, fr);
+    pinta(p, -Math.round(p.w / 2) * esc, arriba + (tope + 5) * esc - p.h * esc);
+  }
+}
+
 // silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
 const SILUETAS = new Map();
 function siluetaBlanca(img){
@@ -2807,7 +2874,10 @@ function dibujarJugador(t){
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
   const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : imgGato(PJ.gato);
+  const frG = [sx, sy, w, h, ax, ay];
+  if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'atras');
   ctx.drawImage(hojaG, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'frente');
   ctx.restore();
   ctx.globalAlpha = 1;
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
@@ -4005,7 +4075,7 @@ function loop(t){
   if (enJuego && !pantallaActual) update(dt);
   draw(t);
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
-  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota); }
+  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
   if (pantallaActual === 'pCrear') dibujarEscenaPj($('crearCv'), gatoPj, claseElegida, t, rotSel, null);
   if (enJuego && PJ){
