@@ -655,7 +655,7 @@ function guardar(){
 }
 
 function limpiarEscena(){
-  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = [];
+  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = [];
   jefeVivo = null; campo = null; $('jefe').classList.add('oculto');
   if (P) P.objetivo = null;
   interCerca = null; $('btnInteractuar').classList.add('oculto');
@@ -2457,6 +2457,7 @@ function update(dt){
   const rapidez = Math.hypot(P.vx, P.vy);
   P.mx = P.vx / vel; P.my = P.vy / vel;
   P.paso = (P.paso || 0) + rapidez * dt;
+  ambientePaso();
   // cambiar de lado solo con un movimiento claro (evita parpadeos)
   if (Math.abs(P.vx) > 30) P.mira = P.vx < 0;
   P.pose.t -= dt;
@@ -2490,6 +2491,8 @@ function update(dt){
   if (E.tipo === 'mazmorra') updateMazmorra(dt);
   updateMascota(dt);
   if (E.npcs) updateCaminantes(dt);
+  updateCallejeros(dt);
+  updateHuellas(dt);
 
   // botín
   for (const o of botin){
@@ -3510,7 +3513,7 @@ function dibujarCiudad(t){
 function dibujarLucesCiudad(t){
   if (E.tipo !== 'ciudad') return;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  const parpadeo = 1;
+  const parpadeo = .7 + oscuridad() * 1.2;
   for (const f of E.farolas) for (const [dx, dy] of f.luces){
     const x = f.x + dx, y = f.y + dy;
     const g = ctx.createRadialGradient(x, y, 1, x, y, 34);
@@ -3846,6 +3849,182 @@ function dibujarMazmorra(t){
 }
 
 // =====================================================
+//  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE, CLIMA Y GATOS CALLEJEROS
+// =====================================================
+let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
+const CICLO_DIA = 600; // segundos reales que dura un día completo en la ciudad
+// 0 = mediodía, .5 = medianoche
+const horaDelDia = () => (Date.now() / 1000 % CICLO_DIA) / CICLO_DIA;
+// oscuridad de la noche (0 de día, hasta .62 a medianoche)
+const oscuridad = () => Math.pow(Math.max(0, -Math.cos(horaDelDia() * TAU)), .7) * .62;
+// llueve en la ciudad en tandas de 3 minutos (una de cada cuatro, siempre las mismas para todos)
+const lloviendo = () => { const b = Math.floor(Date.now() / 180000); return (Math.imul(b, 2654435761) >>> 16) % 4 === 0; };
+const sueloConHuellas = () => E.tipo === 'ciudad' || E.tipo === 'mazmorra';
+
+// al caminar: una huella cada 20 px y un poco de polvo en los pies
+function ambientePaso(){
+  if (!sueloConHuellas() || P.paso - ultimaHuella < 20) return;
+  ultimaHuella = P.paso; ladoHuella = -ladoHuella;
+  const v = Math.hypot(P.vx, P.vy) || 1, nx = -P.vy / v, ny = P.vx / v, pie = P.y + 12;
+  huellas.push({ x:Math.round(P.x + nx * 4 * ladoHuella), y:Math.round(pie + ny * 3 * ladoHuella), t:0 });
+  if (huellas.length > 60) huellas.shift();
+  const polvo = E.tipo === 'mazmorra' ? (RANGOS[E.rango] && RANGOS[E.rango].cara) || '#8a7a64' : '#c9b89a';
+  for (let i = 0; i < 2 && particulas.length < 500; i++)
+    particulas.push({ x:P.x - P.vx / v * 6 + rand(-4, 4), y:pie + rand(-1, 2), vx:-P.vx * .15 + rand(-12, 12), vy:rand(-22, -8), vida:rand(.25, .45), max:.45, color:polvo, r:2 });
+}
+function updateHuellas(dt){ for (const h of huellas) h.t += dt; huellas = huellas.filter(h => h.t < 5); }
+function dibujarHuellas(){
+  if (!sueloConHuellas()) return;
+  for (const h of huellas){
+    ctx.globalAlpha = .45 * (1 - h.t / 5);
+    ctx.fillStyle = '#1a120a';
+    ctx.fillRect(h.x - 2, h.y - 1, 4, 3); ctx.fillRect(h.x - 3, h.y - 4, 2, 2); ctx.fillRect(h.x + 1, h.y - 4, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// noche en la ciudad: se oscurece la pantalla y se recortan círculos de luz en farolas, portales y alrededor del gato
+const NOCHE = { cv:null };
+function dibujarNocheCiudad(){
+  if (E.tipo !== 'ciudad') return;
+  const d = oscuridad();
+  if (d < .02) return;
+  if (!NOCHE.cv) NOCHE.cv = document.createElement('canvas');
+  const c = NOCHE.cv, w = Math.ceil(W / 2), h = Math.ceil(H / 2);
+  if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+  const a = c.getContext('2d');
+  a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
+  a.fillStyle = `rgba(12,16,48,${d})`; a.fillRect(0, 0, w, h);
+  a.globalCompositeOperation = 'destination-out';
+  const hueco = (x, y, r, k = 1) => {
+    x = (x - cam.x) / 2; y = (y - cam.y) / 2; r /= 2;
+    if (x < -r || y < -r || x > w + r || y > h + r) return;
+    const g = a.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    a.fillStyle = g; a.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
+  for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
+  hueco(P.x, P.y - 20, 120, .55);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(c, 0, 0, W, H); ctx.restore();
+}
+
+// clima en partículas de pantalla: lluvia en la ciudad y uno propio en cada tipo de cueva
+const CLIMA_CUEVA = ['esporas', 'arena', 'nieve', 'brasas', 'vacio', 'brasas'];
+function tipoClima(){
+  if (E.tipo === 'ciudad') return lloviendo() ? 'lluvia' : null;
+  if (E.tipo === 'mazmorra') return CLIMA_CUEVA[E.rango] || null;
+  return null;
+}
+function dibujarClima(t){
+  const dt = Math.min(.05, Math.max(0, (t - tClima) / 1000)); tClima = t;
+  const tipo = tipoClima();
+  if (!tipo){ clima.length = 0; return; }
+  const tasa = { lluvia:420, nieve:50, arena:80, brasas:30, esporas:18, vacio:24 }[tipo];
+  // al entrar, el clima ya está repartido por la pantalla
+  let n = clima.length ? tasa * dt + Math.random() : tasa * 2.5, previo = !clima.length;
+  while (n-- >= 1 && clima.length < 400){
+    const p = { tipo, x:rand(-40, W + 40), y:-10, vida:0 };
+    if (tipo === 'lluvia'){ p.vx = -60; p.vy = rand(520, 640); p.y = rand(-40, H * .3); p.fin = rand(H * .2, H); }
+    else if (tipo === 'nieve'){ p.vx = rand(-15, 15); p.vy = rand(30, 60); p.y = rand(-20, H * .2); p.fase = rand(0, TAU); }
+    else if (tipo === 'arena'){ p.x = -10; p.y = rand(0, H); p.vx = rand(260, 420); p.vy = rand(-10, 20); }
+    else if (tipo === 'brasas' || tipo === 'vacio' || tipo === 'esporas'){ p.y = H + 10; p.vx = rand(-12, 12); p.vy = -rand(25, tipo === 'brasas' ? 70 : 35); p.fase = rand(0, TAU); }
+    if (previo){ if (tipo === 'arena') p.x = rand(0, W); else if (tipo !== 'lluvia') p.y = rand(0, H); }
+    clima.push(p);
+  }
+  ctx.save();
+  for (const p of clima){
+    p.vida += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    const x = Math.round(p.x), y = Math.round(p.y);
+    if (p.tipo === 'lluvia'){
+      if (p.y > p.fin){ p.muere = true; ctx.fillStyle = 'rgba(200,220,255,.45)'; ctx.fillRect(x - 2, Math.round(p.fin), 4, 1); continue; }
+      ctx.fillStyle = 'rgba(190,210,255,.5)'; ctx.fillRect(x, y, 1, 7);
+    } else if (p.tipo === 'nieve'){
+      p.x += Math.sin(p.vida * 2 + p.fase) * 12 * dt;
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(x, y, 2, 2);
+    } else if (p.tipo === 'arena'){
+      ctx.fillStyle = 'rgba(230,200,140,.45)'; ctx.fillRect(x, y, 3, 1);
+    } else {
+      p.x += Math.sin(p.vida * 1.6 + p.fase) * 10 * dt;
+      const parp = .5 + .5 * Math.sin(p.vida * 6 + p.fase);
+      ctx.globalAlpha = (p.tipo === 'brasas' ? .5 + .5 * parp : .35 + .35 * parp);
+      ctx.fillStyle = p.tipo === 'brasas' ? (parp > .5 ? '#ffb347' : '#ff5a1f') : p.tipo === 'vacio' ? '#b98bff' : '#9be37a';
+      ctx.fillRect(x, y, 2, 2); ctx.globalAlpha = 1;
+    }
+    if (p.y > H + 20 || p.y < -30 || p.x > W + 50 || p.x < -50 || p.vida > 12) p.muere = true;
+  }
+  ctx.restore();
+  clima = clima.filter(p => !p.muere);
+  // en la ciudad, de noche y con lluvia, el cielo se ve más gris
+  if (tipo === 'lluvia'){ ctx.fillStyle = 'rgba(40,50,70,.12)'; ctx.fillRect(0, 0, W, H); }
+}
+
+// gatos callejeros que pasean por la ciudad y saludan al pasar
+const FRASES_CALLEJERO = ['¡Miau! Buenas, cazador.', 'De noche las farolas espantan a las sombras.', 'Cuando llueve, los portales brillan más.', 'Yo una vez vi una rata con sombrero.', '¿Tienes algo de pescado?', 'Dicen que el Rey Gato aún vigila la ciudad.', 'Dormir en la posada lo cura todo.'];
+function crearCallejeros(){
+  const lista = [];
+  for (let i = 0; i < 4; i++){
+    let x = 0, y = 0, k = 0;
+    do { x = rand(2, E.w / T - 2) * T; y = rand(2, E.h / T - 2) * T; k++; } while (k < 200 && (solidoEn(x, y) || solidoEn(x, y + 12)));
+    lista.push({ tipo:1 + (i % 3), x, y, r:10, dest:null, espera:rand(0, 3), mov:false, paso:0, dir:'ab', flip:false, dicho:0, frase:'', tFrase:0 });
+  }
+  return lista;
+}
+function updateCallejeros(dt){
+  if (E.tipo !== 'ciudad') return;
+  if (!E.callejeros) E.callejeros = crearCallejeros();
+  for (const g of E.callejeros){
+    g.dicho -= dt; g.tFrase -= dt;
+    const dP = Math.hypot(P.x - g.x, P.y - g.y);
+    if (dP < 70){
+      g.mov = false; const dx = P.x - g.x, dy = P.y - g.y;
+      g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
+      if (g.dicho <= 0){ g.frase = FRASES_CALLEJERO[Math.random() * FRASES_CALLEJERO.length | 0]; g.tFrase = 3.2; g.dicho = 12; }
+      continue;
+    }
+    if (g.espera > 0){ g.espera -= dt; g.mov = false; continue; }
+    if (!g.dest){
+      for (let k = 0; k < 12; k++){
+        const a = rand(0, TAU), d = rand(60, 200), x = g.x + Math.cos(a) * d, y = g.y + Math.sin(a) * d;
+        if (!solidoEn(x, y) && !solidoEn(x, y + 12) && lineaVision(g.x, g.y, x, y)){ g.dest = { x, y }; break; }
+      }
+      if (!g.dest){ g.espera = 1; continue; }
+    }
+    const dx = g.dest.x - g.x, dy = g.dest.y - g.y, d = Math.hypot(dx, dy);
+    if (d < 4){ g.dest = null; g.espera = rand(1.5, 5); g.mov = false; g.dir = 'ab'; continue; }
+    const v = Math.min(d, 55 * dt), ox = g.x, oy = g.y;
+    g.x += dx / d * v; g.y += dy / d * v;
+    colisiones(g);
+    if (Math.hypot(g.x - ox, g.y - oy) < v * .3){ g.dest = null; g.espera = .5; }
+    g.mov = true; g.paso += v;
+    g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
+  }
+}
+function dibujarCallejero(g, t){
+  if (!gatosListo) return;
+  const GD = GATOS_DIR[g.tipo], img = imgGato(g.tipo), pie = Math.round(g.y + 12);
+  const fr = cuadroGato(g.tipo, g.dir, g.mov ? Math.floor(g.paso / 14) : 0), [sx, sy, w, h, ax, ay] = fr;
+  const flip = g.dir === 'lado' && g.flip, sube = !g.mov && Math.sin(t / 420 + g.x) > .6 ? -1 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(g.x, pie, 15, 5, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(g.x), pie + sube); ctx.scale(flip ? -1 : 1, 1);
+  ctx.drawImage(img, sx, sy, w, h, -ax, -ay, w, h);
+  ctx.restore();
+  if (g.tFrase > 0) burbuja(g.x, pie - h - 8, g.frase, Math.min(1, g.tFrase));
+}
+// globo de diálogo en pixel art (bordes rectos)
+function burbuja(x, y, txt, alfa = 1){
+  ctx.save(); ctx.globalAlpha = alfa;
+  ctx.font = '600 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
+  const w = Math.ceil(ctx.measureText(txt).width) + 14, h = 20, x0 = Math.round(x - w / 2), y0 = Math.round(y - h);
+  ctx.fillStyle = '#1a1210'; ctx.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+  ctx.fillStyle = '#f4ead2'; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#1a1210'; ctx.fillRect(Math.round(x) - 3, y0 + h + 2, 6, 2); ctx.fillRect(Math.round(x) - 1, y0 + h + 4, 2, 2);
+  ctx.fillStyle = '#f4ead2'; ctx.fillRect(Math.round(x) - 2, y0 + h, 4, 2);
+  ctx.fillStyle = '#2a1a08'; ctx.fillText(txt, x, y0 + 14);
+  ctx.restore();
+}
+
+// =====================================================
 //  DIBUJO PRINCIPAL
 // =====================================================
 function draw(t){
@@ -3860,6 +4039,7 @@ function draw(t){
   else if (E.tipo === 'tienda') dibujarTiendaInt(t);
   else if (E.tipo === 'asociacion') dibujarAsociacionInt(t);
   else dibujarMazmorra(t);
+  dibujarHuellas();
 
   for (const o of botin){
     if (o.t === 'oro'){
@@ -3902,6 +4082,7 @@ function draw(t){
   if (E.props) for (const pr of E.props){ if (pr.x > cam.x - 200 && pr.x < cam.x + W + 200 && pr.y > cam.y - 40 && pr.y < cam.y + H + 300) lista.push({ y:pr.y, f:() => dibujarProp(pr) }); }
   for (const s of soldados) lista.push({ y:s.y, f:() => dibujarSoldado(s, t) });
   if (E.npcs) for (const n of E.npcs) lista.push({ y:n.y, f:() => (n.spr || n.cam) ? dibujarNPCSprite(n, t) : dibujarNPC(n.x, n.y, n.ropa, n.pelo, t) });
+  if (E.tipo === 'ciudad' && E.callejeros) for (const g of E.callejeros){ if (g.x > cam.x - 80 && g.x < cam.x + W + 80 && g.y > cam.y - 80 && g.y < cam.y + H + 120) lista.push({ y:g.y, f:() => dibujarCallejero(g, t) }); }
   const ahora = performance.now();
   cadaveres = cadaveres.filter(c => ahora - c.t0 < 1100);
   if (E.tipo === 'mazmorra') for (const c of cadaveres) lista.push({ y:c.pie - 30, f:() => dibujarCadaver(c) });
@@ -3964,6 +4145,8 @@ function draw(t){
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 
+  dibujarNocheCiudad();
+  dibujarClima(t);
   dibujarMinimapa();
 
   if (sticks.mov){
