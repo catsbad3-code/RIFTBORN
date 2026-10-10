@@ -2516,7 +2516,6 @@ function update(dt){
   if (E.tipo === 'mazmorra') updateMazmorra(dt);
   updateMascota(dt);
   if (E.npcs) updateCaminantes(dt);
-  updateCallejeros(dt);
   updateHuellas(dt);
 
   // botín
@@ -4240,7 +4239,7 @@ $('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); b
 botonesSonido();
 
 // =====================================================
-//  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE, CLIMA Y GATOS CALLEJEROS
+//  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE Y CLIMA
 // =====================================================
 let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
 const CICLO_DIA = 600; // segundos reales que dura un día completo en la ciudad
@@ -4350,58 +4349,6 @@ function dibujarClima(t){
   if (tipo === 'lluvia'){ ctx.fillStyle = 'rgba(40,50,70,.12)'; ctx.fillRect(0, 0, W, H); }
 }
 
-// gatos callejeros que pasean por la ciudad y saludan al pasar
-const FRASES_CALLEJERO = ['¡Miau! Buenas, cazador.', 'De noche las farolas espantan a las sombras.', 'Cuando llueve, los portales brillan más.', 'Yo una vez vi una rata con sombrero.', '¿Tienes algo de pescado?', 'Dicen que el Rey Gato aún vigila la ciudad.', 'Dormir en la posada lo cura todo.'];
-function crearCallejeros(){
-  const lista = [];
-  for (let i = 0; i < 4; i++){
-    let x = 0, y = 0, k = 0;
-    do { x = rand(2, E.w / T - 2) * T; y = rand(2, E.h / T - 2) * T; k++; } while (k < 200 && (solidoEn(x, y) || solidoEn(x, y + 12)));
-    lista.push({ tipo:1 + (i % 3), x, y, r:10, dest:null, espera:rand(0, 3), mov:false, paso:0, dir:'ab', flip:false, dicho:0, frase:'', tFrase:0 });
-  }
-  return lista;
-}
-function updateCallejeros(dt){
-  if (E.tipo !== 'ciudad') return;
-  if (!E.callejeros) E.callejeros = crearCallejeros();
-  for (const g of E.callejeros){
-    g.dicho -= dt; g.tFrase -= dt;
-    const dP = Math.hypot(P.x - g.x, P.y - g.y);
-    if (dP < 70){
-      g.mov = false; const dx = P.x - g.x, dy = P.y - g.y;
-      g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
-      if (g.dicho <= 0){ g.frase = FRASES_CALLEJERO[Math.random() * FRASES_CALLEJERO.length | 0]; g.tFrase = 3.2; g.dicho = 12; }
-      continue;
-    }
-    if (g.espera > 0){ g.espera -= dt; g.mov = false; continue; }
-    if (!g.dest){
-      for (let k = 0; k < 12; k++){
-        const a = rand(0, TAU), d = rand(60, 200), x = g.x + Math.cos(a) * d, y = g.y + Math.sin(a) * d;
-        if (!solidoEn(x, y) && !solidoEn(x, y + 12) && lineaVision(g.x, g.y, x, y)){ g.dest = { x, y }; break; }
-      }
-      if (!g.dest){ g.espera = 1; continue; }
-    }
-    const dx = g.dest.x - g.x, dy = g.dest.y - g.y, d = Math.hypot(dx, dy);
-    if (d < 4){ g.dest = null; g.espera = rand(1.5, 5); g.mov = false; g.dir = 'ab'; continue; }
-    const v = Math.min(d, 55 * dt), ox = g.x, oy = g.y;
-    g.x += dx / d * v; g.y += dy / d * v;
-    colisiones(g);
-    if (Math.hypot(g.x - ox, g.y - oy) < v * .3){ g.dest = null; g.espera = .5; }
-    g.mov = true; g.paso += v;
-    g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; g.flip = dx > 0;
-  }
-}
-function dibujarCallejero(g, t){
-  if (!gatosListo) return;
-  const GD = GATOS_DIR[g.tipo], img = imgGato(g.tipo), pie = Math.round(g.y + 12);
-  const fr = cuadroGato(g.tipo, g.dir, g.mov ? Math.floor(g.paso / 14) : 0), [sx, sy, w, h, ax, ay] = fr;
-  const flip = g.dir === 'lado' && g.flip, sube = !g.mov && Math.sin(t / 420 + g.x) > .6 ? -1 : 0;
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(g.x, pie, 15, 5, 0, 0, TAU); ctx.fill();
-  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(g.x), pie + sube); ctx.scale(flip ? -1 : 1, 1);
-  ctx.drawImage(img, sx, sy, w, h, -ax, -ay, w, h);
-  ctx.restore();
-  if (g.tFrase > 0) burbuja(g.x, pie - h - 8, g.frase, Math.min(1, g.tFrase));
-}
 // globo de diálogo en pixel art (bordes rectos)
 function burbuja(x, y, txt, alfa = 1){
   ctx.save(); ctx.globalAlpha = alfa;
@@ -4473,7 +4420,6 @@ function draw(t){
   if (E.props) for (const pr of E.props){ if (pr.x > cam.x - 200 && pr.x < cam.x + W + 200 && pr.y > cam.y - 40 && pr.y < cam.y + H + 300) lista.push({ y:pr.y, f:() => dibujarProp(pr) }); }
   for (const s of soldados) lista.push({ y:s.y, f:() => dibujarSoldado(s, t) });
   if (E.npcs) for (const n of E.npcs) lista.push({ y:n.y, f:() => (n.spr || n.cam) ? dibujarNPCSprite(n, t) : dibujarNPC(n.x, n.y, n.ropa, n.pelo, t) });
-  if (E.tipo === 'ciudad' && E.callejeros) for (const g of E.callejeros){ if (g.x > cam.x - 80 && g.x < cam.x + W + 80 && g.y > cam.y - 80 && g.y < cam.y + H + 120) lista.push({ y:g.y, f:() => dibujarCallejero(g, t) }); }
   const ahora = performance.now();
   cadaveres = cadaveres.filter(c => ahora - c.t0 < 1100);
   if (E.tipo === 'mazmorra') for (const c of cadaveres) lista.push({ y:c.pie - 30, f:() => dibujarCadaver(c) });
