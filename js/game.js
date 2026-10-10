@@ -377,6 +377,7 @@ function migrar(pj){
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
   pj.talentos = pj.talentos || {};
+  pj.logros = pj.logros || {}; pj.tintes = pj.tintes || [];
   if (pj.mascota){ pj.mascota.nivel = pj.mascota.nivel || 1; pj.mascota.xp = pj.mascota.xp || 0; if (pj.mascota.hambre === undefined) pj.mascota.hambre = 100; }
   return pj;
 }
@@ -509,7 +510,7 @@ function runasPixel(b, cx, py, col, t){
 }
 
 // escena 3/4 con pedestal al estilo de la pantalla de personajes de WoW
-function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null){
+function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null, tinte = null){
   const a = cv.getContext('2d'), w = cv.width, h = cv.height, cx = w / 2, pie = h * .8;
   a.clearRect(0, 0, w, h);
   const col = CLASES[clase].color;
@@ -537,7 +538,7 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null){
   else a.scale((flip ? -1 : 1) * (1 - .01 * r), 1 + .018 * r);
   const frE = [sx, sy, fw, fh, ax, ay], setE = g['q_' + set] && g['q_' + set].length ? 'q_' + set : set;
   if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'atras');
-  a.drawImage(imgGato(gato), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
+  a.drawImage(hojaGato(gato, tinte), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
   if (px) dibujarEquipoGato(a, imgGato(gato), frE, setE, esc, equipo, 'frente');
   a.restore();
   if (mascota && ratasListo){
@@ -1096,6 +1097,7 @@ function abrirTienda(msg){
       <button class="btn" id="cTe" ${PJ.oro < 600 ? 'disabled' : ''}><span class="tienda-ic">${ic3('tetera')}Té de la posada</span><span>${dinero(600)}</span></button>
       <button class="btn" id="cFarol" ${PJ.oro < 1200 ? 'disabled' : ''}><span class="tienda-ic">${ic3('farol')}Farol purificador</span><span>${dinero(1200)}</span></button>
       <button class="btn" id="cQueso" ${PJ.oro < 300 ? 'disabled' : ''}><span class="tienda-ic">${ic3('queso')}Galleta de queso (mascota)</span><span>${dinero(300)}</span></button>
+      <button class="btn" id="cTintes"><span class="tienda-ic">${ic3('tinte')}Tintes de ropa</span><span>${dinero(PRECIO_TINTE)}</span></button>
       ${botonEncargo('tendera')}
       <button class="btn dorado" id="cMin" ${valorMinerales() ? '' : 'disabled'}><span>Vender todos los minerales</span><span>${dinero(valorMinerales())}</span></button>
     </div>
@@ -1103,6 +1105,7 @@ function abrirTienda(msg){
   enlazarEncargo('tendera');
   $('cTe').onclick = () => { if (PJ.oro >= 600){ PJ.oro -= 600; darApilable('tetera'); guardar(); abrirTienda('Compraste un Té de la posada.'); } };
   $('cFarol').onclick = () => { if (PJ.oro >= 1200){ PJ.oro -= 1200; darApilable('farol'); guardar(); abrirTienda('Compraste un Farol purificador.'); } };
+  $('cTintes').onclick = () => abrirTintes();
   $('cQueso').onclick = () => { if (PJ.oro >= 300){ PJ.oro -= 300; darApilable('queso'); guardar(); abrirTienda('Compraste una Galleta de queso.'); } };
   $('cMin').onclick = () => { const v = valorMinerales(); if (!v) return; for (const k in PJ.mats) if (k.startsWith('m_')) delete PJ.mats[k]; PJ.oro += v; guardar(); abrirTienda(`Vendiste tus minerales por ${dineroTxt(v)}.`); };
   const comprar = n => { if (PJ.oro >= p * n){ PJ.oro -= p * n; PJ.pociones += n; guardar(); abrirTienda(`Compraste ${n} ${n > 1 ? 'pociones' : 'poción'}.`); } };
@@ -1265,6 +1268,7 @@ function entrarPortal(portal){
       for (let k = 0; k < n; k++) crearEnemigo(R.enemigos[Math.random() * R.enemigos.length | 0], (x + .5) * T + rand(-20, 20), (y + .5) * T + rand(-20, 20));
     }
     crearJefe();
+    if (portal.semanal) hacerTitan();
     $('fundido').classList.remove('ver');
     banner(`Portal de rango ${R.l}`, R.tema);
     chat(`Entras en un portal de rango ${R.l}: ${R.tema}.`, R.color);
@@ -1279,7 +1283,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
-  PJ.limpias[R.l]++; PJ.jefesTotal++;
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); premioTitan();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });
@@ -1695,7 +1699,8 @@ function renderPj(){
       : `<div class="pd-caja" style="text-align:center"><h4>Sin mascota</h4><p>Pulsa G o el botón de la huella para elegir tu primera mascota.</p></div>`;
     const b = $('wPet'); if (b) b.onclick = () => { toggleMascota(); renderPj(); };
     const bq = $('wPetQueso'); if (bq) bq.onclick = () => { usarApilable('queso'); renderPj(); };
-  } else cuerpo.innerHTML = htmlRegistro();
+  } else if (wTab === 'desafios'){ cuerpo.innerHTML = htmlDesafios(); enlazarDesafios(); }
+  else cuerpo.innerHTML = htmlRegistro();
 }
 
 // ---------- mochila ----------
@@ -1936,7 +1941,7 @@ function dibujarFigura(t){
   else a.scale(1 - .012 * r, 1 + .025 * r);
   const frF = [sx, sy, w, h, ax, ay];
   if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'atras');
-  a.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
+  a.drawImage(hojaJugador(), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'frente');
   a.restore();
   if (PJ.mascota && ratasListo){
@@ -2016,7 +2021,7 @@ function actualizarBarra(){
 function abrirPanelPortal(portal){
   const R = RANGOS[portal.rango], mio = rangoCazador();
   $('poLetra').textContent = R.l; $('poLetra').style.color = R.color;
-  $('poTitulo').textContent = `Portal de rango ${R.l}`;
+  $('poTitulo').textContent = portal.semanal ? `Portal dorado: ${titanDeLaSemana()}` : `Portal de rango ${R.l}`;
   let aviso = '';
   if (portal.rango > mio + 1) aviso = '<p class="aviso" style="margin-top:10px">Este portal supera por mucho tu rango. Lo más probable es que no salgas con vida.</p>';
   else if (portal.rango > mio) aviso = '<p class="aviso" style="margin-top:10px">Este portal está por encima de tu rango. Entra con cuidado.</p>';
@@ -2027,7 +2032,10 @@ function abrirPanelPortal(portal){
     <div class="linea"><span>Tu rango</span><b style="color:${RANGOS[mio].color}">${RANGOS[mio].l} (nivel ${PJ.nivel})</b></div>
     <div class="linea"><span>Jefe</span><b>${R.jefe}</b></div>
     <div class="linea"><span>Recompensa al despejar</span><b>${dinero(Math.round(80 * R.escala) * 100)} y más</b></div>
-    <div class="linea"><span>Se cierra en</span><b>${formatoTiempo(portal.cierra)}</b></div>${aviso}`;
+    ${portal.semanal ? `<div class="linea"><span>Titán semanal</span><b style="color:#ffd100">${titanDeLaSemana()}</b></div>
+    <div class="linea"><span>Cofre de la semana</span><b>${titanHecho() ? 'Ya lo abriste' : 'Mucho dinero y un objeto legendario'}</b></div>
+    <p class="aviso" style="margin-top:10px">El titán es tres veces más resistente que un jefe normal.</p>`
+    : `<div class="linea"><span>Se cierra en</span><b>${formatoTiempo(portal.cierra)}</b></div>`}${aviso}`;
   const btn = $('btnEntrarPortal');
   btn.className = 'btn ' + (portal.rango > mio ? 'peligro' : 'principal');
   btn.onclick = () => entrarPortal(portal);
@@ -2231,7 +2239,7 @@ function herir(e, dmg, critExtra = 0){
 }
 
 function matar(e){
-  e.muerto = true; PJ.kills++;
+  e.muerto = true; PJ.kills++; contar('kills'); if (e.jefe) contar('jefes');
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
@@ -2486,6 +2494,7 @@ function update(dt){
   // portales de la ciudad (avanzan siempre)
   timerPortal -= dt;
   if (timerPortal <= 0){ timerPortal = 30; if (portales.length < 5) crearPortal(); }
+  asegurarPortalTitan();
   for (const p of portales){ p.cierra -= dt; p.nace += dt; }
   for (const p of portales.filter(p => p.cierra <= 0)) quitarPortal(p);
 
@@ -2518,8 +2527,8 @@ function update(dt){
         PJ.bolsa.push(o.obj); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
         chat(`Recibes botín: [${o.obj.nombre}]`, RAREZAS[o.obj.rareza].c);
       }
-      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
-      else if (o.t === 'cons'){ darApilable(o.k); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
+      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; contar('oro', c); texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
+      else if (o.t === 'cons'){ darApilable(o.k); if (o.k.startsWith('p_')) contar('partes'); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
       else { PJ.pociones++; texto(P.x, P.y - 74, '+1 poción', '#7dffa8', 15); chat('Recibes botín: [Poción de vida]', '#7dffa8'); }
       o.tomado = true;
     }
@@ -2765,7 +2774,7 @@ function dibujarAvatar(){
   // cabeza del gato
   const [sx, sy, w] = cuadroGato(PJ.gato, GATOS_DIR[PJ.gato].q_ab ? 'q_ab' : 'ab', 0), lado = Math.min(w, Math.round(70 / (GATOS_DIR[PJ.gato].k || 1)));
   a.imageSmoothingEnabled = !gatoPx(PJ.gato);
-  a.drawImage(imgGato(PJ.gato), sx + (w - lado) / 2, sy, lado, lado, 4, 8, 104, 104);
+  a.drawImage(hojaJugador(), sx + (w - lado) / 2, sy, lado, lado, 4, 8, 104, 104);
 }
 
 const ALTO_GATO_PJ = 62;
@@ -2878,7 +2887,7 @@ function dibujarJugador(t){
     ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 30, 7, 0, 0, TAU); ctx.fill();
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(P.x), Math.round(pie - w * escG / 2)); ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -w * escG / 2, -h * escG / 2, w * escG, h * escG);
+    ctx.drawImage(hojaJugador(), sx, sy, w, h, -w * escG / 2, -h * escG / 2, w * escG, h * escG);
     ctx.restore();
     return;
   }
@@ -2947,7 +2956,7 @@ function dibujarJugador(t){
   else ctx.translate(P.x, pie + alza);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
-  const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : imgGato(PJ.gato);
+  const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : hojaJugador();
   const frG = [sx, sy, w, h, ax, ay];
   if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'atras');
   ctx.drawImage(hojaG, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
@@ -2960,8 +2969,10 @@ function dibujarJugador(t){
   ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center';
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(PJ.nombre, P.x, ny);
   ctx.fillStyle = '#7fc8ff'; ctx.fillText(PJ.nombre, P.x, ny);
+  const tit = tituloActual();
+  if (tit){ ctx.font = '600 12px Rajdhani, sans-serif'; ctx.strokeText(`«${tit}»`, P.x, ny - 15); ctx.fillStyle = '#ffd100'; ctx.fillText(`«${tit}»`, P.x, ny - 15); }
   if (PJ.hermandad){
-    const hy = ny - 15; ctx.font = '600 12px Rajdhani, sans-serif';
+    const hy = ny - (tit ? 30 : 15); ctx.font = '600 12px Rajdhani, sans-serif';
     const tx = `<${PJ.hermandad.nombre}>`;
     ctx.strokeText(tx, P.x, hy); ctx.fillStyle = '#7dffa8'; ctx.fillText(tx, P.x, hy);
   }
@@ -3333,7 +3344,7 @@ function alimentarMascota(){
   const m = PJ.mascota;
   if (!m){ texto(P.x, P.y - 74, 'No tienes mascota', '#9a91c2', 14); return false; }
   if (m.hambre >= 100){ texto(P.x, P.y - 74, `${m.nombre} no tiene hambre`, '#9a91c2', 14); return false; }
-  m.hambre = 100; ganarXPMascota(15);
+  m.hambre = 100; ganarXPMascota(15); contar('comida');
   const x = M ? M.x : P.x, y = M ? M.y : P.y;
   chispas(x, y - 15, '#ff8fc8', 18, 120); texto(x, y - 50, '♥ ¡Ñam!', '#ff8fc8', 15);
   if (abierta('wPj')) renderPj();
@@ -3602,11 +3613,12 @@ function dibujarPortalCiudad(p, t){
   dibujarPortal(p.x, p.y, p.rango, t, esc);
   ctx.textAlign = 'center';
   ctx.font = '28px Marcellus, Georgia, serif';
-  ctx.fillStyle = '#000'; ctx.fillText(R.l, p.x + 1, p.y - 117 * esc + 1);
-  ctx.fillStyle = R.color; ctx.fillText(R.l, p.x, p.y - 117 * esc);
+  const letra = p.semanal ? '♛' : R.l;
+  ctx.fillStyle = '#000'; ctx.fillText(letra, p.x + 1, p.y - 117 * esc + 1);
+  ctx.fillStyle = p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
   ctx.font = '600 13px Rajdhani, sans-serif'; ctx.fillStyle = p.cierra < 30 ? '#ff8a9b' : '#e9e4ff';
   ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
-  const txt = `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
+  const txt = p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
   ctx.strokeText(txt, p.x, p.y + 66); ctx.fillText(txt, p.x, p.y + 66);
 }
 
@@ -3923,6 +3935,210 @@ function dibujarMazmorra(t){
 }
 
 // =====================================================
+//  PROGRESO: MISIONES DIARIAS, TITÁN SEMANAL, LOGROS, TÍTULOS Y TINTES
+// =====================================================
+const diaHoy = () => Math.floor(Date.now() / 86400000);
+const semanaHoy = () => Math.floor((Date.now() / 86400000 + 3) / 7); // semanas que empiezan el lunes
+const DIARIAS_POOL = [
+  { id:'kills',     n:'Derrota 40 monstruos',             meta:40 },
+  { id:'mazmorras', n:'Despeja 2 mazmorras',              meta:2 },
+  { id:'jefes',     n:'Derrota a un jefe',                meta:1 },
+  { id:'oro',       n:'Recoge 50 de plata en monedas',    meta:5000 },
+  { id:'partes',    n:'Recoge 6 partes de monstruo',      meta:6 },
+  { id:'pasos',     n:'Recorre la ciudad y las cuevas',   meta:300 },
+  { id:'comida',    n:'Dale de comer a tu mascota',       meta:1 }
+];
+// las 3 misiones del día salen de la fecha: son las mismas para todos ese día
+function diariasDeHoy(){
+  let x = diaHoy() * 9301 + 49297; const pool = DIARIAS_POOL.slice(), elegidas = [];
+  while (elegidas.length < 3){ x = (x * 9301 + 49297) % 233280; elegidas.push(pool.splice(x % pool.length, 1)[0]); }
+  return elegidas;
+}
+function estadoDiarias(){
+  if (!PJ.diarias || PJ.diarias.dia !== diaHoy()) PJ.diarias = { dia:diaHoy(), prog:{}, cobradas:{} };
+  return PJ.diarias;
+}
+function contar(id, n = 1){
+  if (!PJ) return;
+  const d = estadoDiarias(), mis = diariasDeHoy().find(m => m.id === id);
+  if (!mis || d.cobradas[id]) return;
+  const antes = d.prog[id] || 0;
+  d.prog[id] = Math.min(mis.meta, antes + n);
+  if (antes < mis.meta && d.prog[id] >= mis.meta){ chat(`Misión diaria completada: ${mis.n}. Cóbrala en Desafíos (C).`, '#ffd100'); texto(P.x, P.y - 84, '¡Diaria completada!', '#ffd100', 15); }
+}
+const premioDiaria = () => ({ oro:3000 * (1 + rangoCazador()), xp:Math.round(PJ.xpSig * .15) });
+function cobrarDiaria(id){
+  const d = estadoDiarias(), mis = diariasDeHoy().find(m => m.id === id);
+  if (!mis || d.cobradas[id] || (d.prog[id] || 0) < mis.meta) return;
+  d.cobradas[id] = true; PJ.diariasTotal = (PJ.diariasTotal || 0) + 1;
+  const pr = premioDiaria(); PJ.oro += pr.oro; darApilable('queso');
+  chat(`Recompensa diaria: ${dineroTxt(pr.oro)}, ${pr.xp} de experiencia y una Galleta de queso.`, '#ffd100');
+  ganarXP(pr.xp, true); guardar(); renderPj();
+}
+
+// Titán semanal: un portal dorado en la ciudad con un jefe mucho más fuerte; su cofre se cobra una vez por semana
+const TITANES = ['Titán de Obsidiana', 'Reina Plaga', 'Coloso Errante', 'Devorador de Lunas'];
+const titanDeLaSemana = () => TITANES[semanaHoy() % TITANES.length];
+const titanHecho = () => PJ.semanal === semanaHoy();
+function asegurarPortalTitan(){
+  if (E.tipo !== 'ciudad' || portales.some(p => p.semanal)) return;
+  const libres = CIUDAD.puntosPortal.filter(p => p.libre);
+  if (!libres.length) return;
+  const punto = libres[0]; punto.libre = false;
+  portales.push({ x:punto.x, y:punto.y, punto, rango:Math.min(5, rangoCazador()), cierra:Infinity, nace:0, semanal:true });
+}
+function hacerTitan(){
+  const j = jefeVivo; if (!j) return;
+  j.hp = j.maxHp = Math.round(j.maxHp * 3); j.dmg *= 1.4; j.r = Math.round(j.r * 1.25); j.xp *= 3; j.oro *= 3;
+  j.nombre = titanDeLaSemana(); j.color = '#ffd100'; E.semanal = true;
+  $('jefeNombre').textContent = j.nombre;
+}
+function premioTitan(){
+  if (!E.semanal || titanHecho()) return;
+  PJ.semanal = semanaHoy(); PJ.semanalesTotal = (PJ.semanalesTotal || 0) + 1;
+  const oro = 20000 * (1 + E.rango);
+  PJ.oro += oro;
+  botin.push({ t:'obj', x:E.jefePos.x, y:E.jefePos.y + 20, obj:crearObjeto(E.rango, 0, null, 4) });
+  banner(`¡${titanDeLaSemana()} derrotado!`, `Cofre semanal: ${dineroTxt(oro)} y un objeto legendario.`);
+  chat(`Cofre del titán semanal: ${dineroTxt(oro)} y un objeto legendario.`, '#ff8000');
+}
+
+// Logros: cada uno da un título que puedes llevar sobre el nombre
+const LOGROS = [
+  { id:'k1',      n:'Primera presa',          d:'Derrota a tu primer monstruo.',       titulo:'el Novato',             ok:p => p.kills >= 1 },
+  { id:'k100',    n:'Exterminador',           d:'Derrota 100 monstruos.',             titulo:'Exterminador',          ok:p => p.kills >= 100 },
+  { id:'k1000',   n:'Azote de monstruos',     d:'Derrota 1000 monstruos.',            titulo:'Azote de monstruos',    ok:p => p.kills >= 1000 },
+  { id:'j1',      n:'Matajefes',              d:'Derrota a tu primer jefe.',          titulo:'Matajefes',             ok:p => p.jefesTotal >= 1 },
+  { id:'j25',     n:'Leyenda de los portales',d:'Derrota 25 jefes.',                  titulo:'Leyenda de los portales', ok:p => p.jefesTotal >= 25 },
+  { id:'s1',      n:'Señor del Abismo',       d:'Despeja una grieta de rango S.',     titulo:'Señor del Abismo',      ok:p => (p.limpias.S || 0) >= 1 },
+  { id:'n10',     n:'Veterano',               d:'Llega al nivel 10.',                 titulo:'el Veterano',           ok:p => p.nivel >= 10 },
+  { id:'n30',     n:'Maestro de las sombras', d:'Llega al nivel 30.',                 titulo:'Maestro de las sombras', ok:p => p.nivel >= 30 },
+  { id:'rico',    n:'Gato rico',              d:'Junta 50 de oro.',                   titulo:'el Adinerado',          ok:p => p.oro >= 500000 },
+  { id:'pet10',   n:'Amigo de las ratas',     d:'Sube a tu mascota a nivel 10.',      titulo:'Amigo de las ratas',    ok:p => p.mascota && p.mascota.nivel >= 10 },
+  { id:'d10',     n:'Constante',              d:'Cobra 10 misiones diarias.',         titulo:'el Constante',          ok:p => (p.diariasTotal || 0) >= 10 },
+  { id:'t1',      n:'Cazatitanes',            d:'Derrota a un titán semanal.',        titulo:'Cazatitanes',           ok:p => (p.semanalesTotal || 0) >= 1 },
+  { id:'h1',      n:'Trasnochador',           d:'Juega una hora con este personaje.', titulo:'el Trasnochador',       ok:p => p.tiempo >= 3600 },
+  { id:'tal',     n:'Erudito',                d:'Reparte 5 puntos de talento.',       titulo:'el Erudito',            ok:p => talentosGastados(p) >= 5 },
+  { id:'moda',    n:'A la moda',              d:'Tiñe tu ropa en el mercado.',        titulo:'el Elegante',           ok:p => (p.tintes || []).length > 0 }
+];
+function revisarLogros(){
+  if (!PJ || !P) return;
+  PJ.logros = PJ.logros || {};
+  for (const L of LOGROS){
+    if (PJ.logros[L.id] || !L.ok(PJ)) continue;
+    PJ.logros[L.id] = true;
+    banner(`Logro: ${L.n}`, `Nuevo título: «${L.titulo}». Elígelo en Desafíos (C).`);
+    chat(`Logro conseguido: [${L.n}]. Título desbloqueado: ${L.titulo}.`, '#ff8000');
+    chispas(P.x, P.y - 30, '#ffd100', 30, 200);
+    guardar();
+  }
+}
+const tituloActual = () => { const L = PJ && PJ.titulo && LOGROS.find(x => x.id === PJ.titulo); return L && PJ.logros && PJ.logros[L.id] ? L.titulo : ''; };
+
+// Tintes de ropa: cambian el color de la chaqueta, la corbata o la sudadera (cada gato su prenda)
+const TINTES = [
+  { id:'carmesi',   n:'Carmesí',   c:[200, 40, 48] },
+  { id:'cobalto',   n:'Cobalto',   c:[52, 96, 220] },
+  { id:'esmeralda', n:'Esmeralda', c:[36, 160, 84] },
+  { id:'dorado',    n:'Dorado',    c:[222, 168, 40] },
+  { id:'lavanda',   n:'Lavanda',   c:[156, 110, 228] },
+  { id:'nieve',     n:'Nieve',     c:[226, 226, 236] },
+  { id:'rosa',      n:'Rosa',      c:[232, 108, 170] }
+];
+const PRECIO_TINTE = 3000;
+const PRENDA_GATO = ['chaqueta', 'corbata y parche', null, 'sudadera'];
+function esRopa(tipo, r, g, b){
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, lum = r * .3 + g * .59 + b * .11;
+  if (tipo === 0) return sat < .2 && lum >= 24 && lum < 110;
+  if (tipo === 1) return sat < .16 && lum >= 14 && lum < 80;
+  if (tipo === 3){ if (sat < .25 || mx < 40) return false; const h = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn); const hue = (h * 60 + 360) % 360; return hue > 235 && hue < 305; }
+  return false;
+}
+const HOJAS_TENIDAS = new Map();
+function hojaGato(tipo, tinte){
+  const img = imgGato(tipo), T = tinte && TINTES.find(x => x.id === tinte);
+  if (!T || !PRENDA_GATO[tipo] || !img.complete || !img.naturalWidth) return img;
+  const clave = tipo + '|' + tinte;
+  if (HOJAS_TENIDAS.has(clave)) return HOJAS_TENIDAS.get(clave);
+  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const a = c.getContext('2d'); a.drawImage(img, 0, 0);
+  const id = a.getImageData(0, 0, c.width, c.height), d = id.data;
+  // máscara de ropa; en el Gato Ejecutivo se quitan las líneas finas del contorno (apertura 3×3): quedan la corbata y el parche
+  const W0 = c.width, H0 = c.height, ropa = new Uint8Array(W0 * H0);
+  for (let j = 0; j < W0 * H0; j++) ropa[j] = d[j * 4 + 3] >= 128 && esRopa(tipo, d[j * 4], d[j * 4 + 1], d[j * 4 + 2]) ? 1 : 0;
+  if (tipo === 1){
+    const todos = (m, x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W0 || yy >= H0 || !m[yy * W0 + xx]) return false; } return true; };
+    const alguno = (m, x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W0 && yy < H0 && m[yy * W0 + xx]) return true; } return false; };
+    const ero = new Uint8Array(W0 * H0);
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) ero[y * W0 + x] = ropa[y * W0 + x] && todos(ropa, x, y) ? 1 : 0;
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) ropa[y * W0 + x] = ropa[y * W0 + x] && alguno(ero, x, y) ? 1 : 0;
+  }
+  for (let i = 0; i < d.length; i += 4){
+    if (!ropa[i / 4]) continue;
+    const L = (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11) / 255, k = tipo === 3 ? .3 + 1.3 * L : .35 + 1.9 * L;
+    d[i] = Math.min(255, T.c[0] * k); d[i + 1] = Math.min(255, T.c[1] * k); d[i + 2] = Math.min(255, T.c[2] * k);
+  }
+  a.putImageData(id, 0, 0);
+  HOJAS_TENIDAS.set(clave, c);
+  return c;
+}
+const hojaJugador = () => hojaGato(PJ.gato, PJ.tinte);
+function abrirTintes(msg){
+  const prenda = PRENDA_GATO[PJ.gato], mios = PJ.tintes || [];
+  let h = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p><div class="linea"><span>Tu dinero</span><b>${dinero(PJ.oro)}</b></div>`;
+  if (!prenda) h += '<p class="nota" style="margin-top:10px">Tu gato no lleva ropa que se pueda teñir.</p>';
+  else {
+    h += `<p class="nota" style="margin:8px 0">Tiñe tu ${prenda}. Cada color se paga una vez; después puedes cambiarlo gratis.</p><div class="tintes">`;
+    h += `<button class="tinte ${!PJ.tinte ? 'sel' : ''}" data-tinte=""><canvas width="64" height="72"></canvas><span>Original</span></button>`;
+    for (const T of TINTES){
+      const tiene = mios.includes(T.id);
+      h += `<button class="tinte ${PJ.tinte === T.id ? 'sel' : ''}" data-tinte="${T.id}" ${!tiene && PJ.oro < PRECIO_TINTE ? 'disabled' : ''}><canvas width="64" height="72"></canvas><span>${T.n}</span><small>${tiene ? 'Tuyo' : dineroTxt(PRECIO_TINTE).replace(/ de /g, ' ')}</small></button>`;
+    }
+    h += '</div>';
+  }
+  h += '<button class="btn" id="tVolver" style="margin-top:10px">Volver al mostrador</button>';
+  $('tiendaCuerpo').innerHTML = h;
+  $('tVolver').onclick = () => abrirTienda();
+  $('tiendaCuerpo').querySelectorAll('.tinte').forEach(b => {
+    const id = b.dataset.tinte, cv = b.querySelector('canvas'), a = cv.getContext('2d'), fr = cuadroGato(PJ.gato, 'ab', 0), [sx, sy, w, hh] = fr;
+    a.imageSmoothingEnabled = false; a.drawImage(hojaGato(PJ.gato, id || null), sx, sy, w, hh, Math.round((64 - w) / 2), 72 - hh - 4, w, hh);
+    b.onclick = () => {
+      if (id && !mios.includes(id)){
+        if (PJ.oro < PRECIO_TINTE) return;
+        PJ.oro -= PRECIO_TINTE; PJ.tintes = [...mios, id];
+      }
+      PJ.tinte = id || null; guardar(); dibujarAvatar();
+      abrirTintes(id ? `Tu ${prenda} ahora es ${TINTES.find(x => x.id === id).n.toLowerCase()}.` : `Tu ${prenda} vuelve a su color original.`);
+    };
+  });
+}
+
+// pestaña Desafíos de la ventana de personaje
+function htmlDesafios(){
+  const d = estadoDiarias(), mis = diariasDeHoy(), pr = premioDiaria();
+  const resta = 86400 - (Date.now() / 1000 % 86400), hRes = Math.floor(resta / 3600), mRes = Math.floor(resta / 60) % 60;
+  let h = `<div class="pd-caja des-caja"><h4>Misiones diarias <small>se renuevan en ${hRes} h ${mRes} min</small></h4>`;
+  for (const m of mis){
+    const v = d.prog[m.id] || 0, hecha = v >= m.meta, cobrada = d.cobradas[m.id];
+    const txt = m.id === 'oro' ? `${Math.floor(v / 100)}/${m.meta / 100}` : `${v}/${m.meta}`;
+    h += `<div class="des-mis ${cobrada ? 'hecha' : ''}"><div><b>${m.n}</b><i><b style="width:${Math.round(v / m.meta * 100)}%"></b></i><small>${cobrada ? 'Cobrada' : txt}</small></div>
+      ${cobrada ? '<span class="des-ok">✓</span>' : `<button class="wbtn" data-cobrar="${m.id}" ${hecha ? '' : 'disabled'}>Cobrar</button>`}</div>`;
+  }
+  h += `<p class="nota">Cada una da ${dineroTxt(pr.oro)}, ${pr.xp} de experiencia y una Galleta de queso.</p></div>`;
+  h += `<div class="pd-caja des-caja"><h4>Titán semanal</h4><p><b style="color:#ffd100">${titanDeLaSemana()}</b> espera tras el portal dorado de la ciudad.</p>
+    <p class="nota">${titanHecho() ? 'Ya lo derrotaste esta semana. El próximo titán llega el lunes.' : 'Derrótalo para abrir el cofre semanal: mucho dinero y un objeto legendario.'}</p></div>`;
+  const logros = PJ.logros || {}, n = LOGROS.filter(L => logros[L.id]).length;
+  h += `<div class="pd-caja des-caja"><h4>Logros <small>${n}/${LOGROS.length}</small></h4>
+    <label class="des-titulo">Título <select id="selTitulo"><option value="">Sin título</option>${LOGROS.filter(L => logros[L.id]).map(L => `<option value="${L.id}" ${PJ.titulo === L.id ? 'selected' : ''}>${L.titulo}</option>`).join('')}</select></label><div class="des-logros">`;
+  for (const L of LOGROS) h += `<div class="des-logro ${logros[L.id] ? '' : 'bloq'}" title="${L.d}">${ic3('trofeo')}<div><b>${L.n}</b><small>${L.d}</small><small class="des-tit">Título: ${L.titulo}</small></div></div>`;
+  return h + '</div></div>';
+}
+function enlazarDesafios(){
+  document.querySelectorAll('[data-cobrar]').forEach(b => b.onclick = () => cobrarDiaria(b.dataset.cobrar));
+  const s = $('selTitulo'); if (s) s.onchange = () => { PJ.titulo = s.value || null; guardar(); };
+}
+
+// =====================================================
 //  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE, CLIMA Y GATOS CALLEJEROS
 // =====================================================
 let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
@@ -3938,7 +4154,7 @@ const sueloConHuellas = () => E.tipo === 'ciudad' || E.tipo === 'mazmorra';
 // al caminar: una huella cada 20 px y un poco de polvo en los pies
 function ambientePaso(){
   if (!sueloConHuellas() || P.paso - ultimaHuella < 20) return;
-  ultimaHuella = P.paso; ladoHuella = -ladoHuella;
+  ultimaHuella = P.paso; ladoHuella = -ladoHuella; contar('pasos');
   const v = Math.hypot(P.vx, P.vy) || 1, nx = -P.vy / v, ny = P.vx / v, pie = P.y + 12;
   huellas.push({ x:Math.round(P.x + nx * 4 * ladoHuella), y:Math.round(pie + ny * 3 * ladoHuella), t:0 });
   if (huellas.length > 60) huellas.shift();
@@ -4385,11 +4601,12 @@ let last = performance.now();
 let firmaBolsa = '', firmaPj = '', tSeg = 0;
 function loop(t){
   if (++tSeg % 15 === 0){ actualizarSeguimiento(); if (abierta('wMis') && enJuego) renderMisiones(); }
+  if (tSeg % 60 === 0 && enJuego) revisarLogros();
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (enJuego && !pantallaActual) update(dt);
   draw(t);
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
-  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo); }
+  if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
   if (pantallaActual === 'pCrear') dibujarEscenaPj($('crearCv'), gatoPj, claseElegida, t, rotSel, null);
   if (enJuego && PJ){

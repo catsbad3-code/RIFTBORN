@@ -788,3 +788,34 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .pet-barra small{color:#cfc4a8;text-align:right}
 .pet-aviso{color:#ff8a8a;font-weight:700;margin:4px 0}
 .pet-bot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+
+/* ---------- Desafíos: diarias, titán, logros ---------- */
+.des-caja{margin-bottom:8px}
+.des-caja h4 small{font:600 11px Rajdhani,sans-serif;color:#9d9d9d;margin-left:6px}
+.des-mis{display:flex;align-items:center;gap:8px;margin:6px 0}
+.des-mis>div{flex:1;min-width:0}
+.des-mis b{display:block;font:700 13px Rajdhani,sans-serif}
+.des-mis i{display:block;height:8px;margin:3px 0;background:#120d0a;border:1px solid #5a4a2a}
+.des-mis i b{height:100%;background:#ffd100}
+.des-mis small{font:600 11px Rajdhani,sans-serif;color:#cfc4a8}
+.des-mis.hecha b{color:#7dffa8}
+.des-mis .wbtn{min-width:0;padding:4px 10px;font-size:13px}
+.des-ok{color:#7dffa8;font-size:20px;font-weight:700}
+.des-titulo{display:flex;align-items:center;gap:8px;margin:4px 0 8px;font:700 13px Rajdhani,sans-serif}
+.des-titulo select{flex:1;padding:3px;background:#120d0a;color:#ffd100;border:1px solid #5a4a2a;font:600 13px Rajdhani,sans-serif}
+.des-logros{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.des-logro{display:flex;gap:6px;align-items:center;padding:4px;border:1px solid rgba(201,164,60,.35);border-radius:4px;background:rgba(255,209,0,.05)}
+.des-logro .ic3{width:32px;height:32px;flex-shrink:0;image-rendering:pixelated}
+.des-logro b{display:block;font:700 12px Rajdhani,sans-serif;color:#ffd100}
+.des-logro small{display:block;font:500 11px Rajdhani,sans-serif;color:#cfc4a8;line-height:1.15}
+.des-logro .des-tit{color:#ff8000}
+.des-logro.bloq{opacity:.45;filter:grayscale(1)}
+@media (max-width:520px){.des-logros{grid-template-columns:1fr}}
+/* ---------- Tintes ---------- */
+.tintes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tinte{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;cursor:pointer;background:rgba(0,0,0,.35);border:2px solid #5a4a2a;border-radius:4px;color:#eee;font:600 12px Rajdhani,sans-serif}
+.tinte canvas{width:64px;height:72px;image-rendering:pixelated}
+.tinte small{color:#f2c46d;font-size:11px}
+.tinte.sel{border-color:#ffd100;box-shadow:0 0 8px rgba(255,209,0,.6)}
+.tinte:disabled{opacity:.5;cursor:default}
+@media (max-width:520px){.tintes{grid-template-columns:repeat(3,1fr)}}
