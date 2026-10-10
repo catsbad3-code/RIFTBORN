@@ -1,0 +1,11 @@
+{
+  "name": "Riftborn: El Ascenso del Eclipse",
+  "short_name": "Riftborn",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#120d24",
+  "theme_color": "#120d24",
+  "icons": [{ "src": "img/icono.png", "sizes": "64x64", "type": "image/png" }]
+}

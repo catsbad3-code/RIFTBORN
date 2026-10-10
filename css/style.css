@@ -645,3 +645,57 @@ body.jugando #seguimiento{display:flex}
 #hPoc{display:inline-flex;align-items:center;gap:2px}
 #hPoc .ic3{width:22px;height:22px}
 #mPoc .ic3{width:34px;height:34px}
+
+/* =================== TELÉFONO ACOSTADO: HUD COMPACTO =================== */
+/* En pantallas bajas (teléfono en horizontal) todo se achica para dejar ver más mundo */
+@media (max-height:500px){
+  #hud{padding:calc(6px + env(safe-area-inset-top,0px)) 8px 0 calc(8px + env(safe-area-inset-left,0px));gap:10px}
+  .marco{padding:2px 8px 2px 2px;border-width:1.5px}
+  .marco .retrato{width:42px;height:42px}
+  .nivel-badge{left:28px;bottom:-4px;min-width:18px;height:18px;font-size:10px;line-height:14px;border-width:1.5px}
+  .marco-info{width:min(150px,28vw);margin-left:6px}
+  .marco-nombre{font-size:12px;margin-bottom:2px}
+  .rango-txt{font-size:11px}
+  .marco .barra{height:11px}
+  .marco .barra em{font-size:9.5px;line-height:9px}
+  .marco.objetivo .barra{height:12px}
+  .ret-obj{width:36px !important;height:36px !important}
+  .ret-obj span{width:24px;height:24px}
+  #btnPuntos{left:50px;font-size:.8rem;padding:2px 8px}
+  #buffs{top:calc(58px + env(safe-area-inset-top,0px));left:calc(10px + env(safe-area-inset-left,0px))}
+  .buff{width:24px;height:24px;background-size:auto 24px}
+
+  #micro{gap:4px;padding:3px 6px;border-radius:12px}
+  .micro-btn{width:28px;height:28px;font-size:.85rem;border-radius:8px}
+  body.tactil #micro{top:calc(6px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px))}
+
+  #panelAccion{bottom:calc(4px + env(safe-area-inset-bottom,0px));gap:2px}
+  #panelAccion .xp{margin:0 10px 4px;height:9px}
+  #panelAccion .xp em{line-height:8px}
+  #panelAccion #barra{gap:3px;padding:3px 5px;border-radius:11px}
+  .accion,body.tactil .accion{width:34px;height:34px;border-radius:8px}
+  .accion kbd{font-size:8.5px;line-height:10px}
+  .accion .bloq{font-size:9px}
+
+  #movil{right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));gap:8px}
+  .mbtn{width:52px;height:52px;font-size:1.25rem}
+  .mbtn.grande{width:70px;height:70px}
+  .mbtn.chico{width:44px;height:44px;font-size:1.05rem}
+
+  #btnInteractuar,body.tactil #btnInteractuar,body:not(.combate) #btnInteractuar{bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:.45rem 1rem;font-size:.95rem}
+  #banner{top:18%;font-size:clamp(1.2rem,4vw,1.9rem)}
+
+  /* menús en partida: título más chico y botones en dos columnas para que todo quepa */
+  .overlay{gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(10px + env(safe-area-inset-bottom,0px))}
+  #pPausa h2,#pMuerte h2{font-size:1.8rem}
+  #pPausa .menu{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(560px,100%)}
+  #pPausa .menu .btn{padding:.5rem .8rem}
+
+  /* ventanas del juego: que quepan en la altura del teléfono */
+  .wv{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+  .wv-cuerpo{overflow-y:auto}
+}
+/* con la barra de poderes centrada, se corre a la izquierda para no chocar con los botones de ataque */
+@media (max-height:500px) and (pointer:coarse){
+  body.tactil #panelAccion{left:calc(50% - 50px)}
+}

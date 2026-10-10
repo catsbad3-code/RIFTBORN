@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#120d24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Riftborn">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/icono.png">
 <link rel="icon" href="img/icono.png">
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +56,7 @@
   <button id="btnLibro" class="micro-btn" title="Libro de poderes (P)" aria-label="Libro de poderes">📖</button><button id="btnMis" class="micro-btn" title="Registro de misiones (L)" aria-label="Registro de misiones">📜</button>
   <button id="btnMascota" class="micro-btn" title="Mascota (G)" aria-label="Mascota">🐾</button>
   <button id="btnBolsa" class="micro-btn" title="Bolsa (B)" aria-label="Bolsa">🎒</button>
+  <button id="btnPantalla" class="micro-btn oculto" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
   <button id="btnMenuJuego" class="micro-btn" title="Menú (Esc)" aria-label="Menú">☰</button>
 </div>
 <div id="movil">
@@ -182,6 +189,7 @@
     <button class="btn principal" id="btnSeguir">Continuar</button>
     <button class="btn" id="btnVerPerfil">Perfil</button>
     <button class="btn" id="btnGuardar">Guardar partida</button>
+    <button class="btn oculto" id="btnPantallaPausa">Pantalla completa</button>
     <button class="btn" id="btnSalir">Salir al menú principal</button>
   </div>
   <p class="nota" id="notaGuardado"></p>
