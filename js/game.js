@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.8.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.8.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -3211,53 +3211,58 @@ function actualizarJefe(e, dx, dy, d, dt){
   if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; pegar(U, false, e.dmg, e); }
 }
 
+// la interfaz sólo se toca cuando un valor cambia (escribir en la página en cada cuadro es caro)
+const HUD_EL = {}, HUD_V = {};
+const hudEl = id => HUD_EL[id] || (HUD_EL[id] = $(id));
+function hudT(id, v){ v = String(v); if (HUD_V['t' + id] !== v){ HUD_V['t' + id] = v; hudEl(id).textContent = v; } }
+function hudS(id, prop, v){ const k = 's' + id + prop; if (typeof v === 'number') v = String(Math.round(v * 1000) / 1000); else if (typeof v === 'string' && v.endsWith('%')) v = Math.round(parseFloat(v) * 10) / 10 + '%'; if (HUD_V[k] !== v){ HUD_V[k] = v; if (prop.startsWith('--')) hudEl(id).style.setProperty(prop, v); else hudEl(id).style[prop] = v; } }
+function hudC(id, cls, on){ const k = 'c' + id + cls; on = !!on; if (HUD_V[k] !== on){ HUD_V[k] = on; hudEl(id).classList.toggle(cls, on); } }
 function actualizarHUD(){
   const r = rangoCazador(), R = RANGOS[r];
-  $('hNombre').textContent = PJ.nombre;
-  $('hNivel').textContent = PJ.nivel;
-  $('hRango').textContent = R.l; $('hRango').style.color = R.color;
-  $('hpFill').style.width = (P.hp / D.maxHp * 100) + '%';
-  $('hpTxt').textContent = `${Math.ceil(P.hp)} / ${D.maxHp}`;
-  $('enFill').style.width = (P.en / D.maxEn * 100) + '%';
-  $('enTxt').textContent = `${recurso().n} ${Math.floor(P.en)} / ${D.maxEn}`;
+  hudT('hNombre', PJ.nombre);
+  hudT('hNivel', PJ.nivel);
+  hudT('hRango', R.l); hudS('hRango', 'color', R.color);
+  hudS('hpFill', 'width', (P.hp / D.maxHp * 100) + '%');
+  hudT('hpTxt', `${Math.ceil(P.hp)} / ${D.maxHp}`);
+  hudS('enFill', 'width', (P.en / D.maxEn * 100) + '%');
+  hudT('enTxt', `${recurso().n} ${Math.floor(P.en)} / ${D.maxEn}`);
   if ($('enFill').dataset.clase !== PJ.clase){ $('enFill').dataset.clase = PJ.clase; $('enFill').style.background = recurso().col; }
   const cb = PJ.clase === 'sombra' ? (P.combo || 0) : -1;
   if ($('combo').dataset.n !== String(cb)){ $('combo').dataset.n = cb; $('combo').innerHTML = cb < 0 ? '' : [0, 1, 2, 3, 4].map(i => `<i class="${i < cb ? 'on' : ''}"></i>`).join(''); }
-  $('xpFill').style.width = (PJ.xp / PJ.xpSig * 100) + '%';
-  $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
+  hudS('xpFill', 'width', (PJ.xp / PJ.xpSig * 100) + '%');
+  hudT('xpTxt', `${PJ.xp} / ${PJ.xpSig}`);
   // marco de objetivo: tu objetivo, el jefe en combate, o el personaje amistoso que seleccionaste
   let ob = null;
   if (objetivoValido()) ob = P.objetivo;
   else if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
   const amigo = !ob && amigoValido() ? P.amigo : null;
-  const mo = $('marcoObjetivo');
-  mo.classList.toggle('oculto', !ob && !amigo);
-  mo.classList.toggle('amistoso', !!amigo);
+  hudC('marcoObjetivo', 'oculto', !ob && !amigo);
+  hudC('marcoObjetivo', 'amistoso', !!amigo);
   pintarRetratoObjetivo(ob || amigo);
   if (amigo){
-    mo.classList.remove('elite');
-    $('oNombre').textContent = amigo.nombre;
-    $('oRango').textContent = 'Amistoso'; $('oRango').style.color = '#7dffa8';
-    $('oFill').style.width = '100%'; $('oTxt').textContent = amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria';
+    hudC('marcoObjetivo', 'elite', false);
+    hudT('oNombre', amigo.nombre);
+    hudT('oRango', 'Amistoso'); hudS('oRango', 'color', '#7dffa8');
+    hudS('oFill', 'width', '100%'); hudT('oTxt', amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria');
   }
   if (ob){
-    mo.classList.toggle('elite', !!ob.jefe);
-    $('oNombre').textContent = ob.nombre;
-    $('oRango').textContent = ob.jefe ? 'Jefe' : (E.R ? E.R.l : ''); $('oRango').style.color = E.R ? E.R.color : '#fff';
-    $('oFill').style.width = Math.max(0, ob.hp / ob.maxHp * 100) + '%';
-    $('oTxt').textContent = `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`;
+    hudC('marcoObjetivo', 'elite', !!ob.jefe);
+    hudT('oNombre', ob.nombre);
+    hudT('oRango', ob.jefe ? 'Jefe' : (E.R ? E.R.l : '')); hudS('oRango', 'color', E.R ? E.R.color : '#fff');
+    hudS('oFill', 'width', Math.max(0, ob.hp / ob.maxHp * 100) + '%');
+    hudT('oTxt', `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`);
     const oo = objetivoDe(ob);
-    $('odoNombre').textContent = oo.nombre;
-    $('odoFill').style.width = Math.max(0, oo.hp / oo.maxHp * 100) + '%';
+    hudT('odoNombre', oo.nombre);
+    hudS('odoFill', 'width', Math.max(0, oo.hp / oo.maxHp * 100) + '%');
   }
-  $('marcoOdO').classList.toggle('oculto', !ob || !ob.aggro);
+  hudC('marcoOdO', 'oculto', !ob || !ob.aggro);
   if (hPocPrev !== PJ.pociones){ hPocPrev = PJ.pociones; $('hPoc').innerHTML = `${ic3('pocion')}<b>${PJ.pociones}</b>`; }
-  $('btnPuntos').classList.toggle('oculto', !PJ.puntos);
-  if (PJ.puntos) $('btnPuntos').textContent = `${PJ.puntos} puntos por repartir`;
+  hudC('btnPuntos', 'oculto', !PJ.puntos);
+  if (PJ.puntos) hudT('btnPuntos', `${PJ.puntos} puntos por repartir`);
   actualizarBarra();
   const c = CLASES[PJ.clase];
   const cd1 = clamp(P.cd1 / c.h1.cd, 0, 1), cd2 = P.en < costeDe(c.h2) ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1), cdp = clamp(P.cdPoc, 0, 1);
-  $('mAtk').style.setProperty('--cd', cd1); $('mHab').style.setProperty('--cd', cd2); $('mPoc').style.setProperty('--cd', cdp);
+  hudS('mAtk', '--cd', cd1); hudS('mHab', '--cd', cd2); hudS('mPoc', '--cd', cdp);
 }
 
 // =====================================================
@@ -3371,6 +3376,36 @@ function dibujarEquipoGato(c, img, fr, set, esc, equipo, capa){
   }
 }
 
+// ---------- textos ya dibujados (rendimiento) ----------
+// dibujar letras en el lienzo es caro: los nombres y números que se repiten se dibujan una vez en un lienzo chico y se reutilizan
+const ROTULOS = new Map();
+let fuentesListas = false;
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fuentesListas = true; ROTULOS.clear(); });
+function rotulo(txt, x, y, font, fill, stroke = null, lw = 0, sombra = false){
+  txt = String(txt);
+  if (!fuentesListas){
+    ctx.font = font; ctx.textAlign = 'center';
+    if (sombra){ ctx.fillStyle = '#000'; ctx.fillText(txt, x + 1, y + 1); }
+    if (stroke){ ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(txt, x, y); }
+    ctx.fillStyle = fill; ctx.fillText(txt, x, y); return;
+  }
+  const clave = txt + '|' + font + '|' + fill + '|' + stroke + '|' + lw + '|' + sombra + '|' + DPR;
+  let r = ROTULOS.get(clave);
+  if (!r){
+    if (ROTULOS.size > 600) ROTULOS.clear();
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const px = parseFloat(font.match(/(\d+(?:\.\d+)?)px/)[1]), pad = Math.ceil(lw / 2) + 2;
+    const w = Math.ceil(m.measureText(txt).width) + pad * 2 + 1, h = Math.ceil(px * 1.35) + pad * 2 + 1, base = pad + Math.ceil(px);
+    const c = document.createElement('canvas'); c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
+    const a = c.getContext('2d'); a.scale(DPR, DPR); a.font = font; a.textAlign = 'center'; a.lineJoin = 'miter';
+    if (sombra){ a.fillStyle = '#000'; a.fillText(txt, w / 2 + 1, base + 1); }
+    if (stroke){ a.lineWidth = lw; a.strokeStyle = stroke; a.strokeText(txt, w / 2, base); }
+    a.fillStyle = fill; a.fillText(txt, w / 2, base);
+    r = { c, w, h, base }; ROTULOS.set(clave, r);
+  }
+  const dx = Math.round((x - r.w / 2) * DPR) / DPR, dy = Math.round((y - r.base) * DPR) / DPR;
+  ctx.drawImage(r.c, dx, dy, r.w, r.h);
+}
 // silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
 const SILUETAS = new Map();
 function siluetaBlanca(img){
@@ -3491,11 +3526,10 @@ function dibujarJugador(t){
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
   const ny = pie - ALTO_GATO_PJ - 10;
-  ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(PJ.nombre, P.x, ny);
-  ctx.fillStyle = '#7fc8ff'; ctx.fillText(PJ.nombre, P.x, ny);
+  rotulo(PJ.nombre, P.x, ny, '700 14px Rajdhani, sans-serif', '#7fc8ff', 'rgba(0,0,0,.85)', 3);
   const tit = tituloActual();
-  if (tit){ ctx.font = '600 12px Rajdhani, sans-serif'; ctx.strokeText(`«${tit}»`, P.x, ny - 15); ctx.fillStyle = '#ffd100'; ctx.fillText(`«${tit}»`, P.x, ny - 15); }
+  if (tit) rotulo(`«${tit}»`, P.x, ny - 15, '600 12px Rajdhani, sans-serif', '#ffd100', 'rgba(0,0,0,.85)', 3);
+  ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
   if (PJ.hermandad){
     const hy = ny - (tit ? 30 : 15); ctx.font = '600 12px Rajdhani, sans-serif';
     const tx = `<${PJ.hermandad.nombre}>`;
@@ -3985,9 +4019,7 @@ function dibujarMascota(t){
   // la hoja ya trae izquierda y derecha: no hace falta reflejar
   const q = cuadroRata(PJ.mascota.tipo, M.dir || 'abajo', M.mov, M.paso || 0, M.flip);
   pintarGato(ctx, PJ.mascota.tipo, M.x, pie, ALTO_GATO, t, M.mov, false, M.quieto || 0, null, q.img, q.fr);
-  ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillStyle = '#000'; ctx.fillText(PJ.mascota.nombre, M.x + 1, pie - ALTO_GATO - 3);
-  ctx.fillStyle = '#e9e4ff'; ctx.fillText(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4);
+  rotulo(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4, '700 12px Rajdhani, sans-serif', '#e9e4ff', null, 0, true);
   if (M.tFrase > 0) burbuja(M.x, pie - ALTO_GATO - 18, M.frase, Math.min(1, M.tFrase));
 }
 
@@ -4131,16 +4163,21 @@ function dibujarCiudad(t){
 }
 
 // halo de las bombillas por encima de todo
+// brillo redondo ya pintado (se reutiliza en vez de crear un degradado en cada cuadro)
+const BRILLOS = {};
+function brillo(col, r){
+  const k = col + r; if (BRILLOS[k]) return BRILLOS[k];
+  const c = document.createElement('canvas'); c.width = c.height = r * 2; const a = c.getContext('2d');
+  const g = a.createRadialGradient(r, r, 1, r, r, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  a.fillStyle = g; a.fillRect(0, 0, r * 2, r * 2);
+  return BRILLOS[k] = c;
+}
 function dibujarLucesCiudad(t){
   if (E.tipo !== 'ciudad') return;
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  const parpadeo = .7 + oscuridad() * 1.2;
-  for (const f of E.farolas) for (const [dx, dy] of f.luces){
-    const x = f.x + dx, y = f.y + dy;
-    const g = ctx.createRadialGradient(x, y, 1, x, y, 34);
-    g.addColorStop(0, `rgba(255,215,140,${.45 * parpadeo})`); g.addColorStop(1, 'rgba(255,215,140,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - 34, y - 34, 68, 68);
-  }
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+  const parpadeo = .7 + oscuridad() * 1.2, b = brillo('rgb(255,215,140)', 34);
+  ctx.globalAlpha = Math.min(1, .45 * parpadeo);
+  for (const f of E.farolas) for (const [dx, dy] of f.luces) ctx.drawImage(b, f.x + dx - 34, f.y + dy - 34, 68, 68);
   ctx.restore();
 }
 
@@ -4434,15 +4471,11 @@ function dibujarNPCSprite(n, t){
   }
   // nombre y signo de misión
   const ny = pie - alto - 8;
-  ctx.textAlign = 'center'; ctx.font = '700 13px Rajdhani, sans-serif';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(n.nombre, n.x, ny);
-  ctx.fillStyle = n.mision ? '#ffd76a' : '#9fe39a'; ctx.fillText(n.nombre, n.x, ny);
+  rotulo(n.nombre, n.x, ny, '700 13px Rajdhani, sans-serif', n.mision ? '#ffd76a' : '#9fe39a', 'rgba(0,0,0,.85)', 3);
   const mk = marcaNPC(n);
   if (mk){
     const by = ny - 16 + (sinMovimiento ? 0 : Math.sin(t / 260) * 3);
-    ctx.font = '900 30px Marcellus, Georgia, serif';
-    ctx.lineWidth = 5; ctx.strokeStyle = '#2a1a00'; ctx.strokeText(mk.c, n.x, by);
-    ctx.fillStyle = mk.col; ctx.fillText(mk.c, n.x, by);
+    rotulo(mk.c, n.x, Math.round(by), '900 30px Marcellus, Georgia, serif', mk.col, '#2a1a00', 5);
   }
 }
 
@@ -4934,15 +4967,19 @@ function dibujarAliado(g, t){
   ctx.drawImage(g.golpe > 0 && g.rol === 'tanque' ? siluetaBlanca(img) : img, sx, sy, w, h, -ax, -ay, w, h);
   dibujarEquipoGato(ctx, img, fr, g.dir, 1, g.equipo, 'frente');
   ctx.restore();
-  ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
-  ctx.strokeText(g.nombre, g.x, pie - h - 10); ctx.fillStyle = '#a8d8ff'; ctx.fillText(g.nombre, g.x, pie - h - 10);
+  rotulo(g.nombre, g.x, pie - h - 10, '700 12px Rajdhani, sans-serif', '#a8d8ff', 'rgba(0,0,0,.85)', 3);
 }
 // marcos de grupo (a la derecha, bajo el minimapa)
 let firmaGrupo = '';
 function pintarGrupo(forzar){
   const c = $('grupo'); if (!c) return;
-  const f = GRUPO.map(g => g.nombre + Math.round(g.hp) + g.vivo).join('|');
-  if (!forzar && f === firmaGrupo) return; firmaGrupo = f;
+  const f = GRUPO.map(g => g.nombre + g.vivo).join('|');
+  if (!forzar && f === firmaGrupo){
+    // misma estructura: sólo se mueven las barras de vida
+    c.querySelectorAll('.gm i b').forEach((b, i) => { const g = GRUPO[i]; if (!g) return; const w = Math.max(0, Math.round(g.hp / g.maxHp * 1000) / 10) + '%'; if (b.style.width !== w) b.style.width = w; });
+    return;
+  }
+  firmaGrupo = f;
   c.classList.toggle('oculto', !GRUPO.length);
   c.innerHTML = GRUPO.map(g => `<div class="gm ${g.vivo ? '' : 'muerto'}"><span class="gm-rol" style="color:${ROL[g.rol].col}" title="${ROL[g.rol].n}">${ROL[g.rol].ic}</span>
     <div><b>${g.nombre}</b><i><b style="width:${Math.max(0, g.hp / g.maxHp * 100)}%"></b></i></div></div>`).join('');
@@ -5183,9 +5220,9 @@ function dibujarAdornosEvento(t){
   const ev = eventoActual(); if (!ev || E.tipo !== 'ciudad') return;
   const c = lienzoAdorno(ev.adorno), esc = ev.adorno === 'arbol' ? 4 : 3;
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  const pon = (x, y, brillo) => {
+  const pon = (x, y, conBrillo) => {
     x = Math.round(x); y = Math.round(y);
-    if (brillo){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + .1 * Math.sin(t / 300 + x); const g = ctx.createRadialGradient(x, y - c.height * esc / 2, 2, x, y - c.height * esc / 2, 34); g.addColorStop(0, ev.col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - 34, y - c.height * esc / 2 - 34, 68, 68); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+    if (conBrillo){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + .1 * Math.sin(t / 300 + x); ctx.imageSmoothingEnabled = true; ctx.drawImage(brillo(ev.col, 34), x - 34, y - c.height * esc / 2 - 34, 68, 68); ctx.imageSmoothingEnabled = false; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
     ctx.drawImage(c, x - c.width * esc / 2, y - c.height * esc, c.width * esc, c.height * esc);
   };
   for (const f of E.farolas || []) pon(f.x + 22, f.y + 6, ev.adorno !== 'arbol');
@@ -5410,8 +5447,7 @@ function draw(t){
   }
   dibujarLucesCiudad(t);
   if (E.etiquetas){
-    ctx.font = '600 15px Marcellus, Georgia, serif'; ctx.textAlign = 'center';
-    for (const et of E.etiquetas){ ctx.fillStyle = '#000'; ctx.fillText(et.txt, et.x + 1, et.y + 1); ctx.fillStyle = '#e9e4ff'; ctx.fillText(et.txt, et.x, et.y); }
+    for (const et of E.etiquetas) rotulo(et.txt, et.x, et.y, '600 15px Marcellus, Georgia, serif', '#e9e4ff', null, 0, true);
   }
 
   for (const p of proysE){ ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ff4f8b'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -5436,24 +5472,16 @@ function draw(t){
   ctx.globalAlpha = 1;
   ctx.textAlign = 'center';
   for (const tx of textos){
-    ctx.globalAlpha = Math.min(1, tx.vida * 2); ctx.font = `700 ${tx.size}px Rajdhani, sans-serif`;
-    ctx.fillStyle = '#000'; ctx.fillText(tx.txt, tx.x + 1, tx.y + 1);
-    ctx.fillStyle = tx.color; ctx.fillText(tx.txt, tx.x, tx.y);
+    ctx.globalAlpha = Math.min(1, tx.vida * 2);
+    rotulo(tx.txt, tx.x, tx.y, `700 ${tx.size}px Rajdhani, sans-serif`, tx.color, null, 0, true);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
 
   // iluminación
   const sx = P.x - cam.x, sy = P.y - 20 - cam.y;
-  if (E.tipo === 'mazmorra'){
-    const g = ctx.createRadialGradient(sx, sy, 120, sx, sy, Math.max(360, Math.min(W, H) * .75));
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  } else if (esInterior()){
-    const g = ctx.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, Math.max(W, H) * .7);
-    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  }
+  if (E.tipo === 'mazmorra') ctx.drawImage(penumbra('cueva'), Math.round(sx - W), Math.round(sy - H), W * 2, H * 2);
+  else if (esInterior()) ctx.drawImage(penumbra('interior'), 0, 0, W, H);
 
   dibujarNocheCiudad();
   dibujarClima(t);
@@ -5535,9 +5563,7 @@ function placaEnemigo(e, tope){
   ctx.fillStyle = '#2a0c10'; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = e.aggro ? '#d8283c' : '#d8b02c'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), h);
   ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), 1);
-  ctx.font = `700 ${obj ? 12 : 11}px Rajdhani, sans-serif`; ctx.textAlign = 'center';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(e.nombre, e.x, y - 3);
-  ctx.fillStyle = obj ? '#ffffff' : (e.aggro ? '#ff8a8a' : '#ffe08a'); ctx.fillText(e.nombre, e.x, y - 3);
+  rotulo(e.nombre, e.x, y - 3, `700 ${obj ? 12 : 11}px Rajdhani, sans-serif`, obj ? '#ffffff' : (e.aggro ? '#ff8a8a' : '#ffe08a'), 'rgba(0,0,0,.85)', 3);
   ctx.globalAlpha = 1;
 }
 function dibujarCadaver(c){
@@ -5572,6 +5598,27 @@ function dibujarEnemigoViejo(e){
   }
 }
 
+// penumbra de las cuevas e interiores: el degradado se pinta una vez por tamaño de pantalla y luego sólo se coloca
+const PENUMBRA = {};
+function penumbra(tipo){
+  const clave = tipo + W + 'x' + H;
+  if (PENUMBRA[tipo] && PENUMBRA[tipo].clave === clave) return PENUMBRA[tipo].c;
+  const c = document.createElement('canvas'), a = c.getContext('2d');
+  if (tipo === 'cueva'){
+    c.width = W * 2; c.height = H * 2;
+    const g = a.createRadialGradient(W, H, 120, W, H, Math.max(360, Math.min(W, H) * .75));
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
+    a.fillStyle = g; a.fillRect(0, 0, W * 2, H * 2);
+  } else {
+    c.width = W; c.height = H;
+    const g = a.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, Math.max(W, H) * .7);
+    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
+    a.fillStyle = g; a.fillRect(0, 0, W, H);
+  }
+  PENUMBRA[tipo] = { clave, c };
+  return c;
+}
+const CARTEL = {};
 function dibujarMinimapa(){
   const bajo = H < 500; // teléfono acostado: minimapa más chico para dejar ver el mundo
   const s = bajo ? 92 : W < 600 ? 104 : 140, r = s / 2, cx = W - r - (bajo ? 10 : 16);
@@ -5581,9 +5628,14 @@ function dibujarMinimapa(){
   // placa con el nombre de la zona
   ctx.font = '15px Marcellus, Georgia, serif'; ctx.textAlign = 'center';
   // la placa nunca se sale de la pantalla: se corre hacia dentro y, si hace falta, se achica la letra
-  let fs = 15, tw = ctx.measureText(nombre).width + 24;
   const izq = W < 600 ? 244 : 8; // a la derecha del marco del jugador en pantallas chicas
-  while (tw > W - izq - 8 && fs > 9){ fs--; ctx.font = `${fs}px Marcellus, Georgia, serif`; tw = ctx.measureText(nombre).width + 16; }
+  const claveCartel = nombre + '|' + W + '|' + fuentesListas;
+  if (CARTEL.clave !== claveCartel){
+    let fs = 15, tw = ctx.measureText(nombre).width + 24;
+    while (tw > W - izq - 8 && fs > 9){ fs--; ctx.font = `${fs}px Marcellus, Georgia, serif`; tw = ctx.measureText(nombre).width + 16; }
+    Object.assign(CARTEL, { clave:claveCartel, fs, tw });
+  }
+  const fs = CARTEL.fs, tw = CARTEL.tw; ctx.font = `${fs}px Marcellus, Georgia, serif`;
   const pxp = clamp(cx, izq + tw / 2, W - tw / 2 - 8);
   ctx.fillStyle = 'rgba(15,11,28,.85)'; ctx.fillRect(pxp - tw / 2, cy - r - 24, tw, 20);
   ctx.strokeStyle = '#b8933f'; ctx.lineWidth = 1; ctx.strokeRect(pxp - tw / 2 + .5, cy - r - 23.5, tw - 1, 19);
@@ -5649,7 +5701,7 @@ function loop(t){
   if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
   if (pantallaActual === 'pCrear') dibujarEscenaPj($('crearCv'), gatoPj, claseElegida, t, rotSel, null);
-  if (enJuego && PJ){
+  if (enJuego && PJ && tSeg % 6 === 0){
     const fb = PJ.bolsa.length + '|' + PJ.bolsa.map(o => o.id).join(',') + '|' + PJ.pociones + '|' + PJ.oro + '|' + JSON.stringify(PJ.mats);
     if (fb !== firmaBolsa){ firmaBolsa = fb; renderBolsa(); }
     const fp = [PJ.nivel, PJ.puntos, JSON.stringify(PJ.stats), Object.values(PJ.equipo).map(o => o ? o.id : '-').join(','), PJ.arma, wTab, !!M].join('|');
