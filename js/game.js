@@ -1408,7 +1408,7 @@ document.querySelectorAll('[data-wtab]').forEach(b => b.onclick = () => { wTab =
 // arrastrar ventanas por la cabecera
 document.querySelectorAll('.wv-cab').forEach(cab => {
   cab.addEventListener('pointerdown', e => {
-    if (e.target.closest('button') || innerWidth < 820) return;
+    if (e.target.closest('button') || innerWidth < 820 || esTactil) return; // en el teléfono las ventanas quedan fijas dentro de la pantalla
     const v = cab.parentElement, r = v.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
     v.style.right = 'auto'; v.style.bottom = 'auto'; v.style.transform = 'none'; v.style.left = r.left + 'px'; v.style.top = r.top + 'px';
     const mover = ev => { v.style.left = clamp(ev.clientX - ox, 0, innerWidth - 60) + 'px'; v.style.top = clamp(ev.clientY - oy, 0, innerHeight - 40) + 'px'; };
