@@ -192,7 +192,7 @@ const TAM_BOLSA = 24;
 
 let uidObj = 0;
 // íconos de objetos de uso, cofre y minerales
-const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27};
+const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27, "emblema": 28};
 const IC3_URL = 'img/ic3.png?v=' + VERSION;
 const IC3_N = Object.keys(IC3).length;
 const IC3_IMG = new Image(); IC3_IMG.src = IC3_URL;
@@ -291,7 +291,7 @@ function crearObjeto(rango, minR = 0, slot = null, rarezaFija = null){
   const bases = RANURAS[slot].bases, base = bases[Math.random() * bases.length | 0];
   const obj = { id:Date.now().toString(36) + '-' + (uidObj++), slot, nombre:r === 4 ? `${base} del Monarca` : `${base} ${SUFIJOS[rango]}`, rareza:r, nivel, stats };
   if (slot === 'arma') obj.dmg = Math.round(presupuesto * 1.2);
-  return obj;
+  return asegurarDur(obj);
 }
 const precioVenta = o => Math.round((4 + o.nivel) * (o.rareza + 1) * 157);
 // dinero como en WoW: todo se guarda en cobre (100 cobre = 1 plata, 100 plata = 1 oro)
@@ -314,8 +314,8 @@ function dineroTxt(c){
 // =====================================================
 //  NAVEGACIÓN
 // =====================================================
-const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo'];
-const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador'];
+const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas'];
+const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas'];
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
@@ -379,6 +379,8 @@ function migrar(pj){
   pj.talentos = pj.talentos || {};
   if (!('5' in pj.barra)){ const h = BARRA_CLASE[pj.clase] || []; ['5', '6', '7', '8'].forEach((t, i) => pj.barra[t] = h[i] || null); }
   pj.logros = pj.logros || {}; pj.tintes = pj.tintes || [];
+  pj.emblemas = pj.emblemas || 0;
+  for (const o of [...Object.values(pj.equipo), ...pj.bolsa]) if (o) asegurarDur(o);
   if (pj.mascota){ pj.mascota.nivel = pj.mascota.nivel || 1; pj.mascota.xp = pj.mascota.xp || 0; if (pj.mascota.hambre === undefined) pj.mascota.hambre = 100; }
   return pj;
 }
@@ -610,7 +612,7 @@ let cam = { x:0, y:0 }, shake = 0, timerGuardado = 0, interCerca = null, jefeViv
 
 function statsTotales(){
   const s = { ...PJ.stats }; let dmg = 0;
-  for (const it of Object.values(PJ.equipo)) if (it){ for (const k in it.stats) s[k] += it.stats[k]; dmg += it.dmg || 0; }
+  for (const it of Object.values(PJ.equipo)) if (it && !roto(it)){ for (const k in it.stats) s[k] += it.stats[k]; dmg += it.dmg || 0; }
   return { s, dmg };
 }
 function derivar(){
@@ -648,6 +650,7 @@ function empezar(id){
   irPosada('cama');
   if (PJ.mascota && PJ.mascotaActiva) invocarMascota(true);
   banner(`Bienvenido, cazador ${PJ.nombre}`, 'Despiertas en la posada');
+  pintarDurabilidad();
   dibujarAvatar();
   if (window.pintarIcoPet) pintarIcoPet();
 }
@@ -912,8 +915,11 @@ function crearAsociacion(){
   ];
   G.npcs = [
     { spr:'clienta', nombre:'Lucía, la registradora', x:7 * T, y:2.3 * T },
-    { spr:'cliente', nombre:'Ren, el evaluador', x:11 * T, y:5.2 * T }
+    { spr:'cliente', nombre:'Ren, el evaluador', x:11 * T, y:5.2 * T },
+    { spr:'vance', nombre:'Vance, intendente de emblemas', x:3 * T, y:7 * T }
   ];
+  G.obs.push({ x:3 * T, y:7 * T, r:14 });
+  G.inter.push({ x:3 * T, y:7.9 * T, r:56, texto:'Intendente de emblemas', accion:() => abrirEmblemas() });
   G.obs.push({ x:11 * T, y:5.2 * T, r:14 });
   G.tablon = { x:3 * T, y:4.2 * T };
   G.obs.push({ x:G.tablon.x, y:G.tablon.y, r:24 });
@@ -1124,11 +1130,14 @@ function abrirForja(msg){
     <div class="linea"><span>Tu arma</span><b>+${PJ.arma}</b></div>
     <div class="linea"><span>Tu dinero</span><b>${dinero(PJ.oro)}</b></div>
     <div class="linea"><span>Cada mejora</span><b>+5 de daño físico y mágico</b></div>
+    <div class="linea"><span>Reparar todo el equipo</span><b>${costeReparar() ? dinero(costeReparar()) : 'No hace falta'}</b></div>
     <div class="compras">
+      <button class="btn" id="cReparar" ${!costeReparar() || PJ.oro < costeReparar() ? 'disabled' : ''}><span>Reparar todo</span><span>${dinero(costeReparar())}</span></button>
       <button class="btn dorado" id="cArma" ${PJ.oro < p || max ? 'disabled' : ''}><span>${max ? 'Tu arma está al máximo' : `Forjar a +${PJ.arma + 1}`}</span><span>${dinero(p)}</span></button>
       ${botonEncargo('herrero')}
     </div>`;
   enlazarEncargo('herrero');
+  $('cReparar').onclick = () => { if (reparar()) abrirForja('El herrero dejó tu equipo como nuevo.'); };
   $('cArma').onclick = () => { if (PJ.oro >= p && !max){ PJ.oro -= p; PJ.arma++; derivar(); guardar(); chispas(P.x, P.y, '#ff9a3d', 20, 180); abrirForja(`El herrero templó tu arma. Ahora es +${PJ.arma}.`); } };
   pantalla('pForja');
 }
@@ -1287,7 +1296,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
-  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); premioTitan(); premioLFD();
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });
@@ -1488,6 +1497,7 @@ marcarPantallaCompleta();
 $('btnMascota').onclick = toggleMascota;
 $('btnBolsa').onclick = () => alternarVentana('wBolsa');
 $('btnBuscador').onclick = () => abrirBuscador();
+$('durAviso').onclick = () => { wTab = 'personaje'; abrirVentana('wPj'); };
 $('ojoLFD').onclick = () => abrirBuscador();
 $('btnAceptarGrupo').onclick = () => aceptarGrupo();
 $('btnRechazar').onclick = () => { LFD.listo = false; pantalla(null); chat('Rechazaste el grupo.', '#9a91c2'); actualizarOjo(); };
@@ -1571,6 +1581,7 @@ function lineasObj(o, titulo){
   if (o.dmg) h += `<div class="fila"><span>${Math.round(o.dmg * .85)} - ${Math.round(o.dmg * 1.15)} de daño</span><span>Velocidad 2,40</span></div>`;
   for (const [k, v] of Object.entries(o.stats)) h += `<span>+${v} ${NOMBRE_STAT[k]}</span>`;
   h += `<span class="gris">${R.n}</span>`;
+  asegurarDur(o); h += `<span class="${roto(o) ? 'rojo' : ''}">Durabilidad ${o.dur} / ${o.durMax}${roto(o) ? ' (roto)' : ''}</span>`;
   h += `<span>Precio de venta: ${dinero(precioVenta(o))}</span>`;
   return h;
 }
@@ -1726,7 +1737,7 @@ function renderBolsa(){
   for (const o of PJ.bolsa){ h += `<button class="wslot lleno" data-bo="${o.id}" style="--rc:${RAREZAS[o.rareza].c}" aria-label="${escapar(o.nombre)}">${icoObj(o)}</button>`; n++; }
   const total = Math.max(28, Math.ceil(n / 4) * 4);
   for (; n < total; n++) h += '<div class="wslot"></div>';
-  h += `</div><div class="wbag-pie"><span>${PJ.bolsa.length}/${TAM_BOLSA}</span>${dinero(PJ.oro)}</div>`;
+  h += `</div><div class="wbag-pie"><span>${PJ.bolsa.length}/${TAM_BOLSA}</span><span class="emb" title="Emblemas">${ic3('emblema')}${PJ.emblemas || 0}</span>${dinero(PJ.oro)}</div>`;
   $('wBolsaCuerpo').innerHTML = h;
 }
 
@@ -1912,6 +1923,7 @@ function renderPerfil(){
 }
 
 function recalcular(){
+  pintarDurabilidad();
   const hpA = D.maxHp, enA = D.maxEn;
   derivar();
   P.hp = clamp(P.hp + (D.maxHp - hpA), 1, D.maxHp);
@@ -2515,6 +2527,7 @@ function pintarBuffs(forzar){
 function golpearJugador(d, src){
   if (P.inv > 0) return;
   if (estados.hielo) return;
+  if (Math.random() < .05) gastarDur(0, true);
   d *= (1 - D.def) * efMod.recibe();
   ganarIra(Math.min(20, d / D.maxHp * 120));
   if (src && !src.jefe){
@@ -2528,8 +2541,8 @@ function golpearJugador(d, src){
   chispas(P.x, P.y - 20, '#e2445c', 8, 150);
   if (P.hp <= 0){
     P.hp = 0;
-    const perdida = Math.floor(PJ.oro * .15); PJ.oro -= perdida; guardar();
-    $('muerteTxt').textContent = perdida ? `Perdiste ${dineroTxt(perdida)}. Despertarás en tu cama de la posada.` : 'Despertarás en tu cama de la posada.';
+    const perdida = Math.floor(PJ.oro * .15); PJ.oro -= perdida; gastarDur(.1); guardar();
+    $('muerteTxt').textContent = (perdida ? `Perdiste ${dineroTxt(perdida)}. ` : '') + 'Tu equipo perdió un 10% de durabilidad. Despertarás en tu cama de la posada.';
     limpiarEfectos(false);
     pantalla('pMuerte');
   }
@@ -4624,8 +4637,77 @@ function premioLFD(){
   if (!E.lfd) return;
   let em = 2, txt = '';
   if (PJ.lfdDia !== diaHoy()){ PJ.lfdDia = diaHoy(); em += 2; const oro = 8000 * (1 + E.rango); PJ.oro += oro; txt = ` y la bolsa del día (${dineroTxt(oro)})`; }
-  PJ.emblemas = (PJ.emblemas || 0) + em;
-  chat(`Buscador de mazmorras: recibes ${em} emblemas${txt}.`, '#ffd100');
+  darEmblemas(em, `buscador de mazmorras${txt}`);
+}
+
+// =====================================================
+//  EMBLEMAS Y DURABILIDAD
+// =====================================================
+// durabilidad: el equipo se gasta al recibir golpes y al morir; roto (0) no da estadísticas. Se repara en la forja.
+const durMaxDe = o => 60 + (o.rareza || 0) * 15;
+function asegurarDur(o){ if (o && o.dur === undefined){ o.durMax = durMaxDe(o); o.dur = o.durMax; } return o; }
+const roto = o => o && o.dur !== undefined && o.dur <= 0;
+function gastarDur(frac, alAzar){
+  const piezas = Object.values(PJ.equipo).filter(Boolean).map(asegurarDur);
+  if (!piezas.length) return;
+  const antes = piezas.filter(roto).length;
+  if (alAzar){ const o = piezas[Math.random() * piezas.length | 0]; o.dur = Math.max(0, o.dur - 1); }
+  else for (const o of piezas) o.dur = Math.max(0, Math.floor(o.dur - o.durMax * frac));
+  if (piezas.filter(roto).length > antes){ derivar(); chat('Una pieza de tu equipo se ha roto: ya no te da estadísticas. Repárala en la forja.', '#ff5a5a'); }
+  pintarDurabilidad();
+}
+const costeReparar = () => Object.values(PJ.equipo).filter(Boolean).map(asegurarDur).reduce((a, o) => a + (o.durMax - o.dur) * (o.nivel + 5) * 4 * (1 + o.rareza * .5), 0) | 0;
+function reparar(){
+  const c = costeReparar(); if (!c || PJ.oro < c) return false;
+  PJ.oro -= c; for (const o of Object.values(PJ.equipo)) if (o){ asegurarDur(o); o.dur = o.durMax; }
+  derivar(); pintarDurabilidad(); guardar(); return true;
+}
+// aviso de equipo dañado (como la figurita amarilla o roja de WoW)
+function pintarDurabilidad(){
+  const el = $('durAviso'); if (!el || !PJ) return;
+  const piezas = Object.values(PJ.equipo).filter(Boolean).map(asegurarDur);
+  const min = piezas.length ? Math.min(...piezas.map(o => o.dur / o.durMax)) : 1;
+  el.classList.toggle('oculto', min > .25);
+  el.classList.toggle('rojo', min <= 0);
+  el.title = min <= 0 ? 'Tienes equipo roto' : 'Tu equipo está muy dañado';
+  el.querySelector('span').textContent = min <= 0 ? 'Equipo roto' : `Equipo ${Math.round(min * 100)}%`;
+}
+
+// emblemas: los dan los jefes (más en el buscador, el titán y los jefes de mundo); se cambian por equipo épico
+function darEmblemas(n, motivo){
+  PJ.emblemas = (PJ.emblemas || 0) + n;
+  texto(P.x, P.y - 96, `+${n} emblema${n > 1 ? 's' : ''}`, '#b98bff', 14);
+  if (motivo) chat(`Recibes ${n} emblema${n > 1 ? 's' : ''} (${motivo}).`, '#b98bff');
+}
+const STAT_CLASE = { guerrero:['fue','vit'], sombra:['agi','fue'], mago:['int','vit'] };
+const PRECIO_EMB = { cabeza:30, amuleto:20, pecho:35, manos:20, piernas:30, pies:20, anillo:15, arma:45 };
+function objetoEmblema(slot, rango){
+  const nivel = UMBRAL_RANGO[rango] + 10, pres = (3 + nivel * .7) * RAREZAS[3].m * 1.15, [a, b] = STAT_CLASE[PJ.clase];
+  const base = { arma:{ guerrero:'Espada', sombra:'Daga', mago:'Báculo' }[PJ.clase] }[slot] || RANURAS[slot].bases[0];
+  const o = { id:'emb-' + slot + '-' + rango + '-' + Date.now().toString(36) + (uidObj++), slot, nombre:`${base} del Triunfo`, rareza:3, nivel,
+    stats:{ [a]:Math.round(pres * .6), [b]:Math.round(pres * .4) } };
+  if (slot === 'arma') o.dmg = Math.round(pres * 1.25);
+  return asegurarDur(o);
+}
+function abrirEmblemas(msg){
+  const r = rangoCazador(), em = PJ.emblemas || 0;
+  let h = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p>
+    <div class="linea"><span>Tus emblemas</span><b class="emb">${ic3('emblema')} ${em}</b></div>
+    <p class="nota" style="margin:6px 0">Equipo épico para tu clase (nivel de objeto ${UMBRAL_RANGO[r] + 10}). Los emblemas se ganan derrotando jefes: más en el buscador de mazmorras, el titán semanal y los jefes de mundo.</p><div class="emb-lista">`;
+  for (const slot of Object.keys(RANURAS)){
+    const o = objetoEmblema(slot, r), p = PRECIO_EMB[slot];
+    h += `<div class="emb-fila"><span class="emb-ic" style="--rc:${RAREZAS[3].c}">${icoObj(o)}</span><div><b style="color:${RAREZAS[3].c}">${o.nombre}</b>
+      <small>${RANURAS[slot].n} · ${Object.entries(o.stats).map(([k, v]) => `+${v} ${NOMBRE_STAT[k]}`).join(', ')}${o.dmg ? ` · ${o.dmg} de daño` : ''}</small></div>
+      <button class="btn" data-emb="${slot}" ${em < p || PJ.bolsa.length >= TAM_BOLSA ? 'disabled' : ''}>${p} ${ic3('emblema')}</button></div>`;
+  }
+  $('embCuerpo').innerHTML = h + '</div>';
+  $('embCuerpo').querySelectorAll('[data-emb]').forEach(b => b.onclick = () => {
+    const slot = b.dataset.emb, p = PRECIO_EMB[slot];
+    if ((PJ.emblemas || 0) < p || PJ.bolsa.length >= TAM_BOLSA) return;
+    const o = objetoEmblema(slot, rangoCazador()); PJ.emblemas -= p; PJ.bolsa.push(o); guardar(); sfx('botin');
+    abrirEmblemas(`Compraste [${o.nombre}]. Está en tu mochila.`);
+  });
+  pantalla('pEmblemas');
 }
 
 // =====================================================

@@ -860,3 +860,23 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .busc-sel{display:flex;gap:8px;align-items:center;margin:8px 0;font:700 13px Rajdhani,sans-serif}
 .busc-sel select{flex:1;padding:4px;background:#120d0a;color:#ffd100;border:1px solid #5a4a2a;font:600 13px Rajdhani,sans-serif}
 @media (max-width:520px){ #grupo{top:auto;bottom:calc(200px + env(safe-area-inset-bottom,0px));width:140px} }
+
+/* ---------- emblemas y durabilidad ---------- */
+.emb{display:inline-flex;align-items:center;gap:3px;color:#d2b4ff;font-weight:700}
+.emb .ic3{width:20px;height:20px;image-rendering:pixelated}
+.btn .ic3{width:20px;height:20px;vertical-align:middle;image-rendering:pixelated}
+.emb-lista{display:flex;flex-direction:column;gap:5px;max-height:52vh;overflow:auto}
+.emb-fila{display:flex;align-items:center;gap:8px;padding:4px;border:1px solid rgba(163,53,238,.35);border-radius:4px;background:rgba(163,53,238,.06)}
+.emb-fila>div{flex:1;min-width:0}
+.emb-fila b{display:block;font:700 13px Rajdhani,sans-serif}
+.emb-fila small{display:block;font:500 12px Rajdhani,sans-serif;color:#cfc4a8}
+.emb-fila .btn{min-width:0;padding:4px 10px;font-size:13px;white-space:nowrap}
+.emb-ic{width:36px;height:36px;flex-shrink:0;border:2px solid var(--rc);border-radius:4px;display:grid;place-items:center;background:#120d0a}
+.emb-ic .ico-obj{width:32px;height:32px}
+#durAviso{position:fixed;right:12px;top:calc(200px + env(safe-area-inset-top,0px));z-index:3;display:flex;gap:4px;align-items:center;padding:3px 8px;cursor:pointer;
+  font:700 12px Rajdhani,sans-serif;color:#ffd100;background:rgba(40,30,0,.85);border:1px solid #ffd100;border-radius:6px}
+#durAviso b{font-size:15px}
+#durAviso.rojo{color:#ff5a5a;border-color:#ff5a5a;background:rgba(50,0,0,.85)}
+#durAviso.oculto{display:none}
+.rojo{color:#ff5a5a}
+@media (max-width:520px){ #durAviso{top:auto;bottom:calc(250px + env(safe-area-inset-bottom,0px))} }
