@@ -1,6 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
+const VERSION = '1.6.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 const TAU = Math.PI * 2;
 const T = 48; // tamaño de casilla
@@ -3044,6 +3045,9 @@ const GATOS_IMG = new Image();
 // k: cuánto más chica es su hoja que las de 96 px; px: se dibuja con escala entera y sin suavizar para que los píxeles queden limpios
 const MIST_IMG = new Image();
 GATOS_DIR[0] = Object.assign({"ab": [[2, 2, 39, 64, 19, 64], [43, 2, 39, 64, 17, 64], [84, 2, 40, 64, 19, 64], [126, 3, 39, 63, 18, 63]], "ar": [[2, 70, 38, 62, 18, 62], [42, 69, 36, 63, 17, 63], [80, 70, 37, 62, 18, 62], [119, 68, 36, 64, 18, 64]], "lado": [[2, 136, 40, 59, 16, 59], [44, 135, 36, 60, 13, 60], [82, 135, 39, 60, 16, 60], [123, 134, 35, 61, 12, 61]]}, { img:MIST_IMG, k:96 / 62, px:true });
+// los demás gatos también tienen su hoja propia en pixel art (4 cuadros por vista, 64 px de alto)
+const HOJAS_GATO = [[1, 'img/gato-ejecutivo.png', {"ab": [[2, 2, 39, 64, 19, 64], [43, 2, 39, 64, 19, 64], [84, 2, 39, 64, 19, 64], [125, 2, 39, 64, 19, 64]], "ar": [[2, 68, 38, 64, 19, 64], [42, 68, 38, 64, 19, 64], [82, 68, 38, 64, 19, 64], [122, 68, 38, 64, 19, 64]], "lado": [[2, 135, 41, 64, 17, 64], [45, 134, 39, 65, 15, 65], [86, 135, 41, 64, 17, 64], [129, 134, 39, 65, 15, 65]]}], [2, 'img/gato-calico.png', {"ab": [[2, 2, 63, 65, 24, 65], [67, 2, 63, 65, 24, 65], [132, 2, 63, 65, 24, 65], [197, 2, 63, 65, 24, 65]], "ar": [[2, 69, 63, 66, 24, 66], [67, 69, 63, 66, 24, 66], [132, 69, 63, 66, 24, 66], [197, 69, 63, 66, 24, 66]], "lado": [[2, 139, 62, 65, 23, 65], [66, 138, 62, 66, 23, 66], [130, 138, 62, 66, 23, 66], [194, 137, 62, 67, 23, 67]]}], [3, 'img/gato-misterioso.png', {"ab": [[2, 2, 49, 65, 20, 65], [53, 2, 49, 65, 20, 65], [104, 2, 49, 65, 20, 65], [155, 2, 49, 65, 20, 65]], "ar": [[2, 69, 47, 65, 19, 65], [51, 69, 47, 65, 19, 65], [100, 69, 47, 65, 19, 65], [149, 69, 47, 65, 19, 65]], "lado": [[2, 137, 46, 65, 18, 65], [50, 136, 46, 66, 18, 66], [98, 137, 46, 65, 18, 65], [146, 136, 46, 66, 18, 66]]}]];
+for (const [i, src, dir] of HOJAS_GATO){ const img = new Image(); img.dataset.src = src; GATOS_DIR[i] = Object.assign(dir, { img, k:96 / 62, px:true }); }
 const imgGato = tipo => (GATOS_DIR[tipo] && GATOS_DIR[tipo].img) || GATOS_IMG;
 const gatoPx = tipo => !!(GATOS_DIR[tipo] && GATOS_DIR[tipo].px);
 // escala de dibujo de un gato a partir de la escala pensada para hojas de 96 px
@@ -3051,19 +3055,21 @@ function escGato(tipo, base){
   const g = GATOS_DIR[tipo] || {}, e = base * (g.k || 1);
   return g.px ? Math.max(1, Math.round(e)) : e;
 }
-let gatosListo = false, gatosPend = 2;
+let gatosListo = false, gatosPend = 2 + HOJAS_GATO.length;
 const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
+for (const [i] of HOJAS_GATO){ const im = GATOS_DIR[i].img; im.onload = gatoCargado; im.src = im.dataset.src + '?v=' + VERSION; }
 GATOS_IMG.src = 'img/gatos.png';
-MIST_IMG.src = 'img/mist.png?v=1.5.0';
+MIST_IMG.src = 'img/mist.png?v=' + VERSION;
 const TIPOS_GATO = ['Gato Carmesí', 'Gato Ejecutivo', 'Gato Calicó', 'Gato Misterioso'];
 // Mascotas: 4 ratas con 4 direcciones (ar arriba, ab abajo, iz izquierda, de derecha) de 4 cuadros
 // cada cuadro: [x, y, ancho, alto, anclaX, anclaY]
-const RATAS_DIR = [{"ar":[[0,0,55,84,26.0,82],[57,0,56,84,26.5,82],[115,0,57,84,28.5,82],[174,0,53,84,25.5,82]],"ab":[[229,0,53,84,25.0,82],[284,0,56,84,27.0,82],[342,0,54,84,25.5,82],[398,0,52,84,26.0,82]],"iz":[[452,0,49,84,24.5,82],[503,0,49,84,24.0,82],[554,0,47,84,24.0,82],[603,0,42,84,19.5,82]],"de":[[647,0,51,84,21.5,82],[700,0,52,84,21.5,82],[754,0,51,84,22.0,82],[807,0,49,84,17.5,82]]},{"ar":[[858,0,53,84,24.5,82],[913,0,55,84,25.5,82],[970,0,52,84,25.5,82],[1024,0,52,84,26.0,82]],"ab":[[0,86,52,84,26.0,82],[54,86,54,84,25.5,82],[110,86,52,84,25.0,82],[164,86,51,84,25.5,82]],"iz":[[217,86,54,84,30.5,82],[273,86,51,84,30.5,82],[326,86,51,84,30.5,82],[379,86,48,84,31.0,82]],"de":[[429,86,46,84,18.0,82],[477,86,46,84,17.5,82],[525,86,47,84,21.0,82],[574,86,48,84,19.0,82]]},{"ar":[[624,86,54,84,24.5,82],[680,86,53,84,24.5,82],[735,86,58,84,27.5,82],[795,86,54,84,27.0,82]],"ab":[[851,86,54,84,25.5,82],[907,86,62,84,30.5,82],[971,86,56,84,27.5,82],[1029,86,55,84,27.5,82]],"iz":[[0,172,59,84,34.0,82],[61,172,57,84,33.0,82],[120,172,56,84,32.5,82],[178,172,53,84,30.0,82]],"de":[[233,172,59,84,23.0,82],[294,172,58,84,25.5,82],[354,172,58,84,27.5,82],[414,172,58,84,25.5,82]]},{"ar":[[474,172,55,84,25.5,82],[531,172,55,84,25.0,82],[588,172,55,84,26.0,81],[645,172,53,84,27.5,82]],"ab":[[700,172,52,84,25.0,82],[754,172,53,84,25.0,82],[809,172,53,84,26.0,82],[864,172,52,84,24.5,82]],"iz":[[918,172,55,84,29.0,81],[975,172,54,84,29.5,82],[1031,172,51,84,28.0,82],[0,258,51,84,26.5,82]],"de":[[53,258,55,84,21.5,82],[110,258,54,84,20.5,82],[166,258,53,84,23.5,82],[221,258,53,84,21.5,81]]}];
+const RATAS_DIR = [{"ar": [[2, 2, 24, 38, 11, 38], [28, 2, 25, 38, 12, 38], [55, 2, 25, 38, 12, 38], [82, 2, 23, 38, 11, 38]], "ab": [[2, 42, 23, 38, 11, 38], [27, 42, 25, 38, 12, 38], [54, 42, 24, 38, 11, 38], [80, 42, 23, 38, 11, 38]], "iz": [[2, 82, 21, 38, 10, 38], [25, 82, 21, 38, 10, 38], [48, 82, 20, 38, 9, 38], [70, 82, 19, 38, 9, 38]], "de": [[2, 122, 22, 38, 10, 38], [26, 122, 23, 38, 11, 38], [51, 122, 22, 38, 10, 38], [75, 122, 21, 38, 9, 38]]}, {"ar": [[2, 162, 23, 38, 11, 38], [27, 162, 24, 38, 11, 38], [53, 162, 23, 38, 11, 38], [78, 162, 23, 38, 11, 38]], "ab": [[2, 202, 23, 38, 11, 38], [27, 202, 24, 38, 11, 38], [53, 202, 23, 38, 11, 38], [78, 202, 22, 38, 11, 38]], "iz": [[2, 242, 24, 38, 12, 38], [28, 243, 22, 37, 11, 37], [52, 242, 22, 38, 10, 38], [76, 242, 21, 38, 10, 38]], "de": [[2, 282, 20, 38, 9, 38], [24, 282, 20, 38, 9, 38], [46, 282, 19, 38, 8, 38], [67, 282, 20, 38, 9, 38]]}, {"ar": [[2, 322, 24, 39, 11, 39], [28, 323, 23, 38, 11, 38], [53, 323, 26, 38, 13, 38], [81, 322, 24, 39, 12, 39]], "ab": [[2, 363, 24, 38, 11, 38], [28, 363, 28, 38, 13, 38], [58, 363, 25, 38, 12, 38], [85, 363, 24, 38, 12, 38]], "iz": [[2, 403, 26, 38, 14, 38], [30, 403, 25, 38, 13, 38], [57, 403, 25, 38, 13, 38], [84, 403, 24, 38, 12, 38]], "de": [[2, 443, 26, 38, 12, 38], [30, 443, 26, 38, 12, 38], [58, 443, 26, 38, 12, 38], [86, 443, 26, 38, 12, 38]]}, {"ar": [[2, 484, 24, 38, 11, 38], [28, 483, 24, 39, 11, 39], [54, 484, 24, 38, 11, 38], [80, 484, 23, 38, 12, 38]], "ab": [[2, 524, 23, 38, 11, 38], [27, 524, 24, 38, 12, 38], [53, 524, 23, 38, 11, 38], [78, 524, 23, 38, 11, 38]], "iz": [[2, 565, 24, 38, 12, 38], [28, 564, 24, 39, 12, 39], [54, 565, 22, 38, 11, 38], [78, 565, 22, 38, 11, 38]], "de": [[2, 605, 24, 38, 12, 38], [28, 605, 24, 38, 11, 38], [54, 605, 23, 38, 11, 38], [79, 605, 23, 38, 10, 38]]}];
 const RATAS_IMG = new Image();
 let ratasListo = false;
 RATAS_IMG.onload = () => ratasListo = true;
-RATAS_IMG.src = 'img/ratas.png';
+RATAS_IMG.src = 'img/ratas.png?v=' + VERSION;
+const ALTO_RATA = 40; // alto de la hoja de ratas en pixel art (se dibuja a escala entera)
 const TIPOS_RATA = ['Rata Mensajera', 'Rata Quesera', 'Rata Ejecutiva', 'Rata Misteriosa'];
 const ALTO_GATO = 40; // altura de la mascota en el mundo
 let M = null, gatoElegido = 0;
@@ -3106,8 +3112,8 @@ function abrirElegirMascota(){
     b.append(c, document.createTextNode(nombre));
     b.onclick = () => { gatoElegido = i; cont.querySelectorAll('.gato').forEach(x => x.setAttribute('aria-pressed', x === b)); };
     cont.appendChild(b);
-    const pintar = () => { const [sx, sy, w, h] = RATAS_DIR[i].ab[0], a = c.getContext('2d'), k = Math.min(c.width / w, c.height / h) * .9;
-      a.clearRect(0, 0, c.width, c.height); a.drawImage(RATAS_IMG, sx, sy, w, h, (c.width - w * k) / 2, (c.height - h * k) / 2, w * k, h * k); };
+    const pintar = () => { const [sx, sy, w, h] = RATAS_DIR[i].ab[0], a = c.getContext('2d'), k = Math.max(1, Math.floor(Math.min(c.width / w, c.height / h) * .9));
+      a.clearRect(0, 0, c.width, c.height); a.imageSmoothingEnabled = false; a.drawImage(RATAS_IMG, sx, sy, w, h, (c.width - w * k) / 2, (c.height - h * k) / 2, w * k, h * k); };
     if (ratasListo) pintar(); else RATAS_IMG.addEventListener('load', pintar, { once:true });
   });
   pantalla('pMascota');
@@ -3152,15 +3158,20 @@ function updateMascota(dt){
 function pintarGato(c, tipo, x, pie, alto, t, mov, flip, quieto, atlas = GATOS, img = GATOS_IMG, cuadro = null){
   const f = mov ? Math.floor(t / 1000 * 10) % 6 : 0;
   const [sx, sy, w, h, ax, ay] = cuadro || atlas[tipo * 6 + f];
-  const esc = alto / 84, dormido = !mov && quieto > 6;
-  let kx = 1, ky = 1;
-  if (!mov){
+  // las ratas son pixel art: escala entera, sin estirar; respiran subiendo un píxel
+  const px = img === RATAS_IMG, esc = px ? Math.max(1, Math.round(alto / ALTO_RATA)) : alto / 84, dormido = !mov && quieto > 6;
+  let kx = 1, ky = 1, sube = 0;
+  if (px){ if (!mov) sube = Math.sin(t / (dormido ? 750 : 420)) > .5 ? -esc : 0; }
+  else if (!mov){
     const fase = Math.sin(t / (dormido ? 750 : 420));
     if (dormido){ ky = .86 + .025 * fase; kx = 1.07 - .012 * fase; }
     else { ky = 1 + .025 * fase; kx = 1 - .012 * fase; }
   }
   c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, pie, alto * .29 * kx, alto * .1, 0, 0, TAU); c.fill();
-  c.save(); c.translate(x, pie); c.scale(flip ? -kx : kx, ky);
+  c.save();
+  if (px){ c.imageSmoothingEnabled = false; c.translate(Math.round(x), Math.round(pie) + sube); }
+  else c.translate(x, pie);
+  c.scale(flip ? -kx : kx, ky);
   c.drawImage(img, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   c.restore();
   if (dormido){
