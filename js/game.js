@@ -377,6 +377,7 @@ function migrar(pj){
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
   pj.talentos = pj.talentos || {};
+  if (!('5' in pj.barra)){ const h = BARRA_CLASE[pj.clase] || []; ['5', '6', '7', '8'].forEach((t, i) => pj.barra[t] = h[i] || null); }
   pj.logros = pj.logros || {}; pj.tintes = pj.tintes || [];
   if (pj.mascota){ pj.mascota.nivel = pj.mascota.nivel || 1; pj.mascota.xp = pj.mascota.xp || 0; if (pj.mascota.hambre === undefined) pj.mascota.hambre = 100; }
   return pj;
@@ -627,6 +628,7 @@ function derivar(){
     regHp: s.vit * .06
   };
   D.cdK = 1;
+  ajustarRecurso(D);
   aplicarTalentos(D);
   D.poder = Math.max(D.fis, D.mag);
 }
@@ -634,7 +636,7 @@ function derivar(){
 function empezar(id){
   PJ = migrar(cuenta().personajes.find(p => p.id === id));
   derivar();
-  P = { x:0, y:0, mx:0, my:0, pose:{ n:'', t:0, dur:1 }, r:14, hp:D.maxHp, en:D.maxEn, ang:Math.PI / 2, ldx:0, ldy:1,
+  P = { x:0, y:0, mx:0, my:0, pose:{ n:'', t:0, dur:1 }, r:14, hp:D.maxHp, en:PJ.clase === 'guerrero' ? 0 : D.maxEn, combo:0, ang:Math.PI / 2, ldx:0, ldy:1,
         cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0 };
   const c = CLASES[PJ.clase];
   $('mAtk').textContent = c.h1.ic; $('mHab').textContent = c.h2.ic;
@@ -1066,7 +1068,7 @@ function irTienda(){
 function descansar(){
   $('fundido').classList.add('ver');
   setTimeout(() => {
-    P.hp = D.maxHp; P.en = D.maxEn; guardar();
+    P.hp = D.maxHp; P.en = recursoLleno(); guardar();
     limpiarEfectos(true); ponerEfecto('spi_up', 300);
     $('fundido').classList.remove('ver');
     banner('Has descansado', 'Vida y energía al máximo. Partida guardada.');
@@ -1495,7 +1497,7 @@ aplicarAjustesTel();
 $('btnVerPerfil').onclick = () => abrirPerfil('personaje');
 $('btnGuardar').onclick = () => { guardar(); $('notaGuardado').textContent = E.tipo === 'mazmorra' ? 'Partida guardada. Si sales ahora, apareces en la ciudad.' : 'Partida guardada.'; };
 $('btnSalir').onclick = () => { guardar(); cerrarVentanas(); enJuego = false; document.body.classList.remove('jugando', 'combate'); M = null; ir('pPersonajes'); };
-$('btnRevivir').onclick = () => { P.hp = D.maxHp; P.en = D.maxEn; P.inv = 2; pantalla(null); irPosada('cama'); };
+$('btnRevivir').onclick = () => { P.hp = D.maxHp; P.en = recursoLleno(); P.inv = 2; pantalla(null); irPosada('cama'); };
 document.addEventListener('visibilitychange', () => { if (document.hidden && enJuego && !pantallaActual) pausar(); });
 
 function pausar(){ $('notaGuardado').textContent = ''; pantalla('pPausa'); }
@@ -1674,9 +1676,9 @@ function renderPj(){
   if (wTab === 'personaje'){
     const fila = (n, v, k) => `<div class="pd-fila"><span>${n}</span><b ${v.id ? `id="${v.id}"` : ''} class="${v.extra ? 'verde' : ''}">${v.t}${k ? `<button class="pd-mas" data-stat="${k}" ${PJ.puntos ? '' : 'disabled'} aria-label="Subir ${n}">+</button>` : ''}</b></div>`;
     const at = ['fue','agi','vit','int'].map(k => fila(NOMBRE_STAT[k], { t:D.s[k], extra:D.s[k] > PJ.stats[k] }, k)).join('');
-    const cb = [['Vida', `${Math.ceil(P.hp)}/${D.maxHp}`], ['Energía', `${Math.floor(P.en)}/${D.maxEn}`], ['Daño físico', Math.round(D.fis)], ['Daño mágico', Math.round(D.mag)],
+    const cb = [['Vida', `${Math.ceil(P.hp)}/${D.maxHp}`], [recurso().n, `${Math.floor(P.en)}/${D.maxEn}`], ['Daño físico', Math.round(D.fis)], ['Daño mágico', Math.round(D.mag)],
       ['Crítico', Math.round(D.crit * 100) + '%'], ['Defensa', Math.round(D.def * 100) + '%'], ['Velocidad', Math.round(D.vel)], ['Forja', '+' + PJ.arma]]
-      .map(([n, v]) => fila(n, { t:v, id:n === 'Vida' ? 'pdVida' : n === 'Energía' ? 'pdEn' : '' })).join('');
+      .map(([n, v]) => fila(n, { t:v, id:n === 'Vida' ? 'pdVida' : n === recurso().n ? 'pdEn' : '' })).join('');
     cuerpo.innerHTML = `<p class="pd-sub">Nivel ${PJ.nivel} ${c.nombre} · <span style="color:${R.color}">Rango ${R.l}</span></p>
       <div class="pd"><div class="pd-col">${IZQ.map(slotHTML).join('')}</div>
         <div class="pd-mod"><canvas id="figura" width="240" height="300"></canvas></div>
@@ -1727,11 +1729,16 @@ function renderLibro(){
   let h = `<div class="wl-hechizos"><div class="wl-sec">${c.nombre}</div>
     <div class="wl-h"><canvas data-icono="${c.h1.spr}" width="80" height="80"></canvas><div><b>${c.h1.n}</b><small>Clic izquierdo</small></div></div>
     <div class="wl-h"><canvas data-icono="${c.h2.spr}" width="80" height="80"></canvas><div><b>${c.h2.n}</b><small>Clic derecho · ${c.h2.coste} energía</small></div></div>
-    <div class="wl-sec">Sombras</div>`;
-  for (const [id, pw] of Object.entries(PODERES)){
+    <div class="wl-sec">Habilidades de clase · ${recurso().n}</div>`;
+  const filaPoder = (id, pw) => {
     const bloq = PJ.nivel < pw.nivel, tecla = TECLAS.find(t => PJ.barra[t] === id);
-    h += `<div class="wl-h ${bloq ? 'bloq' : ''}" data-hz="${id}" title="${pw.d}"><canvas data-icono="${pw.ic}" width="80" height="80" ${bloq ? '' : `draggable="true" data-arrastra="${id}"`}></canvas>
-      <div><b>${pw.n}</b><small>${bloq ? `Nivel ${pw.nivel}` : `${pw.coste} energía · ${pw.cd} s${tecla ? ` · tecla ${tecla}` : ''}`}</small></div></div>`;
+    return `<div class="wl-h ${bloq ? 'bloq' : ''}" data-hz="${id}" title="${pw.d}"><canvas data-icono="${pw.ic}" width="80" height="80" ${bloq ? '' : `draggable="true" data-arrastra="${id}"`}></canvas>
+      <div><b>${pw.n}</b><small>${bloq ? `Nivel ${pw.nivel}` : `${costeDe(pw) ? costeDe(pw) + ' ' + recurso().n.toLowerCase() + ' · ' : ''}${pw.cd ? pw.cd + ' s' : 'sin recarga'}${tecla ? ` · tecla ${tecla}` : ''}`}</small></div></div>`;
+  };
+  for (const [id, pw] of Object.entries(PODERES)) if (pw.clase === PJ.clase) h += filaPoder(id, pw);
+  h += '<div class="wl-sec">Sombras</div>';
+  for (const [id, pw] of Object.entries(PODERES)){
+    if (!pw.clase) h += filaPoder(id, pw);
   }
   h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p>';
   // talentos de la clase
@@ -2003,12 +2010,12 @@ function actualizarBarra(){
   for (const b of barraEls){
     let cd = 0, bloq = '', num = '', seg = 0;
     if (b.tipo === 'h1') cd = clamp(P.cd1 / c.h1.cd, 0, 1);
-    else if (b.tipo === 'h2') cd = P.en < c.h2.coste ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1);
+    else if (b.tipo === 'h2') cd = P.en < costeDe(c.h2) ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1);
     else if (b.tipo === 'poc'){ cd = clamp(P.cdPoc, 0, 1); num = PJ.pociones; }
     else {
       const id = PJ.barra[b.tecla], pw = PODERES[id];
       if (pw && PJ.nivel < pw.nivel) bloq = 'Nv ' + pw.nivel;
-      else if (pw){ cd = P.en < pw.coste ? 1 : clamp((P.cdP[id] || 0) / pw.cd, 0, 1); seg = P.cdP[id] || 0; }
+      else if (pw){ cd = P.en < costeDe(pw) ? 1 : (pw.cd ? clamp((P.cdP[id] || 0) / pw.cd, 0, 1) : 0); seg = P.cdP[id] || 0; }
     }
     if (b.tipo === 'h2') seg = P.cd2;
     if ((b.tipo === 'h2' || b.tipo === 'poder') && !bloq && P.gcd > 0) cd = Math.max(cd, P.gcd / GCD);
@@ -2117,8 +2124,9 @@ function usarHab(n){
     P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
   } else {
     if (P.cd2 > 0 || P.gcd > 0) return;
-    if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; P.gcd = GCD; vibrar(15); sfx('poder');
+    const coste2 = costeDe(c.h2);
+    if (P.en < coste2){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
+    P.cd2 = c.h2.cd * D.cdK; P.en -= coste2; P.gcd = GCD; vibrar(15); sfx('poder');
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -2132,7 +2140,7 @@ const HAB = {
     efecto('domo', P.x, P.y + 16, 1.2, { vida:.55, detras:true });
     shake = 12; chispas(P.x, P.y, '#f2c46d', 26, 260);
   },
-  sombra1(){ pose('atk', DUR_ATK * .7); golpeArco(68, 1.4, D.fis * .85, .15); efectoCorte(1.1); },
+  sombra1(){ pose('atk', DUR_ATK * .7); golpeArco(68, 1.4, D.fis * .85, .15); efectoCorte(1.1); if (enemigos.some(e => e.hp < e.maxHp && Math.hypot(e.x - P.x, e.y - P.y) < 68 + e.r) && Math.random() < .35) sumarCombo(1); },
   sombra2(){
     efecto('tp', P.x, P.y + 14, .5, { vida:.45 });
     const x0 = P.x, y0 = P.y, a = P.ang;
@@ -2166,8 +2174,9 @@ function usarPoder(id){
   if (PJ.nivel < pw.nivel){ texto(P.x, P.y - 74, `Se aprende en el nivel ${pw.nivel}`, '#9a91c2', 14); return; }
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
   if ((P.cdP[id] || 0) > 0 || P.gcd > 0) return;
-  if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('poder');
+  if (pw.clase && pw.clase !== PJ.clase) return;
+  if (P.en < costeDe(pw)){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
+  P.en -= costeDe(pw); P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('poder');
   apuntar();
   PODER_FN[id]();
 }
@@ -2219,6 +2228,105 @@ const PODER_FN = {
   }
 };
 
+// =====================================================
+//  RECURSOS Y HABILIDADES DE CLASE (estilo WoW)
+// =====================================================
+// guerrero: ira (se gana pegando y recibiendo golpes, se va fuera de combate); sombra: energía rápida y puntos de combo; mago: maná
+const RECURSO = {
+  guerrero: { n:'Ira',     sin:'Sin ira',     col:'linear-gradient(#e2443c,#8a1410)', factor:.5 },
+  sombra:   { n:'Energía', sin:'Sin energía', col:'linear-gradient(#ffe25a,#b89410)', factor:.7 },
+  mago:     { n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 }
+};
+const recurso = () => RECURSO[PJ.clase] || RECURSO.mago;
+// lo que cuesta un poder compartido o una habilidad de clase en el recurso de tu clase
+const costeDe = pw => pw.clase ? pw.coste : Math.round(pw.coste * recurso().factor);
+const recursoLleno = () => PJ.clase === 'guerrero' ? 0 : D.maxEn;
+function ajustarRecurso(D){
+  if (PJ.clase === 'guerrero'){ D.maxEn = 100; D.regEn = 0; }
+  else if (PJ.clase === 'sombra'){ D.maxEn = 100; D.regEn = 14 + D.s.agi * .08; }
+}
+function ganarIra(n){ if (PJ.clase === 'guerrero' && P) P.en = Math.min(D.maxEn, P.en + n); }
+function updateRecurso(dt){
+  if (PJ.clase === 'guerrero'){
+    const combate = E.tipo === 'mazmorra' && enemigos.some(e => e.aggro && !e.muerto);
+    if (!combate) P.en = Math.max(0, P.en - 4 * dt);
+  }
+}
+// puntos de combo (sombra): se ganan con los golpes y los gastan los remates
+// amenaza: se completa con el grupo; provocar hace que el enemigo te ataque a ti
+function provocarA(e){ e.aggro = true; e.objetivo = P; e.provocado = 4; }
+function reducirAmenaza(k){}
+function sumarCombo(n = 1){ if (PJ.clase !== 'sombra') return; P.combo = Math.min(5, (P.combo || 0) + n); }
+function gastarCombo(){ const c = P.combo || 0; P.combo = 0; return c; }
+
+const blanco = (alcance = 110) => objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < alcance + P.objetivo.r ? P.objetivo : enemigoCercano(P.x, P.y, alcance);
+function golpeUnico(e, dmg, critExtra = 0){ if (!e) return false; P.ang = Math.atan2(e.y - P.y, e.x - P.x); herir(e, dmg, critExtra); efectoCorte(1.3); return true; }
+
+Object.assign(PODERES, {
+  // guerrero
+  heroico:  { clase:'guerrero', n:'Golpe heroico',        d:'Un golpe brutal a tu objetivo.', nivel:1,  cd:2,  coste:15, ic:'corte' },
+  grito:    { clase:'guerrero', n:'Grito de batalla',     d:'Furia de sombras durante 30 s (+20% de daño).', nivel:3, cd:30, coste:10, ic:'pilar' },
+  provocar: { clase:'guerrero', n:'Provocar',             d:'Obliga a tu objetivo a atacarte y te da 15 de ira.', nivel:5, cd:8, coste:0, ic:'domo' },
+  torbellino:{ clase:'guerrero', n:'Torbellino',          d:'Giras y golpeas a todos a tu alrededor.', nivel:8, cd:8, coste:25, ic:'luna' },
+  ejecutar: { clase:'guerrero', n:'Ejecutar',             d:'Remata a un objetivo con menos del 20% de vida.', nivel:10, cd:0, coste:20, ic:'corte' },
+  // sombra
+  siniestro:{ clase:'sombra', n:'Golpe siniestro',        d:'Golpe al objetivo. Da 1 punto de combo.', nivel:1, cd:0, coste:40, ic:'corte' },
+  eviscerar:{ clase:'sombra', n:'Eviscerar',              d:'Remate: más daño cuantos más puntos de combo.', nivel:3, cd:0, coste:35, ic:'luna' },
+  picadillo:{ clase:'sombra', n:'Hacer picadillo',        d:'Remate: Celeridad durante 6 s + 3 s por punto de combo.', nivel:5, cd:0, coste:25, ic:'tp' },
+  patada:   { clase:'sombra', n:'Patada',                 d:'Aturde 2 s a tu objetivo e interrumpe la carga de los jefes.', nivel:7, cd:10, coste:25, ic:'corte' },
+  esfumarse:{ clase:'sombra', n:'Esfumarse',              d:'Desapareces un instante: los enemigos te pierden la pista.', nivel:10, cd:20, coste:0, ic:'tp' },
+  // mago
+  escarcha: { clase:'mago', n:'Descarga de escarcha',     d:'Rayo helado que daña y ralentiza.', nivel:1, cd:0, coste:15, ic:'rayo' },
+  nova:     { clase:'mago', n:'Nova de escarcha',         d:'Congela en el sitio a los enemigos cercanos 3 s.', nivel:3, cd:12, coste:25, ic:'domo' },
+  arcana:   { clase:'mago', n:'Explosión arcana',         d:'Explosión que daña a todos a tu alrededor.', nivel:5, cd:0, coste:20, ic:'bola' },
+  evocacion:{ clase:'mago', n:'Evocación',                d:'Recuperas la mitad de tu maná al instante.', nivel:8, cd:60, coste:0, ic:'lluvia' },
+  bloque:   { clase:'mago', n:'Bloque de hielo',          d:'Inmune a todo daño durante 4 s.', nivel:10, cd:90, coste:0, ic:'pilar' }
+});
+const BARRA_CLASE = { guerrero:['heroico','grito','provocar','torbellino'], sombra:['siniestro','eviscerar','picadillo','patada'], mago:['escarcha','nova','arcana','evocacion'] };
+TECLAS.push('5', '6', '7', '8');
+Object.assign(CODIGO_TECLA, { Digit5:'5', Digit6:'6', Digit7:'7', Digit8:'8' });
+
+Object.assign(PODER_FN, {
+  heroico(){ pose('atk', DUR_ATK); const e = blanco(100); if (!golpeUnico(e, D.fis * 2.2)) golpeArco(84, 1.4, D.fis * 2.2); chispas(P.x + Math.cos(P.ang) * 40, P.y - 10, '#ffb347', 12, 160); },
+  grito(){ pose('cast', .45); ponerEfecto('atk_up', 30); chispas(P.x, P.y - 20, '#ff6a3d', 30, 220); shake = 6; },
+  provocar(){
+    const e = blanco(380); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); return; }
+    provocarA(e); ganarIra(15); texto(e.x, e.y - 60, '¡Provocado!', '#ff6a3d', 14);
+  },
+  torbellino(){ pose('cast', .4); golpeCirculo(P.x, P.y, 110, D.fis * 1.6); efecto('domo', P.x, P.y + 16, .9, { vida:.4, detras:true }); chispas(P.x, P.y, '#f2c46d', 24, 240); },
+  ejecutar(){
+    const e = blanco(100);
+    if (!e || e.hp > e.maxHp * .2){ texto(P.x, P.y - 74, 'El objetivo debe tener menos del 20%', '#9a91c2', 13); P.en += 20; return; }
+    pose('atk', DUR_ATK); golpeUnico(e, D.fis * 4.5, .2); shake = 8;
+  },
+  siniestro(){ pose('atk', DUR_ATK * .7); const e = blanco(95); if (golpeUnico(e, D.fis * 1.7, .1)) sumarCombo(1); else { texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.en += 40; } },
+  eviscerar(){
+    if (!(P.combo > 0)){ texto(P.x, P.y - 74, 'Necesitas puntos de combo', '#9a91c2', 13); P.en += 35; return; }
+    const e = blanco(95); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.en += 35; return; }
+    const c = gastarCombo(); pose('atk', DUR_ATK); golpeUnico(e, D.fis * (.8 + .95 * c), .1); texto(P.x, P.y - 90, `Eviscerar (${c})`, '#ffe25a', 13);
+  },
+  picadillo(){
+    if (!(P.combo > 0)){ texto(P.x, P.y - 74, 'Necesitas puntos de combo', '#9a91c2', 13); P.en += 25; return; }
+    const c = gastarCombo(); ponerEfecto('agi_up', 6 + 3 * c); chispas(P.x, P.y - 20, '#ffe25a', 16, 160);
+  },
+  patada(){
+    const e = blanco(100); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); return; }
+    pose('atk', DUR_ATK * .6); golpeUnico(e, D.fis * .5);
+    if (e.jefe){ if (e.aviso > 0){ e.aviso = 0; e.cd = 2; texto(e.x, e.y - 70, '¡Interrumpido!', '#ffe25a', 15); } }
+    else { e.aturdido = 2; texto(e.x, e.y - 60, 'Aturdido', '#ffe3a1', 13); }
+  },
+  esfumarse(){ P.inv = Math.max(P.inv, .8); pose('oculto', .5); reducirAmenaza(.2); for (const e of enemigos) if (!e.jefe && e.objetivo === P) e.aggro = false; efecto('tp', P.x, P.y + 14, .5, { vida:.45 }); },
+  escarcha(){
+    pose('atk', DUR_ATK); const a = P.ang;
+    proys.push({ x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 520, vy:Math.sin(a) * 520, r:9, alt:30,
+      dmg:D.mag * 1.5, vida:1.1, color:'#9fd8ff', aoe:34, spr:'rayo', esc:.5, lento:2 });
+  },
+  nova(){ pose('cast', .4); golpeCirculo(P.x, P.y, 130, D.mag * .5); for (const e of enemigos) if (Math.hypot(e.x - P.x, e.y - P.y) < 130 + e.r) e.raiz = e.jefe ? 1 : 3; chispas(P.x, P.y, '#bff0ff', 40, 260); efecto('domo', P.x, P.y + 16, 1, { vida:.5, detras:true }); },
+  arcana(){ pose('cast', .35); golpeCirculo(P.x, P.y, 120, D.mag * 1.3); chispas(P.x, P.y, '#d08aff', 34, 260); },
+  evocacion(){ P.en = Math.min(D.maxEn, P.en + D.maxEn * .5); pose('cast', .8); chispas(P.x, P.y - 20, '#5591ff', 26, 160); },
+  bloque(){ ponerEfecto('hielo', 4); P.inv = Math.max(P.inv, 4); chispas(P.x, P.y - 20, '#bff0ff', 30, 180); }
+});
+
 function invocarSoldado(dur, i = 0){
   if (soldados.length >= 5){ const s = soldados.shift(); efecto('tp', s.x, s.y + 10, .5, { vida:.4 }); }
   const a = P.ang + Math.PI + (i - 1) * .9;
@@ -2260,6 +2368,7 @@ function herir(e, dmg, critExtra = 0){
   if (crit) dmg *= 1.8;
   e.hp -= dmg; e.flash = .1; e.aggro = true;
   if (!objetivoValido()) P.objetivo = e;
+  ganarIra(3);
   texto(e.x + rand(-8, 8), e.y - e.r - 4, Math.round(dmg), crit ? '#f2c46d' : '#ffffff', crit ? 19 : 14);
   if (e.hp <= 0) matar(e);
 }
@@ -2310,7 +2419,7 @@ function ganarXP(x, sinFactor){
   }
   if (subio){
     sfx('nivel');
-    derivar(); P.hp = D.maxHp; P.en = D.maxEn;
+    derivar(); P.hp = D.maxHp; P.en = recursoLleno();
     const rDesp = rangoCazador();
     chat(`¡Has alcanzado el nivel ${PJ.nivel}!`, '#ffd76a');
     for (const pw of Object.values(PODERES)) if (pw.nivel > nivelAntes && pw.nivel <= PJ.nivel) chat(`Has aprendido un nuevo poder: ${pw.n}.`, '#ffd76a');
@@ -2334,7 +2443,8 @@ const EFECTOS = {
   atk_dn:  { n:'Debilidad',          d:'-20% de daño',               ic:'b_atk_dn', malo:true },
   def_dn:  { n:'Armadura rota',      d:'Recibes 25% más daño',       ic:'b_def_dn', malo:true },
   spi_dn:  { n:'Mente nublada',      d:'-50% de energía recuperada', ic:'b_spi_dn', malo:true },
-  agi_dn:  { n:'Lentitud',           d:'-35% de velocidad',          ic:'b_agi_dn', malo:true }
+  agi_dn:  { n:'Lentitud',           d:'-35% de velocidad',          ic:'b_agi_dn', malo:true },
+  hielo:   { n:'Bloque de hielo',    d:'Inmune al daño',             ic:'b_def_up' }
 };
 // qué debuff deja cada monstruo al golpearte (y con qué probabilidad)
 const DEBUFF_MONSTRUO = { slime:['agi_dn', 3, .35], mantis:['atk_dn', 5, .3], escorpion:['def_dn', 5, .3], arana:['veneno', 4, .45], jabali:['agi_dn', 2, .3] };
@@ -2391,7 +2501,9 @@ function pintarBuffs(forzar){
 
 function golpearJugador(d, src){
   if (P.inv > 0) return;
+  if (estados.hielo) return;
   d *= (1 - D.def) * efMod.recibe();
+  ganarIra(Math.min(20, d / D.maxHp * 120));
   if (src && !src.jefe){
     const db = DEBUFF_MONSTRUO[sprDe(src)];
     if (db && Math.random() < db[2]) ponerEfecto(db[0], db[1]);
@@ -2515,6 +2627,7 @@ function update(dt){
 
   P.hp = Math.min(D.maxHp, P.hp + (D.regHp + (E.tipo !== 'mazmorra' ? D.maxHp * .03 : 0)) * dt);
   P.en = Math.min(D.maxEn, P.en + D.regEn * efMod.regEn() * dt);
+  updateRecurso(dt);
   updateEfectos(dt);
   P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.inv -= dt; P.golpe -= dt; P.gcd = Math.max(0, (P.gcd || 0) - dt);
   if (P.objetivo && !objetivoValido()) P.objetivo = null;
@@ -2598,6 +2711,8 @@ function updateMazmorra(dt){
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1;
     const lento = e.lento > 0 ? .45 : 1;
     e.lento -= dt; e.flash -= dt; e.cd -= dt; e.cdGolpe -= dt;
+    e.aturdido = (e.aturdido || 0) - dt; e.raiz = (e.raiz || 0) - dt;
+    if (e.aturdido > 0){ e.mueve = false; continue; }
     if (e.jefe){ actualizarJefe(e, dx, dy, d, dt); continue; }
 
     if (!e.aggro && d < 300 && lineaVision(e.x, e.y, P.x, P.y)) e.aggro = true;
@@ -2625,6 +2740,7 @@ function updateMazmorra(dt){
       if (wd < 10 || Math.random() < .004){ e.wx = e.hx + rand(-90, 90); e.wy = e.hy + rand(-90, 90); }
       else { vx = (e.wx - e.x) / wd; vy = (e.wy - e.y) / wd; }
     }
+    if (e.raiz > 0){ vx = 0; vy = 0; }
     e.x += vx * vel * dt; e.y += vy * vel * dt;
     e.mueve = Math.abs(vx) + Math.abs(vy) > .05;
     colisiones(e);
@@ -2678,7 +2794,7 @@ function updateMazmorra(dt){
     if (!choca) for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 6){ choca = true; break; }
     if (choca || p.vida <= 0){
       if (choca){
-        golpeCirculo(p.x, p.y, p.aoe, p.dmg);
+        golpeCirculo(p.x, p.y, p.aoe, p.dmg, p.lento ? { lento:p.lento } : {});
         chispas(p.x, p.y - (p.alt || 0), p.color, 14, 170);
       }
       p.vida = 0;
@@ -2738,7 +2854,10 @@ function actualizarHUD(){
   $('hpFill').style.width = (P.hp / D.maxHp * 100) + '%';
   $('hpTxt').textContent = `${Math.ceil(P.hp)} / ${D.maxHp}`;
   $('enFill').style.width = (P.en / D.maxEn * 100) + '%';
-  $('enTxt').textContent = `${Math.floor(P.en)} / ${D.maxEn}`;
+  $('enTxt').textContent = `${recurso().n} ${Math.floor(P.en)} / ${D.maxEn}`;
+  if ($('enFill').dataset.clase !== PJ.clase){ $('enFill').dataset.clase = PJ.clase; $('enFill').style.background = recurso().col; }
+  const cb = PJ.clase === 'sombra' ? (P.combo || 0) : -1;
+  if ($('combo').dataset.n !== String(cb)){ $('combo').dataset.n = cb; $('combo').innerHTML = cb < 0 ? '' : [0, 1, 2, 3, 4].map(i => `<i class="${i < cb ? 'on' : ''}"></i>`).join(''); }
   $('xpFill').style.width = (PJ.xp / PJ.xpSig * 100) + '%';
   $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
   // marco de objetivo: el jefe en combate, o el último enemigo golpeado
@@ -2764,7 +2883,7 @@ function actualizarHUD(){
   if (PJ.puntos) $('btnPuntos').textContent = `${PJ.puntos} puntos por repartir`;
   actualizarBarra();
   const c = CLASES[PJ.clase];
-  const cd1 = clamp(P.cd1 / c.h1.cd, 0, 1), cd2 = P.en < c.h2.coste ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1), cdp = clamp(P.cdPoc, 0, 1);
+  const cd1 = clamp(P.cd1 / c.h1.cd, 0, 1), cd2 = P.en < costeDe(c.h2) ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1), cdp = clamp(P.cdPoc, 0, 1);
   $('mAtk').style.setProperty('--cd', cd1); $('mHab').style.setProperty('--cd', cd2); $('mPoc').style.setProperty('--cd', cdp);
 }
 

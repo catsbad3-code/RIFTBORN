@@ -829,3 +829,17 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .marco.odo b{font:700 12px Rajdhani,sans-serif;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .marco.odo .barra{grid-column:1/-1;height:6px;margin-top:2px}
 .col-obj{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.combo{display:flex;gap:4px;padding:0 0 0 12px}
+.combo i{width:10px;height:10px;border:2px solid #3a2a08;background:#1a1408;box-shadow:0 1px 2px #000}
+.combo i.on{background:#ffd100;box-shadow:0 0 6px #ffb300}
+/* teléfono vertical: la barra deja fuera ataque, habilidad y poción (ya están en los botones grandes) y pasa a dos filas */
+@media (max-width:520px){
+  body.tactil #panelAccion #barra{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 160px)}
+  body.tactil #panelAccion #barra .accion.clic,body.tactil #panelAccion #barra .accion.poc,body.tactil #panelAccion #barra .sep{display:none}
+  body.tactil #panelAccion{left:8px;transform:none}
+  body.tactil #micro{bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+  .marco.odo{display:none}
+}
+@media (max-width:520px) and (orientation:portrait){
+  body.jugando.tactil #chat{top:calc(178px + env(safe-area-inset-top,0px))}
+}
