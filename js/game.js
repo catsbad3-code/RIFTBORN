@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.7.2'; // también en index.html (estilos y scripts)
+const VERSION = '1.8.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -403,6 +403,7 @@ function migrar(pj){
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
   pj.talentos = pj.talentos || {};
+  barraDeClase(pj);
   if (!('5' in pj.barra)){ const h = BARRA_CLASE[pj.clase] || []; ['5', '6', '7', '8'].forEach((t, i) => pj.barra[t] = h[i] || null); }
   pj.logros = pj.logros || {}; pj.tintes = pj.tintes || [];
   pj.emblemas = pj.emblemas || 0;
@@ -1810,11 +1811,10 @@ function renderLibro(){
     return `<div class="wl-h ${bloq ? 'bloq' : ''}" data-hz="${id}" title="${pw.d}"><canvas data-icono="${pw.ic}" width="80" height="80" ${bloq ? '' : `draggable="true" data-arrastra="${id}"`}></canvas>
       <div><b>${pw.n}</b><small>${bloq ? `Nivel ${pw.nivel}` : `${costeDe(pw) ? costeDe(pw) + ' ' + recurso().n.toLowerCase() + ' · ' : ''}${pw.cd ? pw.cd + ' s' : 'sin recarga'}${tecla ? ` · tecla ${tecla}` : ''}`}</small></div></div>`;
   };
-  for (const [id, pw] of Object.entries(PODERES)) if (pw.clase === PJ.clase) h += filaPoder(id, pw);
-  h += '<div class="wl-sec">Sombras</div>';
-  for (const [id, pw] of Object.entries(PODERES)){
-    if (!pw.clase) h += filaPoder(id, pw);
-  }
+  for (const [id, pw] of Object.entries(PODERES)) if (pw.clase === PJ.clase && pw.barra) h += filaPoder(id, pw);
+  h += '<div class="wl-sec">Técnicas de clase</div>';
+  for (const [id, pw] of Object.entries(PODERES)) if (pw.clase === PJ.clase && !pw.barra) h += filaPoder(id, pw);
+
   h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p>';
   // talentos de la clase
   const libres = puntosTalento(PJ) - talentosGastados(PJ);
@@ -2052,6 +2052,10 @@ function pintarIcono(c, spr){
     return;
   }
   if (!spr) return;
+  if (spr.startsWith('px:')){
+    const ic = iconoPx(spr.slice(3), PALETA_CLASE[PJ ? PJ.clase : 'mago']), k = Math.floor(s * .9 / 16);
+    a.imageSmoothingEnabled = false; a.drawImage(ic, (s - 16 * k) / 2, (s - 16 * k) / 2, 16 * k, 16 * k); return;
+  }
   if (!spriteListo){ SPR.addEventListener('load', () => pintarIcono(c, spr), { once:true }); return; }
   const [sx, sy, w, h] = ATLAS[spr], k = Math.min(s * .9 / w, s * .9 / h);
   a.imageSmoothingEnabled = false;
@@ -2445,6 +2449,199 @@ Object.assign(PODER_FN, {
   bloque(){ ponerEfecto('hielo', 4); P.inv = Math.max(P.inv, 4); chispas(P.x, P.y - 20, '#bff0ff', 30, 180); }
 });
 
+// =====================================================
+//  PODERES PROPIOS DE CADA CLASE (íconos y efectos en pixel art)
+// =====================================================
+// íconos de 16×16 dibujados a mano: a contorno, b color principal, c claro, d acento
+const GLIFOS = {
+  espada:  ['..............aa','.............acа','............acba','...........acba.','..........acba..','.........acba...','..a.....acba....','..aa...acba.....','...aa.acba......','....aacba.......','....adaa........','...adda.a.......','..adda...a......','.adda...........','.aaa............','................'],
+  carga:   ['................','........aa......','.......acba.....','......acbba.....','.aaaaacbbbbaaa..','abbbbbbbbbbbbba.','acccccccccccbba.','abbbbbbbbbbbbba.','.aaaaacbbbbaaa..','......acbba.....','.......acba.....','........aa......','................','..d...d...d.....','.d...d...d......','................'],
+  hacha:   ['................','.....aaaa.......','....abbbba......','...abccbbba.....','...abcbbbbaa....','...abbbbaa.a....','....abbaa..a....','.....aa...a.....','.........a......','........ada.....','.......ada......','......ada.......','.....ada........','....ada.........','....aa..........','................'],
+  estandarte:['................','..a.............','..aaaaaaaaa.....','..abbbbbbba.....','..abbccbbba.....','..abcddcbba.....','..abbccbbba.....','..abbbbbbba.....','..abbbbbbba.....','..abba.abba.....','..aba...aba.....','..a.............','..a.............','..a.............','.aaa............','................'],
+  onda:    ['................','................','..a.............','..aba...........','..abba..a.......','..abcba.aba.....','..abccba.aba..a.','..abccba.aba.aba','..abcba.aba..aba','..abba..a....aba','..aba..........a','..a.............','................','.dddddddddddd...','................','................'],
+  trueno:  ['................','.......aaaa.....','......abbba.....','.....abbba......','....abbba.......','...abbbbaaaa....','...abccccbba....','....aaaacba.....','.......acba.....','......acba......','.....acba.......','....acba........','....aba.........','....aa..........','................','................'],
+  escudo:  ['................','..aaaaaaaaaaaa..','..abbbbbbbbbba..','..abccbbbbddba..','..abcbbbbbddba..','..abbbbbbbddba..','..abbbbbbbbbba..','..abddbbbbbbba..','...abddbbbbba...','...abbbbbbbba...','....abbbbbba....','.....abbbba.....','......abba......','.......aa.......','................','................'],
+  llama:   ['.......a........','......aba.......','......aba...a...','.....abba..aba..','..a..abcba.aba..','.aba.abcbaabba..','.abaabccbbabba..','.abbabccdbbbba..','.abbbccddcbbba..','..abbcdddccba...','..abbcddddcba...','...abccddcba....','....abbccba.....','.....aaaaa......','................','................'],
+  daga:    ['................','............aa..','...........aca..','..........acba..','.........acba...','........acba....','.......acba.....','......acba......','..aa.acba.......','...aadda........','....adda........','...adaa.........','..ada...........','..aa............','................','................'],
+  abanico: ['................','.......a........','......aca.......','..a...aca...a...','.aca..aca..aca..','..aca.aca.aca...','...acaacaaca....','....acbbbca.....','.....abdba......','......aba.......','......aba.......','.......a........','................','................','................','................'],
+  gota:    ['.......a........','.......a........','......aba.......','......aba.......','.....abbba......','.....abbba......','....abbbbba.....','....abcbbba.....','...abccbbbba....','...abcbbbbba....','...abbbbbbba....','....abbbbba.....','.....aaaaa......','................','..d.....d.......','................'],
+  ojo:     ['................','................','................','....aaaaaaaa....','..aabbbbbbbbaa..','.abbbccccccbbba.','abbbcaaddaacbbba','abbbcaddddacbbba','abbbcaaddaacbbba','.abbbccccccbbba.','..aabbbbbbbbaa..','....aaaaaaaa....','................','..aaaaaaaaaaaa..','................','................'],
+  espiral: ['................','.....aaaaaa.....','...aabbbbbbaa...','..abbaaaaaabba..','.abba.aaaa.abba.','.aba.abbbba.aba.','.aba.aba.aba.aba','.aba.aba..a.aba.','.aba.abba..aba..','.abba.abbaabba..','..abba.aabba....','...abba.........','....abbaa.......','.....aaa........','................','................'],
+  capa:    ['................','......aaaa......','.....abbbba.....','....abccccba....','....abcaacba....','...abbbbbbbba...','..abbbbbbbbbba..','..abbcbbbbcbba..','.abbcbbbbbbcbba.','.abbbbbbbbbbbba.','.abcbbbbbbbbcba.','abbbbbbbbbbbbbba','abcbbbbbbbbbbcba','aaaaaaaaaaaaaaaa','................','................'],
+  calavera:['................','....aaaaaaaa....','...abbbbbbbba...','..abbbbbbbbbba..','..abbcbbbbcbba..','..abaaabbaaaba..','..abaddbbddaba..','..abaaabbaaaba..','..abbbbaabbbba..','...abbbbbbbba...','....abababab....','....abababab....','.....aaaaaa.....','................','................','................'],
+  copo:    ['................','.......aa.......','....a..ca..a....','.....acbbca.....','..a..acbbca..a..','...accbccbcca...','.aaacbcddcbcaaa.','.acccbddddbccca.','.aaacbcddcbcaaa.','...accbccbcca...','..a..acbbca..a..','.....acbbca.....','....a..ca..a....','.......aa.......','................','................'],
+  nube:    ['................','.....aaaa.......','....abbbba.aa...','..aabbccbbabba..','.abbbccccbbbbba.','abbbbbbbbbbbbba.','abbbbbbbbbbbbba.','.aaaaaaaaaaaaa..','................','..c...c...c.....','.c...c...c...c..','...c...c...c....','..c...c...c.....','................','................','................'],
+  cono:    ['................','aa..............','abaa............','abbbaa..........','abccbbaa........','abccccbbaa......','abcdddccbbaa....','abcddddccbbbaa..','abcdddccbbaa....','abccccbbaa......','abccbbaa........','abbbaa..........','abaa............','aa..............','................','................'],
+  elemental:['................','......aaaa......','.....abbbba.....','....abccccba....','....abdbbdba....','....abbbbbba....','.....abbbba.....','...aabbccbbaa...','..abbbccccbbba..','..abbbccccbbba..','...abbbccbbba...','....abbbbbba....','.....abbbba.....','......abba......','.......aa.......','................'],
+  burbuja: ['................','.....aaaaaa.....','...aaccbbbbaa...','..acc......bba..','..ac........ba..','.ac..........ba.','.ab..........ba.','.ab....dd....ba.','.ab...dddd...ba.','.ab....dd....ba.','.ab..........ba.','..ab........ba..','..abb......bba..','...aabbbbbbaa...','.....aaaaaa.....','................'],
+  meteoro: ['................','.d..............','..d..d..........','...dd.d.........','....ddd.........','.....ddaaaa.....','.....aabbbba....','....abbcbbbba...','....abccbbbba...','....abcbbbbba...','....abbbbbbba...','.....abbbbba....','......aaaaa.....','................','................','................'],
+  estrella:['.......aa.......','.......ca.......','......acba......','......acba......','..aaaacccbaaaa..','..accccddcccba..','...aacdddcbaa...','.....acdcba.....','....acbaabca....','....aba..aba....','...aba....aba...','...aa......aa...','................','................','................','................'],
+  reloj:   ['................','...aaaaaaaaaa...','...abbbbbbbba...','....accccccа....','....abddddba....','.....abddba.....','......abba......','......abba......','.....abccba.....','....abcddcba....','....acddddca....','...abbbbbbbba...','...aaaaaaaaaa...','................','................','................'],
+  puno:    ['................','................','....aaaaaa......','...abbbbbba.....','..abcbcbcbba....','..abcbcbcbbaa...','..abbbbbbbbba...','..abcccbbbbba...','..abbbbbbbbba...','...abbbbbbba....','....abbbbba.....','....abbbbba.....','....aaaaaaa.....','................','................','................']
+};
+const PALETA_CLASE = {
+  guerrero:{ a:'#2a1004', b:'#d8682a', c:'#ffd27a', d:'#c0c8d8' },
+  sombra:  { a:'#100a1e', b:'#5aa83a', c:'#c8ff8a', d:'#b98bff' },
+  mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' }
+};
+const ICONOS_PX = {};
+function iconoPx(glifo, pal){
+  const clave = glifo + JSON.stringify(pal);
+  if (ICONOS_PX[clave]) return ICONOS_PX[clave];
+  const g = GLIFOS[glifo], c = document.createElement('canvas'); c.width = c.height = 16;
+  const a = c.getContext('2d');
+  g.forEach((fila, y) => [...fila].forEach((ch, x) => { const col = pal[ch === 'а' ? 'a' : ch]; if (col){ a.fillStyle = col; a.fillRect(x, y, 1, 1); } }));
+  return ICONOS_PX[clave] = c;
+}
+
+// los 7 poderes de la barra (Q F R 1 2 3 4), distintos para cada clase; los poderes de sombra compartidos quedan fuera
+const PODERES_CLASE = {
+  guerrero:[
+    ['carga',      'Carga',              'Cargas contra tu objetivo y lo aturdes 1,5 s. Te da 20 de ira.', 2, 10, 0, 'carga', '#ff8a3d'],
+    ['hender',     'Hender',             'Tajo enorme frente a ti que golpea a todos los enemigos.', 4, 4, 20, 'hacha', '#ff8a3d'],
+    ['estandarte', 'Estandarte de guerra','Clavas un estandarte 15 s: tú y tu grupo hacéis un 20% más de daño cerca de él.', 6, 25, 10, 'estandarte', '#ffd27a'],
+    ['ondachoque', 'Onda de choque',     'Onda frente a ti que daña y aturde 2 s.', 9, 12, 15, 'onda', '#ffd27a'],
+    ['atronar',    'Atronar',            'Golpe al suelo que daña y ralentiza a todos a tu alrededor.', 12, 6, 20, 'trueno', '#ffe25a'],
+    ['muro',       'Muro de escudo',     'Recibes un 60% menos de daño durante 10 s.', 16, 40, 0, 'escudo', '#c0c8d8'],
+    ['avatar',     'Avatar',             'Durante 20 s haces un 25% más de daño y recuperas un 30% de vida.', 20, 90, 0, 'puno', '#ff5a3a']
+  ],
+  sombra:[
+    ['pasosombra', 'Paso de las sombras','Apareces detrás de tu objetivo; tu siguiente golpe es crítico.', 2, 8, 15, 'capa', '#b98bff'],
+    ['abanico',    'Abanico de cuchillos','Lanzas cuchillos a todos los enemigos cercanos.', 4, 2, 35, 'abanico', '#c8ff8a'],
+    ['venenoletal','Veneno letal',       'Envenenas a tu objetivo: pierde vida durante 8 s. Da 1 punto de combo.', 6, 4, 25, 'gota', '#5aff5a'],
+    ['ceguera',    'Ceguera',            'Tu objetivo queda aturdido 4 s.', 9, 20, 20, 'ojo', '#c8ff8a'],
+    ['tormenta',   'Tormenta de cuchillas','Durante 6 s, cuchillas giran a tu alrededor y cortan a todos.', 12, 30, 25, 'espiral', '#c8ff8a'],
+    ['evasion',    'Evasión',            'Esquivas la mitad de los golpes durante 8 s.', 16, 40, 0, 'capa', '#5aa83a'],
+    ['marca',      'Marca de la muerte', 'Tu objetivo recibe un 30% más de daño 15 s y ganas 5 puntos de combo.', 20, 60, 0, 'calavera', '#ff5a7a']
+  ],
+  mago:[
+    ['traslacion', 'Traslación',         'Te teletransportas hacia donde miras.', 2, 10, 10, 'estrella', '#c8f0ff'],
+    ['fuego',      'Bola de fuego',      'Bola de fuego que explota y deja quemaduras.', 4, 2, 20, 'llama', '#ff8a1e'],
+    ['ventisca',   'Ventisca',           'Hielo cae sobre la zona: daña y ralentiza durante 3 s.', 6, 12, 40, 'nube', '#c8f0ff'],
+    ['conofrio',   'Cono de frío',       'Cono helado frente a ti que daña y ralentiza.', 9, 8, 25, 'cono', '#9fd8ff'],
+    ['elemental',  'Elemental de agua',  'Invocas un elemental que lanza descargas de escarcha durante 20 s.', 12, 30, 35, 'elemental', '#3a8ad8'],
+    ['barrera',    'Barrera de hielo',   'Un escudo absorbe daño igual al 30% de tu vida durante 30 s.', 16, 30, 30, 'burbuja', '#c8f0ff'],
+    ['meteoro',    'Meteoro',            'Un meteoro cae sobre la zona y arrasa todo.', 20, 45, 60, 'meteoro', '#ff5a1e']
+  ]
+};
+// glifos de las 5 habilidades de clase (teclas 5 a 8)
+const GLIFO_HAB = { heroico:'espada', grito:'trueno', provocar:'puno', torbellino:'espiral', ejecutar:'hacha', siniestro:'daga', eviscerar:'daga', picadillo:'reloj', patada:'puno', esfumarse:'capa',
+  escarcha:'copo', nova:'copo', arcana:'estrella', evocacion:'reloj', bloque:'burbuja' };
+for (const [clase, lista] of Object.entries(PODERES_CLASE)) for (const [id, n, d, nivel, cd, coste, glifo, col] of lista)
+  PODERES[id] = { clase, n, d, nivel, cd, coste, ic:'px:' + glifo, col, barra:true };
+for (const [id, g] of Object.entries(GLIFO_HAB)) if (PODERES[id]) PODERES[id].ic = 'px:' + g;
+const TECLAS_BARRA = ['Q', 'F', 'R', '1', '2', '3', '4'];
+function barraDeClase(pj){
+  const lista = PODERES_CLASE[pj.clase] || [];
+  TECLAS_BARRA.forEach((t, i) => { const id = pj.barra[t]; if (!id || !PODERES[id] || PODERES[id].clase !== pj.clase) pj.barra[t] = lista[i] ? lista[i][0] : null; });
+}
+
+// ---------- efectos en pixel art ----------
+let fxPx = [];
+const PX = 3; // tamaño de cada "píxel" de los efectos
+function pxCuadro(x, y, col, t = PX){ ctx.fillStyle = col; ctx.fillRect(Math.round(x / t) * t, Math.round(y / t) * t, t, t); }
+function fxAnillo(x, y, r0, r1, col, vida = .35){ fxPx.push({ t:'anillo', x, y, r0, r1, col, vida, max:vida }); }
+function fxEstela(x1, y1, x2, y2, col, vida = .35){ fxPx.push({ t:'estela', x1, y1, x2, y2, col, vida, max:vida }); }
+function fxCono(x, y, ang, largo, abre, col, vida = .3){ fxPx.push({ t:'cono', x, y, ang, largo, abre, col, vida, max:vida }); }
+function updateFxPx(dt){ for (const f of fxPx){ f.vida -= dt; if (f.paso) f.paso(f, dt); } fxPx = fxPx.filter(f => f.vida > 0); }
+function dibujarFxPx(t){
+  for (const f of fxPx){
+    const k = 1 - f.vida / f.max;
+    ctx.globalAlpha = Math.min(1, f.vida / f.max * 2);
+    if (f.t === 'anillo'){
+      const r = f.r0 + (f.r1 - f.r0) * k, n = Math.max(12, r * .5 | 0);
+      for (let i = 0; i < n; i++){ const a = i / n * TAU; pxCuadro(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * .55, i % 3 ? f.col : '#ffffff'); }
+    } else if (f.t === 'estela'){
+      const n = Math.max(4, Math.hypot(f.x2 - f.x1, f.y2 - f.y1) / 8 | 0);
+      for (let i = 0; i <= n; i++){ const u = i / n; if (Math.random() < .7) pxCuadro(f.x1 + (f.x2 - f.x1) * u + rand(-4, 4), f.y1 + (f.y2 - f.y1) * u - 20 + rand(-10, 10), u > .8 ? '#ffffff' : f.col); }
+    } else if (f.t === 'cono'){
+      for (let i = 0; i < 40; i++){ const d = rand(20, f.largo) * (.4 + k * .6), a = f.ang + rand(-f.abre / 2, f.abre / 2); pxCuadro(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d * .7 - 16, Math.random() < .3 ? '#ffffff' : f.col); }
+    } else if (f.t === 'meteoro'){
+      // cae desde arriba, con la sombra que crece en el suelo
+      const y = f.y - 420 * (1 - k);
+      ctx.globalAlpha = .35 + k * .4; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(f.x, f.y, 18 + k * 50, 6 + k * 18, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#ff5a1e'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, 120, 50, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      for (let i = 0; i < 18; i++) pxCuadro(f.x - 30 * (1 - k) + rand(-14, 14), y - 30 + rand(-14, 14), i % 4 ? '#ff5a1e' : '#ffe25a', 5);
+      for (let i = 0; i < 10; i++) pxCuadro(f.x - 30 * (1 - k) - i * 8 + rand(-6, 6), y - 40 - i * 10, '#ffb347', 4);
+    } else if (f.t === 'zona'){
+      // ventisca: copos que caen dentro de un círculo
+      ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .55, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      for (let i = 0; i < 22; i++){ const a = rand(0, TAU), d = Math.sqrt(Math.random()) * f.r; pxCuadro(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d * .55 - rand(0, 60), Math.random() < .5 ? '#ffffff' : f.col); }
+    } else if (f.t === 'estandarte'){
+      ctx.globalAlpha = 1; const x = Math.round(f.x), y = Math.round(f.y);
+      ctx.drawImage(iconoPx('estandarte', PALETA_CLASE.guerrero), x - 24, y - 60, 48, 48);
+      ctx.fillStyle = '#2a1004'; ctx.fillRect(x - 21, y - 14, 3, 14);
+      ctx.strokeStyle = 'rgba(255,210,122,.6)'; ctx.setLineDash([4, 6]); ctx.lineDashOffset = -t / 60; ctx.beginPath(); ctx.ellipse(x, y, 160, 70, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  ctx.globalAlpha = 1;
+  // aura y cuchillas que siguen al jugador
+  if (estados.avatar){ for (let i = 0; i < 6; i++) pxCuadro(P.x + rand(-18, 18), P.y - rand(0, 60), Math.random() < .5 ? '#ff5a3a' : '#ffb347'); }
+  if (estados.tormenta){ for (let i = 0; i < 6; i++){ const a = t / 120 + i * TAU / 6; pxCuadro(P.x + Math.cos(a) * 46, P.y - 18 + Math.sin(a) * 22, '#c8ff8a'); pxCuadro(P.x + Math.cos(a - .2) * 46, P.y - 18 + Math.sin(a - .2) * 22, '#ffffff'); } }
+  if (P.escudo > 0){ const n = 28; for (let i = 0; i < n; i++){ const a = i / n * TAU + t / 900; pxCuadro(P.x + Math.cos(a) * 30, P.y - 26 + Math.sin(a) * 36, i % 4 ? 'rgba(200,240,255,.75)' : '#ffffff'); } }
+  if (estados.muro){ ctx.drawImage(iconoPx('escudo', PALETA_CLASE.guerrero), Math.round(P.x + 12), Math.round(P.y - 70), 24, 24); }
+}
+// proyectiles en pixel art (bola de fuego, escarcha, cuchillos)
+function dibujarProyPx(p, t){
+  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
+  const y = p.y - (p.alt || 0);
+  if (p.px === 'cuchillo'){ for (let i = 0; i < 4; i++) pxCuadro(p.x - Math.cos(a) * i * 4, y - Math.sin(a) * i * 4, i ? cols[0] : cols[1], 3); return; }
+  for (let i = 0; i < 8; i++) pxCuadro(p.x - Math.cos(a) * i * 5 + rand(-3, 3), y - Math.sin(a) * i * 5 + rand(-3, 3), cols[Math.min(2, i / 3 | 0)], i < 2 ? 5 : 3);
+  for (let i = 0; i < 5; i++) pxCuadro(p.x + rand(-6, 6), y + rand(-6, 6), cols[i % 3], 4);
+}
+// pequeño elemental de agua en pixel art
+function dibujarElemental(s, t){
+  const c = iconoPx('elemental', PALETA_CLASE.mago), x = Math.round(s.x), y = Math.round(s.y + 12 + Math.sin(t / 250) * 2);
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(s.x, s.y + 12, 16, 5, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = Math.min(1, s.vida / .6); ctx.drawImage(c, x - 24, y - 52, 48, 48); ctx.globalAlpha = 1;
+}
+
+// lógica de los poderes nuevos
+function objetivoOMira(alcance){ return blanco(alcance) || null; }
+function danioZona(x, y, r, dmg, op = {}){ golpeCirculo(x, y, r, dmg, op); }
+Object.assign(PODER_FN, {
+  // guerrero
+  carga(){
+    const e = objetivoOMira(320); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.cdP.carga = 0; P.gcd = 0; return; }
+    const x0 = P.x, y0 = P.y, a = Math.atan2(e.y - P.y, e.x - P.x), d = Math.hypot(e.x - P.x, e.y - P.y) - e.r - P.r - 4;
+    let paso = 0; while (paso < d && !solidoEn(P.x + Math.cos(a) * 12, P.y + Math.sin(a) * 12)){ P.x += Math.cos(a) * 6; P.y += Math.sin(a) * 6; paso += 6; }
+    colisiones(P); fxEstela(x0, y0, P.x, P.y, '#ff8a3d', .4); ganarIra(20);
+    if (e.jefe){ if (e.aviso > 0){ e.aviso = 0; e.cd = 2; } } else e.aturdido = 1.5;
+    herir(e, D.fis * .8); shake = 8; texto(e.x, e.y - 60, '¡Cargado!', '#ffd27a', 13);
+  },
+  hender(){ pose('atk', DUR_ATK); golpeArco(120, 2.2, D.fis * 1.8); fxCono(P.x, P.y, P.ang, 120, 2.2, '#ff8a3d'); shake = 6; },
+  estandarte(){ pose('cast', .4); fxPx.push({ t:'estandarte', x:P.x + 30, y:P.y + 10, vida:15, max:15, paso:(f) => { if (Math.hypot(P.x - f.x, P.y - f.y) < 170) ponerEfecto('atk_up', .6); } }); },
+  ondachoque(){
+    pose('atk', DUR_ATK); fxCono(P.x, P.y, P.ang, 170, 1.1, '#ffd27a', .4); shake = 10;
+    for (const e of enemigos){ const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy); if (d < 170 + e.r && Math.abs(angDif(Math.atan2(dy, dx), P.ang)) < .55){ herir(e, D.fis * 1.2); if (!e.jefe) e.aturdido = 2; } }
+  },
+  atronar(){ pose('cast', .35); danioZona(P.x, P.y, 140, D.fis * 1.4, { lento:3 }); fxAnillo(P.x, P.y, 10, 140, '#ffe25a', .4); shake = 9; },
+  muro(){ ponerEfecto('muro', 10); fxAnillo(P.x, P.y, 40, 10, '#c0c8d8', .4); },
+  avatar(){ ponerEfecto('avatar', 20); const c = Math.round(D.maxHp * .3); P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x, P.y - 74, '+' + c, '#7dffa8', 16); fxAnillo(P.x, P.y, 10, 90, '#ff5a3a', .5); banner('¡Avatar!', 'Tu furia no conoce límites'); },
+  // cazador de sombras
+  pasosombra(){
+    const e = objetivoOMira(320); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.cdP.pasosombra = 0; P.gcd = 0; P.en += 15; return; }
+    const x0 = P.x, y0 = P.y, a = Math.atan2(e.y - P.y, e.x - P.x);
+    P.x = e.x + Math.cos(a) * (e.r + 22); P.y = e.y + Math.sin(a) * (e.r + 22); colisiones(P);
+    fxEstela(x0, y0, P.x, P.y, '#b98bff', .35); P.critSig = true; P.ang = a + Math.PI; pose('oculto', .15);
+  },
+  abanico(){ pose('cast', .3); for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - P.x, e.y - P.y) < 140 + e.r){ const a = Math.atan2(e.y - P.y, e.x - P.x); proys.push({ px:'cuchillo', x:P.x, y:P.y, vx:Math.cos(a) * 600, vy:Math.sin(a) * 600, r:6, alt:24, dmg:D.fis * 1.1, vida:.4, color:'#c0c8d8', aoe:1 }); } fxAnillo(P.x, P.y, 10, 140, '#c8ff8a', .3); },
+  venenoletal(){ const e = objetivoOMira(110); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.en += 25; return; } pose('atk', DUR_ATK * .7); golpeUnico(e, D.fis * .6); e.dot = { dps:D.fis * .45, t:8, tick:0, col:'#5aff5a' }; sumarCombo(1); },
+  ceguera(){ const e = objetivoOMira(260); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); return; } if (e.jefe){ texto(e.x, e.y - 60, 'Inmune', '#9a91c2', 13); return; } e.aturdido = 4; texto(e.x, e.y - 60, 'Cegado', '#c8ff8a', 13); fxAnillo(e.x, e.y, 30, 6, '#c8ff8a', .4); },
+  tormenta(){ ponerEfecto('tormenta', 6); },
+  evasion(){ ponerEfecto('evasion', 8); fxAnillo(P.x, P.y, 10, 50, '#5aa83a', .4); },
+  marca(){ const e = objetivoOMira(400); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); return; } e.vuln = 15; P.combo = 5; texto(e.x, e.y - 64, '¡Marcado!', '#ff5a7a', 14); fxAnillo(e.x, e.y, 40, 8, '#ff5a7a', .5); },
+  // mago
+  traslacion(){ const x0 = P.x, y0 = P.y, a = P.ang; let paso = 0; while (paso < 230 && !solidoEn(P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 16)){ P.x += Math.cos(a) * 8; P.y += Math.sin(a) * 8; paso += 8; } colisiones(P); P.inv = Math.max(P.inv, .3); fxEstela(x0, y0, P.x, P.y, '#c8f0ff', .3); fxAnillo(P.x, P.y, 26, 4, '#ffffff', .3); },
+  fuego(){ pose('atk', DUR_ATK); const a = P.ang; proys.push({ px:'fuego', x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 430, vy:Math.sin(a) * 430, r:10, alt:30, dmg:D.mag * 2, vida:1.2, color:'#ff8a1e', aoe:46, quema:true }); },
+  ventisca(){ pose('cast', .6); const p = puntoMira(320); zonas.push({ x:p.x, y:p.y, r:110, ticks:8, cada:.38, t:.2, dmg:D.mag * .6, lento:2 }); fxPx.push({ t:'zona', x:p.x, y:p.y, r:110, col:'#c8f0ff', vida:3.1, max:3.1 }); },
+  conofrio(){ pose('cast', .35); fxCono(P.x, P.y, P.ang, 150, 1.3, '#9fd8ff', .35); for (const e of enemigos){ const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy); if (d < 150 + e.r && Math.abs(angDif(Math.atan2(dy, dx), P.ang)) < .65){ herir(e, D.mag * 1.5); e.lento = 3; } } },
+  elemental(){ pose('invocar', .5); if (soldados.length >= 5) soldados.shift(); soldados.push({ elemental:true, x:P.x - 40, y:P.y + 20, r:14, vida:20, max:20, cd:.5, golpe:0, flip:false, idx:soldados.length }); fxAnillo(P.x - 40, P.y + 20, 30, 4, '#3a8ad8', .4); },
+  barrera(){ P.escudo = Math.round(D.maxHp * .3); P.tEscudo = 30; fxAnillo(P.x, P.y, 10, 40, '#c8f0ff', .4); texto(P.x, P.y - 80, 'Barrera de hielo', '#c8f0ff', 13); },
+  meteoro(){ pose('cast', .6); const p = puntoMira(340); fxPx.push({ t:'meteoro', x:p.x, y:p.y, vida:1, max:1, paso:(f) => { if (f.vida <= .02 && !f.hecho){ f.hecho = true; golpeCirculo(f.x, f.y, 120, D.mag * 4); fxAnillo(f.x, f.y, 10, 130, '#ff5a1e', .5); chispas(f.x, f.y, '#ff8a1e', 50, 320); shake = 16; } } }); }
+});
+
 function invocarSoldado(dur, i = 0){
   if (soldados.length >= 5){ const s = soldados.shift(); efecto('tp', s.x, s.y + 10, .5, { vida:.4 }); }
   const a = P.ang + Math.PI + (i - 1) * .9;
@@ -2465,6 +2662,7 @@ function golpeCirculo(x, y, radio, dmg, op = {}){
     const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy) || 1;
     if (d < radio + e.r){
       herir(e, dmg);
+      if (op.quema) e.dot = { dps:dmg * .15, t:5, tick:1, col:'#ff8a1e' };
       if (op.empuje && !e.jefe){ e.x += dx / d * op.empuje; e.y += dy / d * op.empuje; colisiones(e); }
       if (op.lento) e.lento = op.lento;
     }
@@ -2481,8 +2679,9 @@ function golpeLinea(x1, y1, x2, y2, ancho, dmg){
 function herir(e, dmg, critExtra = 0){
   sfx('golpe', .06);
   if (e.muerto) return;
-  dmg *= rand(.9, 1.1) * efMod.dmg();
-  const crit = Math.random() < D.crit + critExtra;
+  dmg *= rand(.9, 1.1) * efMod.dmg() * (e.vuln > 0 ? 1.3 : 1);
+  const forzado = !FUENTE && P.critSig && critExtra >= 0; if (forzado) P.critSig = false;
+  const crit = forzado || Math.random() < D.crit + critExtra;
   if (crit) dmg *= 1.8;
   e.hp -= dmg; e.flash = .1; e.aggro = true;
   sumarAmenaza(e, FUENTE || P, dmg);
@@ -2564,7 +2763,11 @@ const EFECTOS = {
   def_dn:  { n:'Armadura rota',      d:'Recibes 25% más daño',       ic:'b_def_dn', malo:true },
   spi_dn:  { n:'Mente nublada',      d:'-50% de energía recuperada', ic:'b_spi_dn', malo:true },
   agi_dn:  { n:'Lentitud',           d:'-35% de velocidad',          ic:'b_agi_dn', malo:true },
-  hielo:   { n:'Bloque de hielo',    d:'Inmune al daño',             ic:'b_def_up' }
+  hielo:   { n:'Bloque de hielo',    d:'Inmune al daño',             ic:'b_def_up' },
+  muro:    { n:'Muro de escudo',     d:'Recibes 60% menos daño',     ic:'b_def_up' },
+  avatar:  { n:'Avatar',             d:'+25% de daño',               ic:'b_atk_up' },
+  tormenta:{ n:'Tormenta de cuchillas', d:'Cortas a todos a tu alrededor', ic:'b_atk_up' },
+  evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' }
 };
 // qué debuff deja cada monstruo al golpearte (y con qué probabilidad)
 const DEBUFF_MONSTRUO = { slime:['agi_dn', 3, .35], mantis:['atk_dn', 5, .3], escorpion:['def_dn', 5, .3], arana:['veneno', 4, .45], jabali:['agi_dn', 2, .3] };
@@ -2581,8 +2784,8 @@ function ponerEfecto(id, seg){
   pintarBuffs(true);
 }
 const efMod = {
-  dmg:   () => (estados.atk_up ? 1.2 : 1) * (estados.atk_dn ? .8 : 1),
-  recibe:() => (estados.def_up ? .7 : 1) * (estados.def_dn ? 1.25 : 1),
+  dmg:   () => (estados.atk_up ? 1.2 : 1) * (estados.atk_dn ? .8 : 1) * (estados.avatar ? 1.25 : 1),
+  recibe:() => (estados.def_up ? .7 : 1) * (estados.def_dn ? 1.25 : 1) * (estados.muro ? .4 : 1),
   vel:   () => (estados.agi_up ? 1.25 : 1) * (estados.agi_dn ? .65 : 1),
   regEn: () => (estados.spi_up ? 1.6 : 1) * (estados.spi_dn ? .5 : 1)
 };
@@ -2622,8 +2825,10 @@ function pintarBuffs(forzar){
 function golpearJugador(d, src){
   if (P.inv > 0) return;
   if (estados.hielo) return;
+  if (estados.evasion && Math.random() < .5){ texto(P.x, P.y - 70, 'Esquivado', '#c8ff8a', 13); P.inv = .2; return; }
   if (Math.random() < .05) gastarDur(0, true);
   d *= (1 - D.def) * efMod.recibe();
+  if (P.escudo > 0){ const abs = Math.min(P.escudo, d); P.escudo -= abs; d -= abs; texto(P.x + 14, P.y - 60, `(${Math.round(abs)} absorbido)`, '#c8f0ff', 11); if (d <= 0){ P.inv = .2; return; } }
   ganarIra(Math.min(20, d / D.maxHp * 120));
   if (src && !src.jefe){
     const db = DEBUFF_MONSTRUO[sprDe(src)];
@@ -2749,6 +2954,9 @@ function update(dt){
   P.hp = Math.min(D.maxHp, P.hp + (D.regHp + (E.tipo !== 'mazmorra' ? D.maxHp * .03 : 0)) * dt);
   P.en = Math.min(D.maxEn, P.en + D.regEn * efMod.regEn() * dt);
   updateRecurso(dt);
+  updateFxPx(dt);
+  if (P.escudo > 0){ P.tEscudo -= dt; if (P.tEscudo <= 0) P.escudo = 0; }
+  if (estados.tormenta && E.tipo === 'mazmorra'){ P.tTorm = (P.tTorm || 0) - dt; if (P.tTorm <= 0){ P.tTorm = .5; golpeCirculo(P.x, P.y, 64, D.fis * .5); } }
   updateEfectos(dt);
   P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.inv -= dt; P.golpe -= dt; P.gcd = Math.max(0, (P.gcd || 0) - dt);
   if (P.objetivo && !objetivoValido()) P.objetivo = null;
@@ -2833,7 +3041,8 @@ function updateMazmorra(dt){
     const dx = U.x - e.x, dy = U.y - e.y, d = Math.hypot(dx, dy) || 1;
     const lento = e.lento > 0 ? .45 : 1;
     e.lento -= dt; e.flash -= dt; e.cd -= dt; e.cdGolpe -= dt;
-    e.aturdido = (e.aturdido || 0) - dt; e.raiz = (e.raiz || 0) - dt;
+    e.aturdido = (e.aturdido || 0) - dt; e.raiz = (e.raiz || 0) - dt; e.vuln = (e.vuln || 0) - dt;
+    if (e.dot){ e.dot.t -= dt; e.dot.tick -= dt; if (e.dot.tick <= 0){ e.dot.tick = 1; herir(e, e.dot.dps, -1); if (e.muerto) continue; } if (e.dot.t <= 0) e.dot = null; }
     if (e.aturdido > 0){ e.mueve = false; continue; }
     if (e.jefe){ actualizarJefe(e, dx, dy, d, dt); continue; }
 
@@ -2927,7 +3136,7 @@ function updateMazmorra(dt){
     if (!choca) for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 6){ choca = true; break; }
     if (choca || p.vida <= 0){
       if (choca){
-        golpeCirculo(p.x, p.y, p.aoe, p.dmg, p.lento ? { lento:p.lento } : {});
+        golpeCirculo(p.x, p.y, p.aoe, p.dmg, { lento:p.lento, quema:p.quema });
         chispas(p.x, p.y - (p.alt || 0), p.color, 14, 170);
       }
       p.vida = 0;
@@ -3277,6 +3486,17 @@ function updateAliados(dt){
   // soldados de sombra
   soldados.forEach((s, i) => {
     s.vida -= dt; s.cd -= dt; s.golpe -= dt;
+    if (s.elemental){
+      let obj = objetivoValido() ? P.objetivo : null, md = 400;
+      if (!obj) for (const e of enemigos){ const d = Math.hypot(e.x - s.x, e.y - s.y); if (d < md && e.aggro){ md = d; obj = e; } }
+      const tx = P.x - 50, ty = P.y + 10, dd = Math.hypot(tx - s.x, ty - s.y);
+      if (dd > 30){ s.x += (tx - s.x) / dd * Math.min(220, dd * 3) * dt; s.y += (ty - s.y) / dd * Math.min(220, dd * 3) * dt; colisiones(s); }
+      if (obj && s.cd <= 0 && Math.hypot(obj.x - s.x, obj.y - s.y) < 420){
+        s.cd = 1.4; const a = Math.atan2(obj.y - s.y, obj.x - s.x);
+        proys.push({ px:'hielo', x:s.x, y:s.y, vx:Math.cos(a) * 460, vy:Math.sin(a) * 460, r:8, alt:30, dmg:D.mag * .6, vida:1.1, color:'#9fd8ff', aoe:30, lento:1.5 });
+      }
+      return;
+    }
     if (Math.hypot(s.x - P.x, s.y - P.y) > 520){ s.x = P.x - 40; s.y = P.y + 10; colisiones(s); }
     let obj = null, md = 380;
     for (const e of enemigos){
@@ -3305,7 +3525,7 @@ function updateAliados(dt){
     z.t -= dt;
     if (z.t <= 0 && z.ticks > 0){
       z.t = z.cada; z.ticks--;
-      golpeCirculo(z.x, z.y, z.r, z.dmg);
+      golpeCirculo(z.x, z.y, z.r, z.dmg, z.lento ? { lento:z.lento } : {});
       chispas(z.x + rand(-z.r, z.r) * .7, z.y + rand(-z.r, z.r) * .5, '#8a6bff', 6, 90);
     }
   }
@@ -5147,7 +5367,7 @@ function draw(t){
   if (M) lista.push({ y:M.y, f:() => dibujarMascota(t) });
   if (E.tipo === 'ciudad') for (const p of portales) lista.push({ y:p.y + 40, f:() => dibujarPortalCiudad(p, t) });
   if (E.props) for (const pr of E.props){ if (pr.x > cam.x - 200 && pr.x < cam.x + W + 200 && pr.y > cam.y - 40 && pr.y < cam.y + H + 300) lista.push({ y:pr.y, f:() => dibujarProp(pr) }); }
-  for (const s of soldados) lista.push({ y:s.y, f:() => dibujarSoldado(s, t) });
+  for (const s of soldados) lista.push({ y:s.y, f:() => s.elemental ? dibujarElemental(s, t) : dibujarSoldado(s, t) });
   if (E.tipo === 'mazmorra') for (const g of GRUPO) lista.push({ y:g.y, f:() => dibujarAliado(g, t) });
   if (E.npcs) for (const n of E.npcs) lista.push({ y:n.y, f:() => (n.spr || n.cam) ? dibujarNPCSprite(n, t) : dibujarNPC(n.x, n.y, n.ropa, n.pelo, t) });
   const ahora = performance.now();
@@ -5175,6 +5395,7 @@ function draw(t){
 
   for (const p of proysE){ ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ff4f8b'; ctx.lineWidth = 2; ctx.stroke(); }
   for (const p of proys){
+    if (p.px){ dibujarProyPx(p, t); continue; }
     if (spriteListo && p.spr){
       const a = Math.atan2(p.vy, p.vx);
       ctx.globalAlpha = Math.min(1, p.vida * 4);
@@ -5189,6 +5410,7 @@ function draw(t){
   }
 
   dibujarEfectos(false);
+  dibujarFxPx(t);
   for (const p of particulas){ ctx.globalAlpha = Math.max(0, p.vida / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
   ctx.globalAlpha = 1;
   ctx.textAlign = 'center';
