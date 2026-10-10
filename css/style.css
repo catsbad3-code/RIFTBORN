@@ -734,3 +734,22 @@ body.tactil.bt-chico #movil{zoom:.82}
 body.tactil.bt-chico #panelAccion{zoom:.85}
 body.tactil.bt-grande #movil{zoom:1.22}
 body.tactil.bt-grande #panelAccion{zoom:1.15}
+
+/* =================== VENTANAS DENTRO DE LA PANTALLA (teléfono) =================== */
+/* ninguna ventana se sale: la cabecera siempre se ve y lo de adentro se desplaza con el dedo */
+body.tactil .wv{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
+body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+@media (max-height:500px) and (pointer:coarse){
+  /* arriba deja lugar al ícono redondo de la ventana; abajo, a las pestañas del personaje */
+  body.tactil #wBolsa,body.tactil #wPj,body.tactil #wLibro,body.tactil #wMis{top:calc(18px + env(safe-area-inset-top,0px)) !important;bottom:auto !important;
+    max-height:calc(100vh - 26px) !important;max-height:calc(100dvh - 26px) !important}
+  body.tactil #wBolsa{right:calc(8px + env(safe-area-inset-right,0px)) !important;left:auto !important;transform:none !important}
+  body.tactil #wPj{left:calc(8px + env(safe-area-inset-left,0px)) !important;right:auto !important;width:min(360px,52vw) !important;
+    max-height:calc(100vh - 54px) !important;max-height:calc(100dvh - 54px) !important}
+  body.tactil #wLibro{left:50% !important;right:auto !important;transform:translateX(-50%) !important;width:min(420px,62vw) !important}
+  body.tactil #wMis{left:50% !important;right:auto !important;transform:translateX(-50%) !important;width:min(620px,calc(100vw - 16px)) !important}
+  body.tactil .wv-cab{height:32px}
+  body.tactil .wv-retrato{width:46px;height:46px;top:-10px;left:-6px}
+  body.tactil .wv-retrato.ico{font-size:20px}
+  body.tactil .wv-x{width:28px;height:24px;top:4px}
+}
