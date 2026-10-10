@@ -1,8 +1,34 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.7.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.7.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
+// ---------- todo el mundo en pixel art ----------
+// cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
+// Al dibujar una parte de la hoja original se usa su versión pixelada; el mundo se dibuja sin suavizar.
+const PX_HOJAS = {"img/terr.png":{"src":"img/px/terr.png","r":{"0,0":[2,2,48,48],"66,0":[52,2,48,48],"132,0":[102,2,48,48],"198,0":[152,2,48,48],"264,0":[202,2,48,48],"330,0":[252,2,48,48],"396,0":[302,2,48,48],"462,0":[352,2,48,48],"528,0":[402,2,48,48],"594,0":[452,2,48,48],"660,0":[502,2,70,79],"0,107":[574,2,46,56],"86,107":[622,2,40,31],"176,107":[664,2,40,34],"268,107":[706,2,45,35],"377,107":[753,2,42,27],"479,107":[797,2,32,41],"557,107":[831,2,50,42]}},"img/ciu.webp":{"src":"img/px/ciu.png","r":{"0,0":[2,2,93,111],"95,0":[97,2,22,83],"127,0":[121,2,87,107],"216,0":[210,2,74,85],"310,0":[286,2,86,105],"398,0":[374,2,18,73],"425,0":[394,2,79,76],"532,0":[475,2,79,76],"639,0":[556,2,79,76],"746,0":[637,2,79,76],"853,0":[718,2,79,76],"960,0":[799,2,23,74],"0,113":[824,2,65,89],"67,113":[891,2,66,89],"135,113":[959,2,62,88],"199,113":[2,115,52,83],"253,113":[56,115,53,82],"308,113":[111,115,88,64],"398,113":[201,115,48,48],"464,113":[251,115,48,48],"530,113":[301,115,49,49],"596,113":[352,115,49,49],"662,113":[403,115,48,48],"728,113":[453,115,48,48],"794,113":[503,115,49,49],"860,113":[554,115,48,48],"926,113":[604,115,48,48],"0,204":[654,115,48,48],"66,204":[704,115,48,48],"132,204":[754,115,20,37],"167,204":[776,115,18,32],"195,204":[796,115,17,34],"220,204":[815,115,22,30],"251,204":[839,115,10,24],"270,204":[851,115,22,29],"301,204":[875,115,59,37],"362,204":[936,115,57,29]}},"img/edif.png":{"src":"img/px/edif.png","r":{"0,0":[2,2,104,79],"170,0":[108,2,106,78],"343,0":[216,2,91,91],"492,0":[309,2,94,89],"645,0":[405,2,104,82],"0,149":[511,2,90,69],"147,149":[603,2,105,56],"319,149":[710,2,100,65],"483,149":[812,2,97,73],"642,149":[911,2,84,72],"0,268":[2,95,90,71],"147,268":[94,95,95,78],"302,268":[191,95,23,65],"341,268":[216,95,64,41],"447,268":[282,95,55,68],"537,268":[339,95,61,44],"638,268":[402,95,30,43],"707,268":[434,95,75,77]}},"img/mu.webp":{"src":"img/px/mu.png","r":{"0,0":[2,2,85,63],"139,0":[89,2,121,78],"262,0":[212,2,150,78],"414,0":[364,2,76,77],"492,0":[442,2,73,75],"567,0":[517,2,76,72],"0,104":[595,2,102,59],"122,104":[699,2,86,54],"231,104":[787,2,73,66],"306,104":[862,2,48,61],"356,104":[912,2,37,57],"395,104":[2,82,77,56],"474,104":[81,82,78,56],"554,104":[161,82,56,56],"612,104":[219,82,72,49],"0,175":[293,82,74,48],"76,175":[369,82,74,47],"152,175":[445,82,72,47],"226,175":[519,82,109,35]}},"img/spr.png":{"src":"img/px/spr.png","r":{"0,0":[2,2,49,105],"61,0":[53,2,49,105],"123,0":[104,2,49,105],"184,0":[155,2,43,105],"238,0":[200,2,44,84],"293,0":[246,2,40,85],"344,0":[288,2,31,85],"384,0":[321,2,30,85],"423,0":[353,2,60,91],"498,0":[415,2,58,91],"571,0":[475,2,61,91],"647,0":[538,2,67,90],"731,0":[607,2,67,90],"815,0":[676,2,72,88],"905,0":[750,2,59,86],"0,130":[811,2,75,96],"93,130":[888,2,71,94],"181,130":[961,2,52,91],"246,130":[2,109,69,86],"332,130":[73,109,47,83],"391,130":[122,109,40,82],"442,130":[164,109,86,16],"661,130":[252,109,60,70],"742,130":[314,109,34,28],"800,130":[350,109,86,32],"0,249":[438,109,86,62],"107,249":[526,109,174,82],"283,249":[702,109,71,95],"404,249":[775,109,75,88],"550,249":[852,109,158,141],"738,249":[2,252,37,27],"785,249":[41,252,86,81]}},"img/casas.webp":{"src":"img/px/casas.png","r":{"0,0":[2,2,158,189],"178,0":[162,2,186,155],"399,0":[350,2,126,117],"527,0":[478,2,82,115],"611,0":[562,2,106,118],"719,0":[670,2,122,117],"849,0":[794,2,117,137],"974,0":[913,2,100,88]}},"img/par.webp":{"src":"img/px/par.png","r":{"0,0":[2,2,110,88],"112,0":[114,2,192,31],"306,0":[308,2,16,22]}},"img/band.png":{"src":"img/px/band.png","r":{"0,0":[2,2,32,64],"100,0":[36,2,32,64],"200,0":[70,2,32,64],"300,0":[104,2,32,64],"400,0":[138,2,32,64],"500,0":[172,2,32,64],"600,0":[206,2,32,64],"700,0":[240,2,32,64]}},"img/portal.webp":{"src":"img/px/portal.png","r":{"0,0":[2,2,66,122],"66,0":[70,2,66,122],"132,0":[138,2,66,122],"198,0":[206,2,66,122],"264,0":[274,2,66,122],"330,0":[342,2,66,122],"396,0":[410,2,66,122],"462,0":[478,2,66,122],"528,0":[546,2,66,122],"0,122":[614,2,66,122],"66,122":[682,2,66,122],"132,122":[750,2,66,122],"198,122":[818,2,66,122],"264,122":[886,2,66,122],"330,122":[954,2,66,122],"396,122":[2,126,66,122],"462,122":[70,126,66,122],"528,122":[138,126,66,122],"0,244":[206,126,66,122],"66,244":[274,126,66,122],"132,244":[342,126,66,122],"198,244":[410,126,66,122],"264,244":[478,126,66,122],"330,244":[546,126,66,122],"396,244":[614,126,66,122],"462,244":[682,126,66,122],"528,244":[750,126,66,122],"0,366":[818,126,57,105],"66,366":[877,126,57,105],"132,366":[936,126,57,105],"198,366":[2,250,57,105],"264,366":[61,250,57,105],"330,366":[120,250,57,105],"396,366":[179,250,57,105],"462,366":[238,250,57,105],"528,366":[297,250,57,105],"0,488":[356,250,66,122],"66,488":[424,250,66,122],"132,488":[492,250,66,122],"198,488":[560,250,66,122],"264,488":[628,250,66,122],"330,488":[696,250,66,122],"396,488":[764,250,66,122],"462,488":[832,250,66,122],"528,488":[900,250,66,122],"0,610":[2,374,66,122],"66,610":[70,374,66,122],"132,610":[138,374,66,122],"198,610":[206,374,66,122],"264,610":[274,374,66,122],"330,610":[342,374,66,122],"396,610":[410,374,66,122],"462,610":[478,374,66,122],"528,610":[546,374,66,122]}},"img/estatua.webp":{"src":"img/px/estatua.png","r":{"0,0":[2,2,128,190]}},"img/mostrador.webp":{"src":"img/px/mostrador.png","r":{"0,0":[2,2,205,61]}},"img/tex2.webp":{"src":"img/px/tex2.png","r":{"0,0":[2,2,135,84],"135,0":[139,2,135,84],"270,0":[276,2,135,84],"405,0":[413,2,135,84],"540,0":[550,2,135,84],"675,0":[687,2,135,84]}}};
+const PX_IMG = {};
+let pxPend = Object.keys(PX_HOJAS).length;
+for (const [orig, h] of Object.entries(PX_HOJAS)){
+  const im = new Image();
+  im.onload = () => { h.listo = true; if (--pxPend === 0) setTimeout(rehacerPatrones, 0); };
+  im.src = h.src + '?v=' + VERSION; h.img = im; PX_IMG[orig] = h;
+}
+// los patrones de suelo se arman con las versiones pixeladas
+function rehacerPatrones(){ if (typeof enJuego !== 'undefined' && enJuego && typeof construirBarra === 'function') construirBarra(); for (const im of [typeof TERR_IMG !== 'undefined' && TERR_IMG, typeof TEX2_IMG !== 'undefined' && TEX2_IMG, typeof CIU_IMG !== 'undefined' && CIU_IMG, typeof MU_IMG !== 'undefined' && MU_IMG]) if (im && im.complete && im.naturalWidth && im.onload) im.onload(); }
+const pxDe = img => { if (!img || !img.src) return null; if (img.__px !== undefined) return img.__px; const m = img.src.match(/img\/[^?]+/); return img.__px = (m && PX_IMG[m[0]]) || null; };
+{
+  const dibujar = CanvasRenderingContext2D.prototype.drawImage;
+  CanvasRenderingContext2D.prototype.drawImage = function (img, ...a){
+    const h = pxDe(img);
+    if (h && h.listo){
+      if (a.length === 8){ const r = h.r[Math.round(a[0]) + ',' + Math.round(a[1])]; if (r) return dibujar.call(this, h.img, r[0], r[1], r[2], r[3], a[4], a[5], a[6], a[7]); }
+      else { const r = h.r['0,0']; if (r){ const [dx, dy, dw = img.naturalWidth, dh = img.naturalHeight] = a; return dibujar.call(this, h.img, r[0], r[1], r[2], r[3], dx, dy, dw, dh); } }
+    }
+    return dibujar.call(this, img, ...a);
+  };
+}
+
 const TAU = Math.PI * 2;
 const T = 48; // tamaño de casilla
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -1434,7 +1460,7 @@ addEventListener('keydown', e => {
   if (!enJuego) return;
   if (e.code === 'Escape'){
     if (!$('wMenu').classList.contains('oculto')){ $('wMenu').classList.add('oculto'); return; }
-    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else if (objetivoValido()) P.objetivo = null; else pausar(); }
+    if (pantallaActual === null){ if (hayVentanas()) cerrarVentanas(); else if (objetivoValido()) P.objetivo = null; else if (amigoValido()) P.amigo = null; else pausar(); }
     else if (PANELES_JUEGO.includes(pantallaActual)) pantalla(null);
     return;
   }
@@ -1462,6 +1488,7 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse'){
     mouse.x = e.clientX; mouse.y = e.clientY;
     if (E.tipo === 'mazmorra'){ const en = enemigoEnPantalla(e.clientX, e.clientY); if (en) fijarObjetivo(en); }
+    else { const n = npcEnPantalla(e.clientX, e.clientY); if (n){ P.amigo = n; sfx('click'); } }
     if (e.button === 0) mouse.izq = true;
     if (e.button === 2) usarHab(2);
     return;
@@ -1471,7 +1498,7 @@ cv.addEventListener('pointerdown', e => {
   if (E.tipo === 'mazmorra'){
     const toc = enemigoEnPantalla(e.clientX, e.clientY, 70);
     if (toc){ fijarObjetivo(toc); vibrar(10); return; }
-  }
+  } else { const n = npcEnPantalla(e.clientX, e.clientY); if (n){ P.amigo = n; vibrar(10); sfx('click'); return; } }
   if (e.clientX < W * .6 && !sticks.mov) sticks.mov = { id:e.pointerId, ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY };
 });
 cv.addEventListener('pointermove', e => {
@@ -1999,6 +2026,7 @@ function pintarIcono(c, spr){
   if (!spr) return;
   if (!spriteListo){ SPR.addEventListener('load', () => pintarIcono(c, spr), { once:true }); return; }
   const [sx, sy, w, h] = ATLAS[spr], k = Math.min(s * .9 / w, s * .9 / h);
+  a.imageSmoothingEnabled = false;
   a.drawImage(SPR, sx, sy, w, h, (s - w * k) / 2, (s - h * k) / 2, w * k, h * k);
 }
 
@@ -2102,6 +2130,40 @@ function enemigoEnPantalla(sx, sy, radio = 46){
 // a quién ataca un enemigo (objetivo del objetivo)
 const unidadJugador = () => ({ nombre:PJ.nombre, hp:P.hp, maxHp:D.maxHp, color:'#7fc8ff' });
 function objetivoDe(e){ return e && e.objetivo && e.objetivo !== P ? e.objetivo : unidadJugador(); }
+// personaje amistoso seleccionado (ciudad e interiores)
+const amigoValido = () => !!(P && P.amigo && E.npcs && E.npcs.includes(P.amigo));
+function npcEnPantalla(sx, sy){
+  if (!E.npcs) return null;
+  const wx = sx + cam.x, wy = sy + cam.y; let toc = null, md = 44 * 44;
+  for (const n of E.npcs){ const d = (n.x - wx) ** 2 + (n.y - 22 - wy) ** 2; if (d < md){ md = d; toc = n; } }
+  return toc;
+}
+// retrato pixelado del objetivo: el dibujo del monstruo o del personaje
+let retratoDe = null;
+function pintarRetratoObjetivo(u){
+  if (u === retratoDe) return; retratoDe = u;
+  const c = $('oRetrato'); if (!c) return;
+  const a = c.getContext('2d'), W = c.width;
+  a.clearRect(0, 0, W, W);
+  const g = a.createRadialGradient(W / 2, W / 2, 4, W / 2, W / 2, W / 2);
+  g.addColorStop(0, u && (u.cam || u.spr) ? '#2a4a2a' : '#4a1a20'); g.addColorStop(1, '#0c0812'); a.fillStyle = g; a.fillRect(0, 0, W, W);
+  if (!u) return;
+  a.imageSmoothingEnabled = false;
+  let img = null, sx, sy, w, h, cabeza = false;
+  if (u.cam && CAM[u.cam]){ img = CAM_IMG; [sx, sy, w, h] = CAM[u.cam].ab[0]; cabeza = true; }
+  else if (u.spr && NPC_SPR[u.spr]){ img = NPC_IMG; [sx, sy, w, h] = NPC_SPR[u.spr]; cabeza = true; }
+  else {
+    const n = sprDe(u); if (!n || !MON.tipos[n]) return;
+    const idx = (u.jefe && n === 'arana') ? MON.tipos.arana_jefe : (u.jefe && n === 'jabali') ? MON.tipos.jabali_jefe : MON.tipos[n].walk[0];
+    img = MON_IMG; [sx, sy, w, h] = MON.cuadros[idx];
+  }
+  if (!img.complete || !img.naturalWidth){ retratoDe = null; return; }
+  // personajes: la cabeza y los hombros; monstruos: entero
+  if (cabeza){ h = Math.min(h, Math.round(w * .95)); }
+  const k = Math.max(1, Math.floor(Math.min((W - 6) / w, (W - 6) / h)));
+  const dw = w * k, dh = h * k;
+  a.drawImage(img, sx, sy, w, h, Math.round((W - dw) / 2), cabeza ? 4 : Math.round(W - dh - 4), dw, dh);
+}
 function objetivoTactil(max = 360){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < Math.max(max, 420)) return P.objetivo;
   return enemigoCercano(P.x, P.y, max);
@@ -2895,19 +2957,27 @@ function actualizarHUD(){
   if ($('combo').dataset.n !== String(cb)){ $('combo').dataset.n = cb; $('combo').innerHTML = cb < 0 ? '' : [0, 1, 2, 3, 4].map(i => `<i class="${i < cb ? 'on' : ''}"></i>`).join(''); }
   $('xpFill').style.width = (PJ.xp / PJ.xpSig * 100) + '%';
   $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
-  // marco de objetivo: el jefe en combate, o el último enemigo golpeado
+  // marco de objetivo: tu objetivo, el jefe en combate, o el personaje amistoso que seleccionaste
   let ob = null;
   if (objetivoValido()) ob = P.objetivo;
   else if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
+  const amigo = !ob && amigoValido() ? P.amigo : null;
   const mo = $('marcoObjetivo');
-  mo.classList.toggle('oculto', !ob);
+  mo.classList.toggle('oculto', !ob && !amigo);
+  mo.classList.toggle('amistoso', !!amigo);
+  pintarRetratoObjetivo(ob || amigo);
+  if (amigo){
+    mo.classList.remove('elite');
+    $('oNombre').textContent = amigo.nombre;
+    $('oRango').textContent = 'Amistoso'; $('oRango').style.color = '#7dffa8';
+    $('oFill').style.width = '100%'; $('oTxt').textContent = amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria';
+  }
   if (ob){
     mo.classList.toggle('elite', !!ob.jefe);
     $('oNombre').textContent = ob.nombre;
     $('oRango').textContent = ob.jefe ? 'Jefe' : (E.R ? E.R.l : ''); $('oRango').style.color = E.R ? E.R.color : '#fff';
     $('oFill').style.width = Math.max(0, ob.hp / ob.maxHp * 100) + '%';
     $('oTxt').textContent = `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`;
-    $('oColor').style.background = ob.color;
     const oo = objetivoDe(ob);
     $('odoNombre').textContent = oo.nombre;
     $('odoFill').style.width = Math.max(0, oo.hp / oo.maxHp * 100) + '%';
@@ -3347,7 +3417,7 @@ CESPED_IMG.onload = () => {
   const poner = () => { PATRONES.cesped = ctx.createPattern(CESPED_IMG, 'repeat'); };
   if (terrListo) poner(); else TERR_IMG.addEventListener('load', () => setTimeout(poner, 5), { once:true });
 };
-CESPED_IMG.src = 'img/cesped.webp';
+CESPED_IMG.src = 'img/px/cesped.png?v=' + VERSION;
 
 // =====================================================
 //  CIUDAD MODERNA Y PORTALES ANIMADOS (sprites)
@@ -4065,6 +4135,7 @@ function updateCaminantes(dt){
 function dibujarNPCSprite(n, t){
   const pie = n.y + 12;
   ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(n.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
+  if (P && n === P.amigo){ ctx.strokeStyle = 'rgba(125,255,168,.9)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t / 50; ctx.beginPath(); ctx.ellipse(n.x, pie, 22, 8, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
   const alto = 66;
   if (n.cam){
     if (!camListo) return;
@@ -4987,6 +5058,7 @@ function draw(t){
   if (!enJuego){ dibujarMenuFondo(t); return; }
   ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, W, H);
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   const px1 = v => Math.round(v * DPR) / DPR;
   ctx.translate(px1(-cam.x + (Math.random() - .5) * shake), px1(-cam.y + (Math.random() - .5) * shake));
 

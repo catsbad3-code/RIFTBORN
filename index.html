@@ -14,7 +14,7 @@
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.7.0">
+<link rel="stylesheet" href="css/style.css?v=1.7.1">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -38,7 +38,7 @@
       <div class="marco-nombre"><span id="oNombre"></span><span id="oRango" class="rango-txt"></span></div>
       <div class="barra vida"><span id="oFill"></span><em id="oTxt"></em></div>
     </div>
-    <div class="retrato ret-obj"><span id="oColor"></span></div>
+    <div class="retrato ret-obj"><canvas id="oRetrato" width="64" height="64"></canvas></div>
   </div>
   <div class="combo" id="combo" aria-label="Puntos de combo"></div>
   <div class="marco odo oculto" id="marcoOdO" title="Objetivo de tu objetivo"><small>ataca a</small><b id="odoNombre"></b><div class="barra vida"><span id="odoFill"></span></div></div>
@@ -87,7 +87,7 @@
   <div class="wl-izq">
     <button class="wbtn" id="tabReg" type="button">Crear cuenta</button>
     <button class="wbtn" id="tabEntrar" type="button">Ya tengo cuenta</button>
-    <small class="wl-version">Versión 1.7.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
+    <small class="wl-version">Versión 1.7.1 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
   </div>
   <div class="wl-der">
     <button class="wbtn" type="button" data-ir="pAyuda">Cómo jugar</button>
@@ -314,7 +314,7 @@
   <button class="btn principal" id="btnRevivir">Despertar en la posada</button>
 </div>
 
-<script src="auth/auth.js?v=1.7.0"></script>
-<script src="js/game.js?v=1.7.0"></script>
+<script src="auth/auth.js?v=1.7.1"></script>
+<script src="js/game.js?v=1.7.1"></script>
 </body>
 </html>
