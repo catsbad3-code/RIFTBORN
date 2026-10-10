@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.9.3'; // también en index.html (estilos y scripts)
+const VERSION = '1.10.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -348,8 +348,8 @@ function dineroTxt(c){
 // =====================================================
 //  NAVEGACIÓN
 // =====================================================
-const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas', 'pEvento'];
-const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas','pEvento'];
+const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas', 'pEvento', 'pCasino'];
+const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas','pEvento','pCasino'];
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
@@ -1005,7 +1005,7 @@ function dibujarAsociacionInt(t){
 // =====================================================
 //  CASINO: tres tragaperras y una ruleta
 // =====================================================
-const CAS = {"fachada":[0,0,184,168],"tragaperras":[186,0,48,76],"ruleta":[236,0,132,88],"alfombra":[370,0,48,48],"pared":[420,0,64,88],"sim0":[486,0,28,28],"sim1":[516,0,28,28],"sim2":[546,0,28,28],"sim3":[576,0,28,28],"sim4":[606,0,28,28],"sim5":[636,0,28,28],"fogon":[666,0,60,64]};
+const CAS = {"fachada":[0,0,184,168],"tragaperras":[186,0,48,76],"ruleta":[236,0,132,88],"alfombra":[370,0,48,48],"pared":[420,0,64,88],"sim0":[486,0,28,28],"sim1":[516,0,28,28],"sim2":[546,0,28,28],"sim3":[576,0,28,28],"sim4":[606,0,28,28],"sim5":[636,0,28,28],"fogon":[666,0,60,64],"mesa":[728,0,200,120]};
 const CAS_IMG = new Image();
 let casListo = false, PAT_ALFOMBRA = null;
 CAS_IMG.onload = () => {
@@ -1027,12 +1027,12 @@ function crearCasino(){
   [2.5, 4.5, 6.5].forEach((c, i) => {
     setMueble(G, Math.floor(c), 1, Math.floor(c) + 1, 2);
     G.props.push({ cas:'tragaperras', x:c * T, y:2 * T + 6, luz:i });
-    G.inter.push({ x:c * T, y:2.9 * T, r:40, texto:'Jugar a la tragaperras', accion:() => abrirTragaperras(i) });
+    G.inter.push({ x:c * T, y:2.9 * T, r:40, texto:`Jugar: ${['tragaperras de 3 líneas', 'tragaperras de 5 líneas', 'tragaperras de 7 líneas'][i]}`, accion:() => abrirTragaperras(i) });
   });
   // la ruleta
-  setMueble(G, 7, 4, 10, 6);
-  G.props.push({ cas:'ruleta', x:8.5 * T, y:6 * T });
-  G.inter.push({ x:8.5 * T, y:6.6 * T, r:60, texto:'Jugar a la ruleta', accion:abrirRuleta });
+  setMueble(G, 6, 4, 11, 6);
+  G.props.push({ cas:'ruleta', x:8.3 * T, y:6.3 * T });
+  G.inter.push({ x:8.3 * T, y:6.75 * T, r:70, texto:'Jugar a la ruleta', accion:abrirRuleta });
   // Adolfo, el chef, con su fogón en la esquina
   setMueble(G, 9, 1, 11, 2);
   G.props.push({ cas:'fogon', x:9.9 * T, y:2 * T + 4 });
@@ -1092,8 +1092,8 @@ function dibujarPropCasino(pr){
     }
     return;
   }
-  ctx.fillRect(pr.x - 60, pr.y - 6, 120, 8);
-  dibujarCas('ruleta', pr.x, pr.y);
+  ctx.fillRect(pr.x - 94, pr.y - 6, 188, 8);
+  dibujarCas('mesa', pr.x, pr.y);
 }
 
 // ---------- Adolfo, el chef ----------
@@ -1125,222 +1125,465 @@ function abrirAdolfo(msg){
   pantalla('pMision');
 }
 
-// ---------- juegos ----------
+// ---------- juegos (a casi toda la pantalla) ----------
 const SIMBOLOS = ['Pez', 'Ovillo', 'Huella', 'Campana', 'Diamante', 'Siete'];
 const PESO_SIM = [6, 5, 4, 3, 2, 1];
-const PAGO_TRIO = [5, 8, 12, 20, 50, 200];
-const APUESTAS = [100, 1000, 10000];   // 1 de plata, 10 de plata, 1 de oro
-let casApuesta = 100, casJuego = 0;
+let casJuego = 0;
 function simboloAzar(){
   let r = Math.random() * 21;
   for (let i = 0; i < 6; i++){ r -= PESO_SIM[i]; if (r < 0) return i; }
   return 0;
 }
-// tres iguales pagan según la tabla; dos sietes pagan x4; cualquier otra pareja devuelve la apuesta
-function pagoTragaperras(r){
-  const [a, b, c] = r;
-  if (a === b && b === c) return PAGO_TRIO[a];
-  if (r.filter(x => x === 5).length === 2) return 4;
-  return a === b || b === c || a === c ? 1 : 0;
-}
-function botonesApuesta(id){
-  const et = v => `<span class="dinero"><span class="mon">${v >= 10000 ? v / 10000 : v / 100}<i class="${v >= 10000 ? 'm-o' : 'm-p'}"></i></span></span>`;
-  return `<div class="cas-apuestas">${APUESTAS.map(v => `<button type="button" class="btn cas-ap" data-ap="${v}" aria-pressed="${v === casApuesta}">${et(v)}</button>`).join('')}</div>`;
-}
-function enlazarApuestas(){
-  $('miCuerpo').querySelectorAll('.cas-ap').forEach(b => b.onclick = () => {
-    casApuesta = +b.dataset.ap;
-    $('miCuerpo').querySelectorAll('.cas-ap').forEach(x => x.setAttribute('aria-pressed', x === b));
-    casRefrescar && casRefrescar();
+// las tres máquinas: 3 rodillos y 3 líneas, 5 rodillos y 5 líneas, 5 rodillos y 7 líneas
+// cada línea dice en qué fila (0 arriba, 1 medio, 2 abajo) cae en cada rodillo
+const LINEAS_5 = [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2], [0, 0, 1, 2, 2], [2, 2, 1, 0, 0]];
+const MAQUINAS = [
+  { n:'Tragaperras clásica', rod:3, lineas:[[1, 1, 1], [0, 0, 0], [2, 2, 2]], color:'#c0283c' },
+  { n:'Tragaperras de 5 líneas', rod:5, lineas:LINEAS_5.slice(0, 5), color:'#2a6ad0' },
+  { n:'Tragaperras de 7 líneas', rod:5, lineas:LINEAS_5, color:'#7a2ab0' }
+];
+// premios por línea (veces la apuesta de la línea); con 5 rodillos cuentan 3, 4 o 5 iguales desde la izquierda
+const PAGO_3 = [10, 18, 25, 45, 110, 450];
+const PAGO_5 = { 3:[6, 9, 15, 24, 60, 150], 4:[18, 30, 45, 90, 240, 750], 5:[60, 120, 180, 360, 900, 3000] };
+const COL_LINEA = ['#ff4a5c', '#ffd23f', '#4fd0ff', '#7dffa8', '#ff8af0', '#ffa04a', '#b08aff'];
+const APUESTAS = [100, 1000, 10000];   // por línea: 1 de plata, 10 de plata, 1 de oro
+const FICHAS = [100, 1000, 10000, 50000];
+const COL_FICHA = { 100:['#ecece6', '#7a7a80'], 1000:['#d02838', '#fff'], 10000:['#2a6ad0', '#fff'], 50000:['#1c1c22', '#f2c14e'] };
+const etMoneda = v => `<span class="dinero"><span class="mon">${v >= 10000 ? v / 10000 : v / 100}<i class="${v >= 10000 ? 'm-o' : 'm-p'}"></i></span></span>`;
+const txtFicha = v => v >= 10000 ? `${v / 10000}o` : `${v / 100}p`;
+function premiosLinea(M, celdas){
+  const res = [];
+  M.lineas.forEach((L, li) => {
+    const s = celdas[0][L[0]];
+    let k = 1; while (k < M.rod && celdas[k][L[k]] === s) k++;
+    const x = M.rod === 3 ? (k === 3 ? PAGO_3[s] : 0) : (k >= 3 ? PAGO_5[k][s] : 0);
+    if (x) res.push({ li, k, s, x });
   });
+  return res;
 }
-let casRefrescar = null;
-function abrirTragaperras(maq){
+
+// ventana de juego común: lienzo que ocupa casi toda la pantalla y una barra de botones abajo
+function abrirMesa(titulo){
   npcHablando = null;
-  const juego = ++casJuego, si = $('miSi'), no = $('miNo');
-  $('miNombre').textContent = 'Casino de Lumeria';
-  $('miTitulo').textContent = `Tragaperras ${maq + 1}`;
-  $('miCuerpo').innerHTML = `<div class="cas"><canvas id="tgCan" class="cas-can" width="240" height="156"></canvas>
-    <p id="tgMsg" class="cas-msg">Elige tu apuesta y tira de la palanca.</p>
-    <div class="linea"><span>Apuesta</span>${botonesApuesta()}</div>
-    <div class="linea"><span>Tu dinero</span><b id="tgOro"></b></div>
-    <div class="cas-tabla">${SIMBOLOS.map((n, i) => `<span><i class="cas-sim" style="background-position:-${CAS['sim' + i][0]}px 0"></i>×3 = x${PAGO_TRIO[i]}</span>`).join('')}
-      <span>Dos <i class="cas-sim" style="background-position:-${CAS.sim5[0]}px 0"></i> = x4</span><span>Pareja = recuperas la apuesta</span></div></div>`;
-  const cv = $('tgCan'), c = cv.getContext('2d');
-  c.imageSmoothingEnabled = false;
-  // cada rodillo es una tira de símbolos que gira; la fila del medio es la línea de premio
-  const N = 64, rod = [0, 1, 2].map(() => ({ tira:Array.from({ length:N }, simboloAzar), pos:Math.random() * N | 0, ini:0, fin:0, t0:0, dur:0 }));
-  let girando = false, pendiente = 0, premio = null;
-  const oroVisible = () => PJ.oro - pendiente;
-  casRefrescar = () => { $('tgOro').innerHTML = dinero(oroVisible()); si.disabled = girando || PJ.oro < casApuesta; };
-  function pintar(ahora){
-    c.fillStyle = '#1c1424'; c.fillRect(0, 0, 240, 156);
-    for (let k = 0; k < 3; k++){
-      const R = rod[k], x0 = 12 + k * 76;
-      let p = R.pos;
-      if (R.dur){ const u = Math.min(1, (ahora - R.t0) / R.dur); p = R.ini + (R.fin - R.ini) * (1 - Math.pow(1 - u, 3)); }
-      c.fillStyle = '#f4f0e6'; c.fillRect(x0, 8, 64, 140);
-      c.save(); c.beginPath(); c.rect(x0, 8, 64, 140); c.clip();
-      const base = Math.floor(p), frac = p - base;
-      for (let f = 0; f < 5; f++){
-        const s = R.tira[(base + f) % N], y = Math.round((78 + (f - 2) * 52 - frac * 52) / 2) * 2;
-        const [sx, sy, w, h] = CAS['sim' + s];
-        if (casListo) c.drawImage(CAS_IMG, sx, sy, w, h, x0 + 4, y - 26, 56, 56);
-      }
-      c.restore();
-      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x0, 8, 64, 20); c.fillRect(x0, 128, 64, 20);
-      c.strokeStyle = '#b8862f'; c.lineWidth = 4; c.strokeRect(x0 - 2, 6, 68, 144);
-    }
-    // línea de premio
-    c.fillStyle = premio && premio.x ? (Math.floor(ahora / 150) % 2 ? '#ffe9a0' : '#ff4a5c') : '#ff4a5c';
-    c.fillRect(2, 76, 8, 4); c.fillRect(230, 76, 8, 4);
-  }
-  function bucle(){
-    if (casJuego !== juego || pantallaActual !== 'pMision'){ casRefrescar = null; return; }
-    const ahora = performance.now();
-    pintar(ahora);
-    if (girando){
-      rod.forEach((R, k) => { if (R.dur && ahora - R.t0 >= R.dur && !R.parado){ R.parado = true; sfx('golpe'); } });
-      if (ahora % 90 < 20) sfx('click', .07);
-      if (rod.every(R => R.parado)){
-        girando = false; rod.forEach(R => { R.pos = R.fin % N; R.dur = 0; });
-        pendiente = 0;
-        if (premio.x >= 50){ sfx('nivel'); banner('¡Premio mayor!', `Ganas ${dineroTxt(premio.gana)}`); chat(`¡Premio mayor en la tragaperras! Ganas ${dineroTxt(premio.gana)}.`, '#ffd23f'); }
-        else if (premio.x > 1) sfx('botin'); else if (premio.x === 1) sfx('moneda');
-        $('tgMsg').innerHTML = premio.x > 1 ? `<b style="color:#7dffa8">¡Ganas ${dinero(premio.gana)}!</b>` : premio.x === 1 ? 'Una pareja: recuperas tu apuesta.' : 'Nada esta vez. ¿Otra tirada?';
-        casRefrescar();
-      }
-    }
-    requestAnimationFrame(bucle);
-  }
-  si.classList.remove('oculto'); si.textContent = 'Girar'; no.textContent = 'Salir';
-  si.onclick = () => {
-    if (girando || PJ.oro < casApuesta) return;
-    const r = [simboloAzar(), simboloAzar(), simboloAzar()], x = pagoTragaperras(r), gana = casApuesta * x;
-    // el dinero se cobra y se paga al momento (cerrar la ventana no cambia el resultado); la cifra se actualiza al parar
-    PJ.oro += gana - casApuesta; pendiente = gana; premio = { x, gana };
-    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += gana - casApuesta;
+  $('casTitulo').textContent = titulo;
+  pantalla('pCasino');
+  const cv = $('casCan'), c = cv.getContext('2d');
+  const medir = () => {
+    const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(10, Math.round(r.width)), h = Math.max(10, Math.round(r.height));
+    if (cv.width !== Math.round(w * d) || cv.height !== Math.round(h * d)){ cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    c.setTransform(d, 0, 0, d, 0, 0); c.imageSmoothingEnabled = false;
+    return { w, h };
+  };
+  return { cv, c, medir, juego:++casJuego };
+}
+const mesaAbierta = j => casJuego === j && pantallaActual === 'pCasino';
+function oroMesa(v){ $('casOro').innerHTML = dinero(v); }
+function rRect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+// ======== TRAGAPERRAS ========
+let casApuesta = 100;
+function abrirTragaperras(maq){
+  const M = MAQUINAS[maq], { cv, c, medir, juego } = abrirMesa(M.n);
+  const N = M.rod, total = () => casApuesta * M.lineas.length;
+  // cada rodillo es una tira de 64 símbolos; se ven 3 filas
+  const TIRA = 64, rod = Array.from({ length:N }, () => ({ tira:Array.from({ length:TIRA }, simboloAzar), pos:Math.random() * TIRA | 0, ini:0, fin:0, t0:0, dur:0, parado:true }));
+  let girando = false, pendiente = 0, premios = [], ganado = 0, palanca = 0, msg = 'Elige tu apuesta por línea y tira de la palanca.', lyPalanca = null;
+  $('casPie').innerHTML = `<div class="casp-grupo"><span>Apuesta por línea</span>${APUESTAS.map(v => `<button type="button" class="btn cas-ap" data-ap="${v}" aria-pressed="${v === casApuesta}">${etMoneda(v)}</button>`).join('')}</div>
+    <div class="casp-grupo"><span>${M.lineas.length} líneas · Total</span><b id="tgTotal"></b></div>
+    <div class="casp-grupo casp-premios">${SIMBOLOS.map((n, i) => `<span title="${n}"><i class="cas-sim" style="background-position:-${CAS['sim' + i][0]}px 0"></i>${M.rod === 3 ? `x${PAGO_3[i]}` : `x${PAGO_5[3][i]}·${PAGO_5[4][i]}·${PAGO_5[5][i]}`}</span>`).join('')}</div>
+    <div class="casp-grupo casp-acc"><button type="button" class="btn" data-cerrar-cas>Salir</button><button type="button" class="btn principal" id="casGirar">Girar</button></div>`;
+  const refrescar = () => {
+    $('tgTotal').innerHTML = dinero(total());
+    $('casGirar').disabled = girando || PJ.oro < total();
+    oroMesa(PJ.oro - pendiente);
+  };
+  $('casPie').querySelectorAll('.cas-ap').forEach(b => b.onclick = () => {
+    if (girando) return;
+    casApuesta = +b.dataset.ap;
+    $('casPie').querySelectorAll('.cas-ap').forEach(x => x.setAttribute('aria-pressed', x === b)); refrescar();
+  });
+  $('casPie').querySelector('[data-cerrar-cas]').onclick = () => pantalla(null);
+  function girar(){
+    if (girando || PJ.oro < total()) return;
+    const celdas = Array.from({ length:N }, () => [simboloAzar(), simboloAzar(), simboloAzar()]);
+    premios = premiosLinea(M, celdas); ganado = premios.reduce((a, p) => a + p.x * casApuesta, 0);
+    // se cobra y se paga al momento (cerrar la ventana no cambia nada); la cifra se actualiza al parar
+    const t = total();
+    PJ.oro += ganado - t; pendiente = ganado;
+    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += ganado - t;
     guardar();
     const ahora = performance.now();
     rod.forEach((R, k) => {
-      R.ini = R.pos; R.fin = R.pos + 24 + k * 8; R.t0 = ahora; R.dur = 900 + k * 450; R.parado = false;
-      R.tira[(R.fin + 2) % N] = r[k];   // la fila del medio
+      R.ini = R.pos; R.fin = R.pos + 26 + k * 6; R.t0 = ahora; R.dur = 1000 + k * 330; R.parado = false;
+      for (let f = 0; f < 3; f++) R.tira[(R.fin + 1 + f) % TIRA] = celdas[k][f];
     });
-    girando = true; $('tgMsg').textContent = 'Girando…'; sfx('poder');
-    $('tgOro').innerHTML = dinero(PJ.oro - gana); si.disabled = true;
+    girando = true; palanca = 1; msg = 'Girando…'; sfx('poder'); refrescar();
+  }
+  $('casGirar').onclick = girar;
+  cv.onclick = e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (lyPalanca && Math.hypot(x - lyPalanca.x, y - lyPalanca.y) < lyPalanca.r) girar();
   };
-  enlazarApuestas(); casRefrescar();
-  pantalla('pMision'); requestAnimationFrame(bucle);
+  refrescar();
+
+  function pintar(ahora){
+    const { w, h } = medir();
+    c.clearRect(0, 0, w, h);
+    // tamaño de cada casilla según el espacio
+    // la máquina (y su palanca a la derecha) cabe siempre en el lienzo, también en el teléfono
+    const pad = w < 600 ? 70 : 110, sep = w < 600 ? 4 : 8;
+    const s = Math.floor(Math.min((w - pad - 50 - sep * (N - 1)) / N, (h - 190) / 3, 150));
+    const vw = s * N + sep * (N - 1), vh = s * 3;
+    const cabW = vw + pad, cabH = vh + 175, cx = Math.round((w - cabW - 40) / 2), cy = Math.round((h - cabH) / 2);
+    // mueble
+    c.fillStyle = 'rgba(0,0,0,.4)'; rRect(c, cx + 8, cy + 10, cabW, cabH, 26); c.fill();
+    const gr = c.createLinearGradient(cx, 0, cx + cabW, 0);
+    gr.addColorStop(0, '#3a0a14'); gr.addColorStop(.12, M.color); gr.addColorStop(.5, M.color); gr.addColorStop(.88, '#3a0a14');
+    c.fillStyle = gr; rRect(c, cx, cy, cabW, cabH, 24); c.fill();
+    c.strokeStyle = '#f2c14e'; c.lineWidth = 5; rRect(c, cx + 3, cy + 3, cabW - 6, cabH - 6, 22); c.stroke();
+    // letrero con bombillas
+    const lx = cx + 24, ly = cy + 14, lw = cabW - 48, lh = 46;
+    c.fillStyle = '#1c0a14'; rRect(c, lx, ly, lw, lh, 10); c.fill();
+    c.strokeStyle = '#b8862f'; c.lineWidth = 3; rRect(c, lx, ly, lw, lh, 10); c.stroke();
+    const nb = Math.floor(lw / 16), fase = Math.floor(ahora / 160);
+    for (let i = 0; i < nb; i++){
+      const on = (i + fase) % 3 === 0 || (ganado && !girando && Math.floor(ahora / 120) % 2);
+      c.fillStyle = on ? '#fff3b0' : '#8a6a2a';
+      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + 6, 3, 0, TAU); c.fill();
+      c.beginPath(); c.arc(lx + 8 + i * (lw - 16) / (nb - 1), ly + lh - 6, 3, 0, TAU); c.fill();
+    }
+    c.fillStyle = '#ffe9a0'; c.font = `700 ${Math.min(24, lw / 16)}px Marcellus, Georgia, serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(`${M.lineas.length} LÍNEAS · ${M.rod} RODILLOS`, lx + lw / 2, ly + lh / 2 + 1);
+    // ventana de rodillos
+    const vx = cx + (cabW - vw) / 2, vy = ly + lh + 18;
+    c.fillStyle = '#1c1424'; rRect(c, vx - 12, vy - 10, vw + 24, vh + 20, 12); c.fill();
+    c.strokeStyle = '#f2c14e'; c.lineWidth = 4; rRect(c, vx - 12, vy - 10, vw + 24, vh + 20, 12); c.stroke();
+    for (let k = 0; k < N; k++){
+      const R = rod[k], x0 = vx + k * (s + sep);
+      let p = R.pos;
+      if (!R.parado){
+        const u = Math.min(1, (ahora - R.t0) / R.dur);
+        p = R.ini + (R.fin - R.ini) * (1 - Math.pow(1 - u, 3));
+        if (u >= 1){ R.parado = true; R.pos = R.fin % TIRA; p = R.pos; sfx('golpe'); }
+      }
+      const g = c.createLinearGradient(0, vy, 0, vy + vh);
+      g.addColorStop(0, '#9a968c'); g.addColorStop(.18, '#f4f0e6'); g.addColorStop(.82, '#f4f0e6'); g.addColorStop(1, '#9a968c');
+      c.fillStyle = g; c.fillRect(x0, vy, s, vh);
+      c.save(); c.beginPath(); c.rect(x0, vy, s, vh); c.clip();
+      const base = Math.floor(p), frac = p - base, tam = Math.floor(s * .78 / 28) * 28 || Math.floor(s * .78);
+      for (let f = 0; f < 5; f++){
+        // la fila f se dibuja centrada en (f - 0.5) casillas: f = 1, 2 y 3 son las tres filas visibles
+        const sim = R.tira[(base + f) % TIRA], yc = vy + (f - .5) * s - frac * s;
+        const [sx, sy, sw, sh] = CAS['sim' + sim];
+        if (casListo) c.drawImage(CAS_IMG, sx, sy, sw, sh, Math.round(x0 + (s - tam) / 2), Math.round(yc - tam / 2), tam, tam);
+      }
+      c.restore();
+      c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(x0, vy, s, 6); c.fillRect(x0, vy + vh - 6, s, 6);
+    }
+    // números de línea a los lados
+    M.lineas.forEach((L, li) => {
+      // varias líneas empiezan en la misma fila: sus números se separan un poco en vertical
+      const yI = vy + (L[0] + .5) * s, yD = vy + (L[N - 1] + .5) * s, off = li < 3 ? 0 : (li % 2 ? -1 : 1) * Math.min(22, s * .3);
+      for (const [xx, yy] of [[vx - 24, yI + off], [vx + vw + 24, yD + off]]){
+        c.fillStyle = COL_LINEA[li]; c.beginPath(); c.arc(xx, yy, 9, 0, TAU); c.fill();
+        c.fillStyle = '#1c1424'; c.font = '700 11px Rajdhani, sans-serif'; c.fillText(li + 1, xx, yy + 1);
+      }
+    });
+    // líneas ganadoras
+    if (!girando && premios.length && Math.floor(ahora / 350) % 4){
+      for (const pr of premios){
+        const L = M.lineas[pr.li];
+        c.strokeStyle = COL_LINEA[pr.li]; c.lineWidth = 5; c.lineJoin = 'round'; c.globalAlpha = .9;
+        c.beginPath();
+        for (let k = 0; k < N; k++){ const xx = vx + k * (s + sep) + s / 2, yy = vy + (L[k] + .5) * s; k ? c.lineTo(xx, yy) : c.moveTo(xx - s / 2, yy); }
+        c.stroke(); c.globalAlpha = 1;
+        for (let k = 0; k < pr.k; k++){ c.strokeStyle = COL_LINEA[pr.li]; c.lineWidth = 3; c.strokeRect(vx + k * (s + sep) + 3, vy + L[k] * s + 3, s - 6, s - 6); }
+      }
+    }
+    // mensaje
+    const my = vy + vh + 30;
+    c.fillStyle = '#1c0a14'; rRect(c, vx - 12, my - 16, vw + 24, 34, 8); c.fill();
+    c.fillStyle = ganado && !girando ? '#7dffa8' : '#ffe9a0'; c.font = `700 ${w < 600 ? 14 : 17}px Rajdhani, sans-serif`;
+    c.fillText(msg, vx + vw / 2, my + 1);
+    // bandeja de monedas y palanca
+    c.fillStyle = '#2a1a10'; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.fill();
+    c.strokeStyle = '#b8862f'; c.lineWidth = 3; rRect(c, cx + cabW / 2 - 70, cy + cabH - 30, 140, 16, 6); c.stroke();
+    palanca = Math.max(0, palanca - .02);
+    // la palanca baja al girar y vuelve sola
+    const px = cx + cabW + 20, py0 = cy + cabH * .32, largo = Math.min(110, cabH * .3);
+    const bx = px, by = py0 + 75 - Math.cos(palanca * 2.6) * largo;
+    c.fillStyle = '#5a5f6a'; rRect(c, px - 10, py0 + 50, 24, 50, 6); c.fill();
+    c.strokeStyle = '#b8c0c8'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(px + 2, py0 + 75); c.lineTo(bx + 2, by); c.stroke(); c.lineCap = 'butt';
+    const gb = c.createRadialGradient(bx - 4, by - 4, 2, bx, by, 15); gb.addColorStop(0, '#ff9a9a'); gb.addColorStop(1, '#b01828');
+    c.fillStyle = gb; c.beginPath(); c.arc(bx + 2, by, 15, 0, TAU); c.fill();
+    lyPalanca = { x:bx + 2, y:by, r:30 };
+  }
+  function bucle(){
+    if (!mesaAbierta(juego)) return;
+    const ahora = performance.now();
+    pintar(ahora);
+    if (girando){
+      if (ahora % 90 < 18) sfx('click', .07);
+      if (rod.every(R => R.parado)){
+        girando = false; pendiente = 0;
+        const mejor = premios.reduce((a, p) => Math.max(a, p.x), 0);
+        if (!ganado) msg = 'Nada esta vez. ¿Otra tirada?';
+        else msg = `¡Ganas ${dineroTxt(ganado)}! (${premios.length} línea${premios.length > 1 ? 's' : ''})`;
+        if (mejor >= 300 || (M.rod === 3 && mejor >= 110)){ sfx('nivel'); banner('¡Premio mayor!', `Ganas ${dineroTxt(ganado)}`); chat(`¡Premio mayor en la ${M.n.toLowerCase()}! Ganas ${dineroTxt(ganado)}.`, '#ffd23f'); }
+        else if (ganado) sfx('botin');
+        refrescar();
+      }
+    }
+    requestAnimationFrame(bucle);
+  }
+  requestAnimationFrame(bucle);
 }
 
-// ruleta europea: 37 casillas (0 al 36)
+// ======== RULETA EUROPEA ========
 const ORDEN_RULETA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 const ROJOS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const colorNum = n => n === 0 ? 'verde' : ROJOS.has(n) ? 'rojo' : 'negro';
-const COL_NUM = { verde:'#2a9a4a', rojo:'#d02838', negro:'#1c1424' };
-const APUESTAS_RULETA = {
-  rojo:   { n:'Rojo',          x:2,  gana:n => ROJOS.has(n) },
-  negro:  { n:'Negro',         x:2,  gana:n => n > 0 && !ROJOS.has(n) },
-  par:    { n:'Par',           x:2,  gana:n => n > 0 && n % 2 === 0 },
-  impar:  { n:'Impar',         x:2,  gana:n => n % 2 === 1 },
-  bajo:   { n:'1 al 18',       x:2,  gana:n => n >= 1 && n <= 18 },
-  alto:   { n:'19 al 36',      x:2,  gana:n => n >= 19 },
-  doc1:   { n:'1ª docena',     x:3,  gana:n => n >= 1 && n <= 12 },
-  doc2:   { n:'2ª docena',     x:3,  gana:n => n >= 13 && n <= 24 },
-  doc3:   { n:'3ª docena',     x:3,  gana:n => n >= 25 },
-  numero: { n:'Un número',     x:36, gana:(n, v) => n === v }
-};
-let rulTipo = 'rojo', rulNumero = 7, rulHistorial = [];
-function abrirRuleta(){
-  npcHablando = null;
-  const juego = ++casJuego, si = $('miSi'), no = $('miNo');
-  $('miNombre').textContent = 'Casino de Lumeria';
-  $('miTitulo').textContent = 'Ruleta';
-  $('miCuerpo').innerHTML = `<div class="cas"><div class="cas-ru-cab"><canvas id="ruCan" class="cas-can cas-rueda" width="104" height="104"></canvas>
-    <div><p id="ruMsg" class="cas-msg">Elige a qué apostar y pulsa Girar.</p>
-    <div class="cas-hist" id="ruHist"></div></div></div>
-    <div class="cas-tipos">${Object.entries(APUESTAS_RULETA).map(([k, A]) => `<button type="button" class="btn cas-tipo${k === 'rojo' ? ' cas-rojo' : k === 'negro' ? ' cas-negro' : ''}" data-tipo="${k}" aria-pressed="${k === rulTipo}">${A.n}<small>paga x${A.x}</small></button>`).join('')}</div>
-    <div class="linea" id="ruNumFila"><span>Número</span><b><input id="ruNum" type="number" min="0" max="36" value="${rulNumero}" class="cas-num"></b></div>
-    <div class="linea"><span>Apuesta</span>${botonesApuesta()}</div>
-    <div class="linea"><span>Tu dinero</span><b id="ruOro"></b></div></div>`;
-  const cv = $('ruCan'), c = cv.getContext('2d'), S = 104, cx = S / 2, cy = S / 2, PASO = TAU / 37;
-  let girando = false, pendiente = 0, res = null, rot = 0, bola = -Math.PI / 2, t0 = 0, dur = 0, rot0 = 0, rot1 = 0, bola0 = 0, bola1 = 0, rBola = 46;
-  const pintarHist = () => $('ruHist').innerHTML = rulHistorial.map(n => `<span style="background:${COL_NUM[colorNum(n)]}">${n}</span>`).join('');
-  casRefrescar = () => {
-    $('ruOro').innerHTML = dinero(PJ.oro - pendiente); si.disabled = girando || PJ.oro < casApuesta;
-    $('ruNumFila').style.display = rulTipo === 'numero' ? '' : 'none';
-  };
-  function pintar(){
-    c.clearRect(0, 0, S, S);
-    // borde de madera y casillas
-    c.fillStyle = '#4e2c12'; c.beginPath(); c.arc(cx, cy, 51, 0, TAU); c.fill();
-    c.fillStyle = '#a06a38'; c.beginPath(); c.arc(cx, cy, 48, 0, TAU); c.fill();
-    c.fillStyle = '#3a2010'; c.beginPath(); c.arc(cx, cy, 43, 0, TAU); c.fill();
-    for (let i = 0; i < 37; i++){
-      const a = rot - Math.PI / 2 + i * PASO;
-      c.fillStyle = COL_NUM[colorNum(ORDEN_RULETA[i])];
-      c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, 41, a, a + PASO); c.closePath(); c.fill();
-    }
-    c.fillStyle = '#3a2010'; c.beginPath(); c.arc(cx, cy, 27, 0, TAU); c.fill();
-    c.fillStyle = '#c0884a'; c.beginPath(); c.arc(cx, cy, 25, 0, TAU); c.fill();
-    c.fillStyle = '#d8a860'; c.beginPath(); c.arc(cx, cy, 15, 0, TAU); c.fill();
-    // cruceta dorada que gira con la rueda
-    c.strokeStyle = '#f2c14e'; c.lineWidth = 3;
-    for (let k = 0; k < 4; k++){ const a = rot + k * Math.PI / 2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 13, cy + Math.sin(a) * 13); c.stroke(); }
-    c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(cx, cy, 4, 0, TAU); c.fill();
-    // bola
-    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx + Math.cos(bola) * rBola, cy + Math.sin(bola) * rBola, 3, 0, TAU); c.fill();
+const COL_NUM = { verde:'#1f8a44', rojo:'#c0202e', negro:'#16141c' };
+// el paño: casillas en unidades (14 de ancho x 5 de alto, como la mesa de verdad); paga = veces lo apostado (incluida la apuesta)
+const PANO = (() => {
+  const L = [{ id:'0', x0:0, y0:0, x1:1, y1:3, t:'0', nums:[0], paga:36, col:'verde' }];
+  for (let n = 1; n <= 36; n++){
+    const cI = (n - 1) / 3 | 0, r = 2 - (n - 1) % 3;
+    L.push({ id:'n' + n, x0:1 + cI, y0:r, x1:2 + cI, y1:r + 1, t:String(n), nums:[n], paga:36, col:colorNum(n) });
   }
-  function bucle(){
-    if (casJuego !== juego || pantallaActual !== 'pMision'){ casRefrescar = null; return; }
-    const ahora = performance.now();
-    if (girando){
-      const u = Math.min(1, (ahora - t0) / dur), e = 1 - Math.pow(1 - u, 3);
-      rot = rot0 + (rot1 - rot0) * e; bola = bola0 + (bola1 - bola0) * e;
-      rBola = u < .6 ? 46 : 46 - (46 - 35) * Math.min(1, (u - .6) / .3);
-      if (u < .85 && Math.random() < .25) sfx('click', .06 + u * .2);
-      if (u >= 1){
-        girando = false; pendiente = 0;
-        const A = APUESTAS_RULETA[res.tipo];
-        rulHistorial = [res.n, ...rulHistorial].slice(0, 10); pintarHist();
-        const col = { verde:'verde', rojo:'rojo', negro:'negro' }[colorNum(res.n)];
-        $('ruMsg').innerHTML = `Sale el <b style="color:${COL_NUM[colorNum(res.n)] === '#1c1424' ? '#c8c0d8' : COL_NUM[colorNum(res.n)]}">${res.n} ${col}</b>. ` + (res.gana ? `<b style="color:#7dffa8">¡Ganas ${dinero(res.gana)}!</b>` : `Pierdes tu apuesta a ${A.n.toLowerCase()}.`);
-        if (res.gana){ sfx(A.x >= 36 ? 'nivel' : 'botin'); if (A.x >= 36){ banner('¡Pleno en la ruleta!', `Ganas ${dineroTxt(res.gana)}`); chat(`¡Pleno al ${res.n} en la ruleta! Ganas ${dineroTxt(res.gana)}.`, '#ffd23f'); } }
-        casRefrescar();
+  for (let r = 0; r < 3; r++) L.push({ id:'col' + r, x0:13, y0:r, x1:14, y1:r + 1, t:'2 a 1', nums:Array.from({ length:12 }, (_, i) => 3 * i + 3 - r), paga:3 });
+  ['1.ª 12', '2.ª 12', '3.ª 12'].forEach((t, k) => L.push({ id:'doc' + k, x0:1 + 4 * k, y0:3, x1:5 + 4 * k, y1:4, t, nums:Array.from({ length:12 }, (_, i) => 12 * k + i + 1), paga:3 }));
+  const todos = Array.from({ length:36 }, (_, i) => i + 1);
+  [['bajo', '1-18', n => n <= 18], ['par', 'PAR', n => n % 2 === 0], ['rojo', '◆', n => ROJOS.has(n)], ['negro', '◆', n => !ROJOS.has(n)], ['impar', 'IMPAR', n => n % 2 === 1], ['alto', '19-36', n => n >= 19]]
+    .forEach(([id, t, f], i) => L.push({ id, x0:1 + 2 * i, y0:4, x1:3 + 2 * i, y1:5, t, nums:todos.filter(f), paga:2, rombo:id === 'rojo' ? 'rojo' : id === 'negro' ? 'negro' : null }));
+  return L;
+})();
+let rulHistorial = [], rulUltima = null, rulFicha = 1000;
+function abrirRuleta(){
+  const { cv, c, medir, juego } = abrirMesa('Ruleta europea');
+  const PASO = TAU / 37;
+  let apuestas = {}, girando = false, pendiente = 0, res = null, msg = 'Pon tus fichas en el paño y pulsa Girar.';
+  let rot = Math.random() * TAU, bolaRel = null, bola = { a:0, r:0 }, t0 = 0, rot0 = 0, rot1 = 0, bolaFin = 0, ultimo = performance.now(), cajas = [];
+  const totalAp = () => Object.values(apuestas).reduce((a, b) => a + b, 0);
+  $('casPie').innerHTML = `<div class="casp-grupo"><span>Ficha</span>${FICHAS.map(v => `<button type="button" class="btn cas-ap cas-ficha" data-ficha="${v}" aria-pressed="${v === rulFicha}"><i style="background:${COL_FICHA[v][0]};border-color:${COL_FICHA[v][1]}"></i>${etMoneda(v)}</button>`).join('')}</div>
+    <div class="casp-grupo"><span>Apostado</span><b id="ruTotal"></b></div>
+    <div class="casp-grupo casp-acc"><button type="button" class="btn" id="ruBorrar">Borrar</button><button type="button" class="btn" id="ruRepetir">Repetir</button>
+      <button type="button" class="btn" data-cerrar-cas>Salir</button><button type="button" class="btn principal" id="casGirar">Girar</button></div>`;
+  const refrescar = () => {
+    $('ruTotal').innerHTML = dinero(totalAp());
+    $('casGirar').disabled = girando || !totalAp();
+    $('ruBorrar').disabled = girando || !totalAp();
+    $('ruRepetir').disabled = girando || !rulUltima || Object.values(rulUltima).reduce((a, b) => a + b, 0) > PJ.oro;
+    oroMesa(PJ.oro - pendiente - (girando ? 0 : totalAp()));
+  };
+  $('casPie').querySelectorAll('.cas-ficha').forEach(b => b.onclick = () => {
+    rulFicha = +b.dataset.ficha;
+    $('casPie').querySelectorAll('.cas-ficha').forEach(x => x.setAttribute('aria-pressed', x === b));
+  });
+  $('casPie').querySelector('[data-cerrar-cas]').onclick = () => pantalla(null);
+  $('ruBorrar').onclick = () => { if (!girando){ apuestas = {}; refrescar(); } };
+  $('ruRepetir').onclick = () => { if (!girando && rulUltima){ apuestas = { ...rulUltima }; msg = 'Apuesta repetida.'; refrescar(); } };
+  function poner(id, quitar){
+    if (girando) return;
+    if (quitar){ if (apuestas[id]){ apuestas[id] = Math.max(0, apuestas[id] - rulFicha); if (!apuestas[id]) delete apuestas[id]; refrescar(); } return; }
+    if (totalAp() + rulFicha > PJ.oro){ msg = 'No te queda dinero para esa ficha.'; return; }
+    apuestas[id] = (apuestas[id] || 0) + rulFicha; sfx('moneda'); res = null; refrescar();
+  }
+  const enCasilla = e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    return cajas.find(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+  };
+  cv.onclick = e => { const b = enCasilla(e); if (b) poner(b.id, false); };
+  cv.oncontextmenu = e => { e.preventDefault(); const b = enCasilla(e); if (b) poner(b.id, true); };
+  $('casGirar').onclick = () => {
+    const t = totalAp();
+    if (girando || !t || t > PJ.oro) return;
+    const n = ORDEN_RULETA[Math.random() * 37 | 0];
+    let gana = 0;
+    for (const [id, v] of Object.entries(apuestas)){ const B = PANO.find(b => b.id === id); if (B.nums.includes(n)) gana += v * B.paga; }
+    PJ.oro += gana - t; pendiente = gana; res = { n, gana, t };
+    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += gana - t;
+    rulUltima = { ...apuestas }; guardar();
+    // la rueda gira a un lado y la bola al otro; al final la bola cae en la casilla del número
+    const i = ORDEN_RULETA.indexOf(n);
+    rot0 = rot; rot1 = rot0 + TAU * 2.2 + Math.random() * TAU;
+    bolaFin = rot1 + (i + .5) * PASO; bolaRel = null;
+    t0 = performance.now(); girando = true; msg = 'No va más.'; sfx('poder'); refrescar();
+  };
+  refrescar();
+
+  function rueda(cx, cy, R, ahora){
+    // sombra y madera exterior
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.arc(cx + 6, cy + 8, R, 0, TAU); c.fill();
+    let g = c.createRadialGradient(cx - R * .3, cy - R * .3, R * .2, cx, cy, R);
+    g.addColorStop(0, '#a8602a'); g.addColorStop(.7, '#6a3412'); g.addColorStop(1, '#3a1a06');
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
+    c.strokeStyle = '#d8a860'; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, R * .97, 0, TAU); c.stroke();
+    // pista de la bola
+    g = c.createRadialGradient(cx, cy, R * .74, cx, cy, R * .92);
+    g.addColorStop(0, '#2a1608'); g.addColorStop(.6, '#5a3416'); g.addColorStop(1, '#1e0e04');
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R * .92, 0, TAU); c.fill();
+    // rombos deflectores
+    c.fillStyle = '#f2c14e';
+    for (let k = 0; k < 8; k++){
+      const a = k * TAU / 8 + TAU / 16, x = cx + Math.cos(a) * R * .8, y = cy + Math.sin(a) * R * .8, d = R * .035;
+      c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.moveTo(-d * 1.8, 0); c.lineTo(0, -d); c.lineTo(d * 1.8, 0); c.lineTo(0, d); c.closePath(); c.fill(); c.restore();
+    }
+    // casillas numeradas (giran con la rueda)
+    const r1 = R * .73, r2 = R * .5, rN = R * .665;
+    c.fillStyle = '#c8a050'; c.beginPath(); c.arc(cx, cy, r1 + 2, 0, TAU); c.fill();
+    for (let i = 0; i < 37; i++){
+      const a = rot + i * PASO, n = ORDEN_RULETA[i];
+      c.fillStyle = COL_NUM[colorNum(n)];
+      c.beginPath(); c.arc(cx, cy, r1, a, a + PASO); c.arc(cx, cy, r2, a + PASO, a, true); c.closePath(); c.fill();
+      // fondo del bolsillo, más oscuro
+      c.fillStyle = 'rgba(0,0,0,.35)';
+      c.beginPath(); c.arc(cx, cy, R * .6, a, a + PASO); c.arc(cx, cy, r2, a + PASO, a, true); c.closePath(); c.fill();
+      c.save(); c.translate(cx + Math.cos(a + PASO / 2) * rN, cy + Math.sin(a + PASO / 2) * rN); c.rotate(a + PASO / 2 + Math.PI / 2);
+      c.fillStyle = '#fff'; c.font = `700 ${Math.max(8, R * .07)}px Rajdhani, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(n, 0, 0); c.restore();
+    }
+    c.strokeStyle = '#e8c070'; c.lineWidth = Math.max(1, R * .008);
+    for (let i = 0; i < 37; i++){ const a = rot + i * PASO; c.beginPath(); c.moveTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); c.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); c.stroke(); }
+    c.beginPath(); c.arc(cx, cy, R * .6, 0, TAU); c.stroke();
+    // cono central de madera y torreta dorada
+    g = c.createRadialGradient(cx - R * .12, cy - R * .12, R * .05, cx, cy, r2);
+    g.addColorStop(0, '#d89858'); g.addColorStop(.6, '#9a5a28'); g.addColorStop(1, '#5a2e10');
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r2, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,220,150,.35)'; c.lineWidth = 1;
+    for (let k = 0; k < 8; k++){ const a = rot + k * TAU / 8; c.beginPath(); c.moveTo(cx + Math.cos(a) * R * .14, cy + Math.sin(a) * R * .14); c.lineTo(cx + Math.cos(a) * r2 * .95, cy + Math.sin(a) * r2 * .95); c.stroke(); }
+    c.strokeStyle = '#f2c14e'; c.lineWidth = R * .03; c.lineCap = 'round';
+    for (let k = 0; k < 4; k++){
+      const a = rot + k * Math.PI / 2, x = cx + Math.cos(a) * R * .3, y = cy + Math.sin(a) * R * .3;
+      c.beginPath(); c.moveTo(cx, cy); c.lineTo(x, y); c.stroke();
+      g = c.createRadialGradient(x - 2, y - 2, 1, x, y, R * .04); g.addColorStop(0, '#fff3b0'); g.addColorStop(1, '#b8862f');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, R * .04, 0, TAU); c.fill();
+    }
+    c.lineCap = 'butt';
+    g = c.createRadialGradient(cx - R * .03, cy - R * .03, 1, cx, cy, R * .09); g.addColorStop(0, '#fff3b0'); g.addColorStop(.5, '#f2c14e'); g.addColorStop(1, '#8a5a1a');
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R * .09, 0, TAU); c.fill();
+    // bola
+    if (bola.r){
+      const x = cx + Math.cos(bola.a) * R * bola.r, y = cy + Math.sin(bola.a) * R * bola.r, rb = Math.max(4, R * .035);
+      c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.arc(x + 2, y + 2, rb, 0, TAU); c.fill();
+      g = c.createRadialGradient(x - rb * .4, y - rb * .4, 1, x, y, rb); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#b8bcc8');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, rb, 0, TAU); c.fill();
+    }
+  }
+  function ficha(x, y, v, r){
+    // pila de fichas: una por cada ficha grande que cabe en el valor, hasta 5
+    const vals = []; let resto = v;
+    for (const f of [...FICHAS].reverse()) while (resto >= f && vals.length < 5){ vals.push(f); resto -= f; }
+    if (!vals.length) vals.push(FICHAS[0]);
+    vals.reverse().forEach((f, k) => {
+      const yy = y - k * r * .28, [cf, cb] = COL_FICHA[f];
+      c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(x + 1.5, yy + 2, r, 0, TAU); c.fill();
+      c.fillStyle = cf; c.beginPath(); c.arc(x, yy, r, 0, TAU); c.fill();
+      c.strokeStyle = cb; c.lineWidth = r * .28; c.setLineDash([r * .5, r * .5]); c.beginPath(); c.arc(x, yy, r * .82, 0, TAU); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(x, yy, r, 0, TAU); c.stroke();
+    });
+    const top = y - (vals.length - 1) * r * .28;
+    c.fillStyle = COL_FICHA[vals[vals.length - 1]][1]; c.font = `700 ${Math.max(8, r * .8)}px Rajdhani, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(v >= 10000 ? `${+(v / 10000).toFixed(1)}o` : `${Math.round(v / 100)}p`, x, top + 1);
+  }
+  function pano(ox, oy, u, vertical){
+    cajas = [];
+    // a lo alto (teléfono) se gira la mesa: el 0 arriba y las apuestas exteriores a la izquierda
+    const caja = B => vertical ? { x:ox + (5 - B.y1) * u, y:oy + B.x0 * u, w:(B.y1 - B.y0) * u, h:(B.x1 - B.x0) * u } : { x:ox + B.x0 * u, y:oy + B.y0 * u, w:(B.x1 - B.x0) * u, h:(B.y1 - B.y0) * u };
+    const W = (vertical ? 5 : 14) * u, H = (vertical ? 14 : 5) * u;
+    // borde de madera y paño verde
+    c.fillStyle = '#4e2a10'; rRect(c, ox - u * .45, oy - u * .45, W + u * .9, H + u * .9, u * .35); c.fill();
+    c.fillStyle = '#7a4a24'; rRect(c, ox - u * .3, oy - u * .3, W + u * .6, H + u * .6, u * .25); c.fill();
+    const g = c.createRadialGradient(ox + W / 2, oy + H / 2, 10, ox + W / 2, oy + H / 2, Math.max(W, H) * .7);
+    g.addColorStop(0, '#2a9a54'); g.addColorStop(1, '#156a34');
+    c.fillStyle = g; c.fillRect(ox - u * .15, oy - u * .15, W + u * .3, H + u * .3);
+    const gan = res && !girando ? res.n : null;
+    for (const B of PANO){
+      const b = caja(B); cajas.push({ ...b, id:B.id });
+      if (B.col){ c.fillStyle = COL_NUM[B.col]; c.fillRect(b.x + 3, b.y + 3, b.w - 6, b.h - 6); }
+      if (gan !== null && B.nums.includes(gan) && B.nums.length === 1 && Math.floor(performance.now() / 300) % 2){ c.fillStyle = 'rgba(255,233,160,.45)'; c.fillRect(b.x, b.y, b.w, b.h); }
+      c.strokeStyle = '#f4f0e6'; c.lineWidth = 2; c.strokeRect(b.x + .5, b.y + .5, b.w, b.h);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (B.rombo){
+        c.fillStyle = COL_NUM[B.rombo]; c.strokeStyle = '#f4f0e6'; c.lineWidth = 1.5;
+        const mx = b.x + b.w / 2, my = b.y + b.h / 2, dx = Math.min(b.w, b.h * 2) * .28, dy = Math.min(b.h, b.w) * .3;
+        c.beginPath(); c.moveTo(mx - dx, my); c.lineTo(mx, my - dy); c.lineTo(mx + dx, my); c.lineTo(mx, my + dy); c.closePath(); c.fill(); c.stroke();
+      } else {
+        c.fillStyle = '#f4f0e6'; c.font = `700 ${Math.max(9, u * (B.nums.length === 1 ? .42 : .34))}px ${B.nums.length === 1 ? 'Marcellus, Georgia, serif' : 'Rajdhani, sans-serif'}`;
+        c.save(); c.translate(b.x + b.w / 2, b.y + b.h / 2);
+        if (vertical && b.h > b.w * 1.5) c.rotate(-Math.PI / 2);
+        c.fillText(B.t, 0, 1); c.restore();
       }
     }
-    pintar();
+    // fichas apostadas
+    for (const [id, v] of Object.entries(apuestas)){ const b = cajas.find(x => x.id === id); if (b) ficha(b.x + b.w / 2, b.y + b.h / 2, v, Math.max(7, u * .3)); }
+    // marcador del número ganador
+    if (gan !== null){
+      const b = cajas.find(x => x.id === (gan === 0 ? '0' : 'n' + gan)), x = b.x + b.w / 2, y = b.y + b.h / 2 - u * .1;
+      c.fillStyle = '#f4f0e6'; c.beginPath(); c.arc(x, y - u * .25, u * .16, 0, TAU); c.fill();
+      c.fillStyle = '#d8dce4'; c.fillRect(x - u * .1, y - u * .15, u * .2, u * .3);
+    }
+  }
+  function pintar(ahora){
+    const { w, h } = medir();
+    c.clearRect(0, 0, w, h);
+    const vertical = w / h < 1.1;
+    let R, cxR, cyR, u, ox, oy;
+    if (!vertical){
+      R = Math.min(h * .42, w * .22); cxR = 20 + R; cyR = h / 2 + 10;
+      const aw = w - (cxR + R + 40) - 20, ah = h - 90;
+      u = Math.min(aw / 14.9, ah / 5.9); ox = cxR + R + 40 + (aw - 14 * u) / 2; oy = 70 + (ah - 5 * u) / 2;
+    } else {
+      R = Math.min(w * .3, h * .17); cxR = w / 2; cyR = 50 + R;
+      const top = cyR + R + 20, ah = h - top - 10, aw = w - 30;
+      u = Math.min(aw / 5.9, ah / 14.9); ox = (w - 5 * u) / 2; oy = top + (ah - 14 * u) / 2;
+    }
+    rueda(cxR, cyR, R, ahora);
+    pano(ox, oy, u, vertical);
+    // historial y mensaje
+    const hx0 = vertical ? 10 : cxR + R + 40, hy = vertical ? 18 : 22;
+    c.textAlign = 'left'; c.textBaseline = 'middle';
+    rulHistorial.forEach((n, k) => {
+      const x = hx0 + 14 + k * 30;
+      if (x > w - 14) return;
+      c.fillStyle = COL_NUM[colorNum(n)]; c.beginPath(); c.arc(x, hy, 12, 0, TAU); c.fill();
+      c.strokeStyle = k ? '#b8862f' : '#fff3b0'; c.lineWidth = k ? 1.5 : 3; c.stroke();
+      c.fillStyle = '#fff'; c.font = '700 12px Rajdhani, sans-serif'; c.textAlign = 'center'; c.fillText(n, x, hy + 1);
+    });
+    c.textAlign = vertical ? 'center' : 'left';
+    c.fillStyle = res && !girando ? (res.gana ? '#7dffa8' : '#ff8a9b') : '#ffe9a0'; c.font = '700 18px Rajdhani, sans-serif';
+    c.fillText(msg, vertical ? w / 2 : hx0, vertical ? cyR + R + 10 : hy + 30);
+  }
+  function bucle(){
+    if (!mesaAbierta(juego)) return;
+    const ahora = performance.now(), dt = Math.min(.05, (ahora - ultimo) / 1000); ultimo = ahora;
+    if (girando){
+      const D = 6000, u = Math.min(1, (ahora - t0) / D), e = 1 - Math.pow(1 - u, 3);
+      rot = rot0 + (rot1 - rot0) * e;
+      // la bola gira al revés por la pista, pierde fuerza, cae al cono, rebota y se queda en su casilla
+      // ángulo de la bola respecto a la rueda: empieza 7 vueltas por detrás y llega a su casilla al 80 %
+      const v = Math.min(1, u / .8), eb = 1 - Math.pow(1 - v, 2.2);
+      bola.a = rot + (bolaFin - rot1) + TAU * 7 * (1 - eb);   // la rueda avanza y la bola va al revés
+      if (u < .6) bola.r = .85;
+      else if (u < .8){ const k = (u - .6) / .2; bola.r = .85 - .23 * k + Math.abs(Math.sin(k * Math.PI * 3)) * .06 * (1 - k); }
+      else bola.r = .62;
+      if (u < .8 && Math.random() < .3) sfx('click', .05 + u * .25);
+      if (u >= 1){
+        girando = false; bolaRel = bolaFin - rot1; pendiente = 0;
+        rulHistorial = [res.n, ...rulHistorial].slice(0, 14);
+        const nombre = { verde:'verde', rojo:'rojo', negro:'negro' }[colorNum(res.n)];
+        msg = `Sale el ${res.n} ${nombre}. ` + (res.gana ? `¡Ganas ${dineroTxt(res.gana)}!` : 'La banca se lleva las fichas.');
+        if (res.gana){ sfx(res.gana >= res.t * 10 ? 'nivel' : 'botin'); if (res.gana >= res.t * 10){ banner('¡Pleno en la ruleta!', `Ganas ${dineroTxt(res.gana)}`); chat(`¡Pleno al ${res.n} en la ruleta! Ganas ${dineroTxt(res.gana)}.`, '#ffd23f'); } }
+        apuestas = {}; refrescar();
+      }
+    } else {
+      rot += dt * .25;                     // la rueda sigue girando despacio
+      if (bolaRel !== null){ bola.a = rot + bolaRel; bola.r = .62; }
+    }
+    pintar(ahora);
     requestAnimationFrame(bucle);
   }
-  $('miCuerpo').querySelectorAll('.cas-tipo').forEach(b => b.onclick = () => {
-    rulTipo = b.dataset.tipo;
-    $('miCuerpo').querySelectorAll('.cas-tipo').forEach(x => x.setAttribute('aria-pressed', x === b));
-    casRefrescar();
-  });
-  $('ruNum').oninput = () => { const v = Math.round(+$('ruNum').value); if (v >= 0 && v <= 36) rulNumero = v; };
-  si.classList.remove('oculto'); si.textContent = 'Girar'; no.textContent = 'Salir';
-  si.onclick = () => {
-    if (girando || PJ.oro < casApuesta) return;
-    if (rulTipo === 'numero'){
-      const v = Math.round(+$('ruNum').value);
-      if (!(v >= 0 && v <= 36)){ $('ruMsg').textContent = 'Elige un número del 0 al 36.'; return; }
-      rulNumero = v;
-    }
-    const n = ORDEN_RULETA[Math.random() * 37 | 0], A = APUESTAS_RULETA[rulTipo];
-    const gana = A.gana(n, rulNumero) ? casApuesta * A.x : 0;
-    PJ.oro += gana - casApuesta; pendiente = gana; res = { n, gana, tipo:rulTipo };
-    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += gana - casApuesta;
-    guardar();
-    // la rueda gira a la derecha y la bola a la izquierda; al final la bola cae en la casilla del número
-    const i = ORDEN_RULETA.indexOf(n);
-    rot0 = rot % TAU; rot1 = rot0 + TAU * 3 + Math.random() * TAU;
-    bola1 = rot1 - Math.PI / 2 + (i + .5) * PASO; bola0 = bola1 + TAU * 6;
-    t0 = performance.now(); dur = 4200; girando = true;
-    $('ruMsg').textContent = rulTipo === 'numero' ? `Apuestas al ${rulNumero}…` : `Apuestas a ${A.n.toLowerCase()}…`;
-    $('ruOro').innerHTML = dinero(PJ.oro - gana); si.disabled = true; sfx('poder');
-  };
-  pintarHist(); enlazarApuestas(); casRefrescar();
-  pantalla('pMision'); requestAnimationFrame(bucle);
+  requestAnimationFrame(bucle);
 }
 
 // ---------- hermandades ----------
@@ -1849,6 +2092,8 @@ addEventListener('keydown', e => {
     else if (PANELES_JUEGO.includes(pantallaActual)) pantalla(null);
     return;
   }
+  // en el casino, la barra espaciadora tira de la palanca o hace girar la ruleta
+  if (pantallaActual === 'pCasino' && e.code === 'Space'){ e.preventDefault(); const g = $('casGirar'); if (g && !g.disabled) g.click(); return; }
   const vent = { KeyC:'wPj', KeyB:'wBolsa', KeyP:'wLibro', KeyL:'wMis' };
   if (e.code === 'KeyI' && pantallaActual === null){ abrirBuscador(); return; }
   if (vent[e.code] && pantallaActual === null){
