@@ -483,8 +483,11 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota){
   const g = GATOS_DIR[gato];
   let set = dir;
   if (rot === 3 && g.de && g.de.length){ set = 'de'; flip = false; }
-  const [sx, sy, fw, fh, ax, ay] = cuadroGato(gato, g['q_' + set] && g['q_' + set].length ? 'q_' + set : set, Math.floor(t / 700)), esc = (h * .62) / 96, r = Math.sin(t / 520);
-  a.save(); a.translate(cx, pie + 4); a.scale((flip ? -1 : 1) * (1 - .01 * r), 1 + .018 * r);
+  const [sx, sy, fw, fh, ax, ay] = cuadroGato(gato, g['q_' + set] && g['q_' + set].length ? 'q_' + set : set, Math.floor(t / 700)), esc = escGato(gato, (h * .62) / 96), r = Math.sin(t / 520), px = gatoPx(gato);
+  a.save(); a.translate(cx, pie + 4);
+  // pixel art: sin estirar (respira subiendo un píxel); los demás respiran escalando
+  if (px){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); a.scale(flip ? -1 : 1, 1); }
+  else a.scale((flip ? -1 : 1) * (1 - .01 * r), 1 + .018 * r);
   a.drawImage(imgGato(gato), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
   a.restore();
   if (mascota && ratasListo){
@@ -506,7 +509,7 @@ function renderCrear(){
     const c = document.createElement('canvas'); c.width = c.height = 64; b.appendChild(c);
     b.onclick = () => { gatoPj = i; gc.querySelectorAll('.wc-ic').forEach(x => x.setAttribute('aria-pressed', x === b)); $('gatoNom').textContent = nombre; };
     gc.appendChild(b);
-    const pintar = () => { const a = c.getContext('2d'), [sx, sy, w] = cuadroGato(i, GATOS_DIR[i].q_ab ? 'q_ab' : 'ab', 0), l = Math.min(w, 70); a.fillStyle = '#1d1638'; a.fillRect(0, 0, 64, 64); a.drawImage(imgGato(i), sx + (w - l) / 2, sy, l, l, 2, 4, 60, 60); };
+    const pintar = () => { const a = c.getContext('2d'), [sx, sy, w] = cuadroGato(i, GATOS_DIR[i].q_ab ? 'q_ab' : 'ab', 0), l = Math.min(w, Math.round(70 / (GATOS_DIR[i].k || 1))); a.imageSmoothingEnabled = !gatoPx(i); a.fillStyle = '#1d1638'; a.fillRect(0, 0, 64, 64); a.drawImage(imgGato(i), sx + (w - l) / 2, sy, l, l, 2, 4, 60, 60); };
     if (gatosListo) pintar(); else document.addEventListener('gatoslistos', pintar, { once:true });
   });
   const sub = document.createElement('p'); sub.className = 'wc-sub'; sub.id = 'gatoNom'; sub.textContent = TIPOS_GATO[gatoPj];
@@ -1853,8 +1856,10 @@ function dibujarFigura(t){
   a.fillStyle = g; a.fillRect(0, 0, c.width, c.height);
   a.fillStyle = 'rgba(0,0,0,.45)'; a.beginPath(); a.ellipse(120, 274, 50, 12, 0, 0, TAU); a.fill();
   if (!gatosListo) return;
-  const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, 'ab', 0), esc = 190 / 96, r = Math.sin(t / 420);
-  a.save(); a.translate(110, 274); a.scale(1 - .012 * r, 1 + .025 * r);
+  const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, 'ab', 0), esc = escGato(PJ.gato, 190 / 96), r = Math.sin(t / 420);
+  a.save(); a.translate(110, 274);
+  if (gatoPx(PJ.gato)){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); }
+  else a.scale(1 - .012 * r, 1 + .025 * r);
   a.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   a.restore();
   if (PJ.mascota && ratasListo){
@@ -2677,8 +2682,8 @@ function dibujarAvatar(){
   a.fillStyle = g; a.fillRect(0, 0, av.width, av.height);
   if (!gatosListo || !PJ){ document.addEventListener('gatoslistos', dibujarAvatar, { once:true }); return; }
   // cabeza del gato
-  const [sx, sy, w] = cuadroGato(PJ.gato, GATOS_DIR[PJ.gato].q_ab ? 'q_ab' : 'ab', 0), lado = Math.min(w, 70);
-  a.imageSmoothingEnabled = true;
+  const [sx, sy, w] = cuadroGato(PJ.gato, GATOS_DIR[PJ.gato].q_ab ? 'q_ab' : 'ab', 0), lado = Math.min(w, Math.round(70 / (GATOS_DIR[PJ.gato].k || 1)));
+  a.imageSmoothingEnabled = !gatoPx(PJ.gato);
   a.drawImage(imgGato(PJ.gato), sx + (w - lado) / 2, sy, lado, lado, 4, 8, 104, 104);
 }
 
@@ -2697,7 +2702,17 @@ function dibujarJugador(t){
     ctx.fillStyle = '#120d24'; ctx.strokeStyle = CLASES[PJ.clase].color; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(P.x, P.y, P.r, 0, TAU); ctx.fill(); ctx.stroke(); return;
   }
-  const GD = GATOS_DIR[PJ.gato], escG = ALTO_GATO_PJ / 96;
+  const GD = GATOS_DIR[PJ.gato], escG = escGato(PJ.gato, ALTO_GATO_PJ / 96);
+  // pixel art: caído es el cuadro de frente girado 90° (sin perder píxeles), con la cabeza a la izquierda
+  if (P.hp <= 0 && GD.px){
+    const [sx, sy, w, h] = GD.ab[0];
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 30, 7, 0, 0, TAU); ctx.fill();
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(P.x), Math.round(pie - w * escG / 2)); ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -w * escG / 2, -h * escG / 2, w * escG, h * escG);
+    ctx.restore();
+    return;
+  }
   if (P.hp <= 0 && GD.muerto && GD.muerto.length){
     const [sx, sy, w, h, ax, ay] = GD.muerto[0];
     ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 30, 7, 0, 0, TAU); ctx.fill();
@@ -2740,13 +2755,22 @@ function dibujarJugador(t){
   let setV = usarDe ? 'de' : dir, fV = f;
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
   if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
+  // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
+  if (GD.px){
+    alza = mov && !pose ? 0 : Math.round(alza);
+    if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
+    rot = 0; kx = 1; ky = 1;
+  }
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, setV, fV), esc = escG;
   // sombra y aro con el color de la clase
   ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
   if (P.golpe > 0) ctx.globalAlpha = .65;
-  ctx.save(); ctx.translate(P.x, pie + alza); if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
+  ctx.save();
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x), Math.round(pie + alza)); }
+  else ctx.translate(P.x, pie + alza);
+  if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   ctx.drawImage(imgGato(PJ.gato), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   ctx.restore();
   ctx.globalAlpha = 1;
@@ -3016,15 +3040,22 @@ const TEXTURA_RANGO = [
 const GATOS_DIR = [{"muerto":[[0,0,128,65,63.5,65]],"q_ab":[[139,196,63,94,26.2,94],[204,196,62,94,26.2,94]],"ab":[[268,196,62,94,34.1,94],[332,196,64,94,36.1,94],[398,196,62,95,35.4,95],[462,196,63,94,35.1,94]],"q_ar":[[527,196,59,95,26.2,95],[588,196,59,95,26.2,95]],"ar":[[649,196,59,95,26.6,95],[710,196,59,95,26.8,95],[771,196,59,94,31.9,94],[832,196,59,95,31.9,95]],"q_lado":[[893,196,68,94,25.8,94],[963,196,68,94,25.9,94]],"lado":[[1033,196,69,95,25.7,95],[1104,196,69,95,26.3,95],[1175,196,69,95,25.9,95],[1246,196,70,95,26.7,95]],"q_de":[[1318,196,68,95,40.7,95],[0,294,62,95,19.8,95]],"de":[[64,294,70,95,42.4,95],[136,294,70,96,42.6,96],[208,294,69,95,42.1,95],[279,294,70,96,42.4,96]]},{"ab":[[130,0,76,96,32.0,96],[208,0,77,96,31.5,96],[287,0,77,96,31.5,96],[366,0,79,96,31.5,96]],"ar":[[447,0,86,96,48.5,96],[535,0,81,96,37.5,96],[618,0,75,96,35.0,96],[695,0,74,96,31.5,96],[771,0,73,96,32.0,96]],"lado":[[846,0,82,96,34.0,96],[930,0,82,96,32.0,96],[1014,0,84,96,33.0,96],[1100,0,85,96,36.5,96],[1187,0,80,96,35.5,96],[1269,0,80,96,35.0,96]],"de":[[0,98,86,96,49.5,96],[88,98,76,96,42.5,96],[166,98,87,96,50.0,96],[255,98,75,96,44.0,96],[332,98,77,96,43.5,96],[411,98,72,96,42.5,96]],"muerto":[[485,98,122,56,60.5,56]]},{"ab":[[609,98,95,96,36.5,96]],"ar":[[706,98,94,96,35.5,96]],"lado":[[802,98,92,96,32.5,96],[896,98,98,96,33.0,96],[996,98,93,96,34.0,96]]},{"ab":[[1091,98,73,96,30.5,96],[1166,98,72,96,28.0,96]],"ar":[[1240,98,70,96,28.0,96],[1312,98,66,96,36.5,96],[0,196,67,96,36.0,96]],"lado":[[69,196,68,96,25.0,96]]}];
 const GATOS = null;
 const GATOS_IMG = new Image();
-// Mist (Gato Carmesí) tiene su propia hoja: frente, espalda y lado (mirando a la izquierda; se refleja para la derecha), 4 cuadros cada una
+// Mist (Gato Carmesí) tiene su propia hoja en pixel art: frente, espalda y lado (mirando a la izquierda; se refleja para la derecha), 4 cuadros cada una.
+// k: cuánto más chica es su hoja que las de 96 px; px: se dibuja con escala entera y sin suavizar para que los píxeles queden limpios
 const MIST_IMG = new Image();
-GATOS_DIR[0] = Object.assign({"ab": [[2, 3, 59, 97, 28.3, 97], [63, 3, 59, 97, 26.6, 97], [124, 2, 61, 98, 28.6, 98], [187, 6, 59, 94, 28.0, 94]], "ar": [[2, 105, 57, 94, 27.6, 94], [61, 104, 53, 95, 25.2, 95], [116, 105, 56, 94, 27.2, 94], [174, 102, 53, 97, 26.2, 97]], "lado": [[2, 203, 60, 88, 25.0, 88], [64, 201, 60, 90, 26.5, 90], [126, 201, 59, 90, 25.1, 90], [187, 201, 58, 90, 24.3, 90]]}, { img:MIST_IMG });
+GATOS_DIR[0] = Object.assign({"ab": [[2, 2, 39, 64, 19, 64], [43, 2, 39, 64, 17, 64], [84, 2, 40, 64, 19, 64], [126, 3, 39, 63, 18, 63]], "ar": [[2, 70, 38, 62, 18, 62], [42, 69, 36, 63, 17, 63], [80, 70, 37, 62, 18, 62], [119, 68, 36, 64, 18, 64]], "lado": [[2, 136, 40, 59, 16, 59], [44, 135, 36, 60, 13, 60], [82, 135, 39, 60, 16, 60], [123, 134, 35, 61, 12, 61]]}, { img:MIST_IMG, k:96 / 62, px:true });
 const imgGato = tipo => (GATOS_DIR[tipo] && GATOS_DIR[tipo].img) || GATOS_IMG;
+const gatoPx = tipo => !!(GATOS_DIR[tipo] && GATOS_DIR[tipo].px);
+// escala de dibujo de un gato a partir de la escala pensada para hojas de 96 px
+function escGato(tipo, base){
+  const g = GATOS_DIR[tipo] || {}, e = base * (g.k || 1);
+  return g.px ? Math.max(1, Math.round(e)) : e;
+}
 let gatosListo = false, gatosPend = 2;
 const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
 GATOS_IMG.src = 'img/gatos.png';
-MIST_IMG.src = 'img/mist.png?v=1.4.2';
+MIST_IMG.src = 'img/mist.png?v=1.5.0';
 const TIPOS_GATO = ['Gato Carmesí', 'Gato Ejecutivo', 'Gato Calicó', 'Gato Misterioso'];
 // Mascotas: 4 ratas con 4 direcciones (ar arriba, ab abajo, iz izquierda, de derecha) de 4 cuadros
 // cada cuadro: [x, y, ancho, alto, anclaX, anclaY]
