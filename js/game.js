@@ -2089,11 +2089,11 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK;
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
   } else {
     if (P.cd2 > 0) return;
     if (P.en < c.h2.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; vibrar(15);
+    P.cd2 = c.h2.cd * D.cdK; P.en -= c.h2.coste; vibrar(15); sfx('poder');
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -2142,7 +2142,7 @@ function usarPoder(id){
   if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
   if ((P.cdP[id] || 0) > 0) return;
   if (P.en < pw.coste){ texto(P.x, P.y - 74, 'Sin energía', '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; vibrar(15);
+  P.en -= pw.coste; P.cdP[id] = pw.cd * D.cdK; vibrar(15); sfx('poder');
   apuntar();
   PODER_FN[id]();
 }
@@ -2228,6 +2228,7 @@ function golpeLinea(x1, y1, x2, y2, ancho, dmg){
 }
 
 function herir(e, dmg, critExtra = 0){
+  sfx('golpe', .06);
   if (e.muerto) return;
   dmg *= rand(.9, 1.1) * efMod.dmg();
   const crit = Math.random() < D.crit + critExtra;
@@ -2239,7 +2240,7 @@ function herir(e, dmg, critExtra = 0){
 }
 
 function matar(e){
-  e.muerto = true; PJ.kills++; contar('kills'); if (e.jefe) contar('jefes');
+  e.muerto = true; PJ.kills++; sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
@@ -2283,6 +2284,7 @@ function ganarXP(x, sinFactor){
     PJ.xpSig = xpNecesaria(PJ.nivel); subio = true;
   }
   if (subio){
+    sfx('nivel');
     derivar(); P.hp = D.maxHp; P.en = D.maxEn;
     const rDesp = rangoCazador();
     chat(`¡Has alcanzado el nivel ${PJ.nivel}!`, '#ffd76a');
@@ -2371,7 +2373,7 @@ function golpearJugador(d, src){
   } else if (src && src.jefe && Math.random() < .25){
     const db = DEBUFF_MONSTRUO[sprDe(src)]; if (db) ponerEfecto(db[0], db[1] + 2);
   }
-  P.hp -= d; P.inv = .45; P.golpe = .2; shake = Math.max(shake, 7);
+  P.hp -= d; P.inv = .45; P.golpe = .2; shake = Math.max(shake, 7); sfx('dano', .1);
   texto(P.x, P.y - 70, Math.round(d), '#ff6b7f', 15);
   chispas(P.x, P.y - 20, '#e2445c', 8, 150);
   if (P.hp <= 0){
@@ -2524,10 +2526,10 @@ function update(dt){
     if (d < P.r + 8){
       if (o.t === 'obj'){
         if (PJ.bolsa.length >= TAM_BOLSA){ if (!o.aviso){ texto(P.x, P.y - 74, 'Tu bolsa está llena', '#ff8a9b', 14); chat('Tu bolsa está llena.', '#ff8a9b'); o.aviso = true; } continue; }
-        PJ.bolsa.push(o.obj); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
+        PJ.bolsa.push(o.obj); sfx('botin'); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
         chat(`Recibes botín: [${o.obj.nombre}]`, RAREZAS[o.obj.rareza].c);
       }
-      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; contar('oro', c); texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
+      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; contar('oro', c); sfx('moneda', .05); texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
       else if (o.t === 'cons'){ darApilable(o.k); if (o.k.startsWith('p_')) contar('partes'); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
       else { PJ.pociones++; texto(P.x, P.y - 74, '+1 poción', '#7dffa8', 15); chat('Recibes botín: [Poción de vida]', '#7dffa8'); }
       o.tomado = true;
@@ -3344,7 +3346,7 @@ function alimentarMascota(){
   const m = PJ.mascota;
   if (!m){ texto(P.x, P.y - 74, 'No tienes mascota', '#9a91c2', 14); return false; }
   if (m.hambre >= 100){ texto(P.x, P.y - 74, `${m.nombre} no tiene hambre`, '#9a91c2', 14); return false; }
-  m.hambre = 100; ganarXPMascota(15); contar('comida');
+  m.hambre = 100; ganarXPMascota(15); contar('comida'); sfx('comer');
   const x = M ? M.x : P.x, y = M ? M.y : P.y;
   chispas(x, y - 15, '#ff8fc8', 18, 120); texto(x, y - 50, '♥ ¡Ñam!', '#ff8fc8', 15);
   if (abierta('wPj')) renderPj();
@@ -4026,7 +4028,7 @@ function revisarLogros(){
   PJ.logros = PJ.logros || {};
   for (const L of LOGROS){
     if (PJ.logros[L.id] || !L.ok(PJ)) continue;
-    PJ.logros[L.id] = true;
+    PJ.logros[L.id] = true; sfx('logro');
     banner(`Logro: ${L.n}`, `Nuevo título: «${L.titulo}». Elígelo en Desafíos (C).`);
     chat(`Logro conseguido: [${L.n}]. Título desbloqueado: ${L.titulo}.`, '#ff8000');
     chispas(P.x, P.y - 30, '#ffd100', 30, 200);
@@ -4139,6 +4141,105 @@ function enlazarDesafios(){
 }
 
 // =====================================================
+//  SONIDO: efectos y música chiptune generados en el navegador (sin archivos)
+// =====================================================
+const SON = { ctx:null, master:null, mus:null, fx:null, musica:true, efectos:true, pista:null, sig:0, paso:0, ult:{} };
+try { const g = JSON.parse(localStorage.getItem('rb_sonido') || '{}'); if (g.musica === false) SON.musica = false; if (g.efectos === false) SON.efectos = false; } catch (e) {}
+function guardarSonido(){ try { localStorage.setItem('rb_sonido', JSON.stringify({ musica:SON.musica, efectos:SON.efectos })); } catch (e) {} }
+// el navegador sólo deja sonar después de un toque o una tecla
+function iniciarAudio(){
+  if (SON.ctx){ if (SON.ctx.state === 'suspended') SON.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  SON.ctx = new AC();
+  SON.master = SON.ctx.createGain(); SON.master.gain.value = .8; SON.master.connect(SON.ctx.destination);
+  SON.mus = SON.ctx.createGain(); SON.mus.gain.value = SON.musica ? .22 : 0; SON.mus.connect(SON.master);
+  SON.fx = SON.ctx.createGain(); SON.fx.gain.value = SON.efectos ? .5 : 0; SON.fx.connect(SON.master);
+  setInterval(programarMusica, 100);
+}
+addEventListener('pointerdown', iniciarAudio); addEventListener('keydown', iniciarAudio);
+function tono(f, dur, { tipo = 'square', vol = .3, desde = 0, hasta = null, destino = null, ataque = .005 } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, o = c.createOscillator(), g = c.createGain();
+  o.type = tipo; o.frequency.setValueAtTime(f, t);
+  if (hasta) o.frequency.exponentialRampToValueAtTime(hasta, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + ataque); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  o.connect(g); g.connect(destino || SON.fx); o.start(t); o.stop(t + dur + .02);
+}
+function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, n = Math.ceil(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = b; f.type = tipoF; f.frequency.value = filtro; f.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t); s.stop(t + dur + .02);
+}
+const SFX = {
+  ataque(){ ruido(.12, { vol:.35, filtro:2600, q:.8 }); tono(520, .08, { tipo:'triangle', vol:.12, hasta:260 }); },
+  poder(){ ruido(.35, { vol:.25, filtro:900, q:2 }); tono(220, .35, { tipo:'sawtooth', vol:.12, hasta:660 }); },
+  golpe(){ tono(160, .09, { tipo:'square', vol:.18, hasta:70 }); ruido(.06, { vol:.2, filtro:1800 }); },
+  dano(){ tono(110, .2, { tipo:'sawtooth', vol:.25, hasta:55 }); ruido(.12, { vol:.25, filtro:500, tipoF:'lowpass' }); },
+  muere(){ tono(440, .25, { tipo:'square', vol:.14, hasta:90 }); },
+  jefe(){ [196, 247, 294, 392].forEach((f, i) => tono(f, .5, { tipo:'square', vol:.14, desde:i * .12 })); ruido(.6, { vol:.2, filtro:300, tipoF:'lowpass' }); },
+  moneda(){ tono(988, .06, { vol:.12 }); tono(1319, .14, { vol:.12, desde:.06 }); },
+  botin(){ [523, 659, 784].forEach((f, i) => tono(f, .12, { tipo:'triangle', vol:.18, desde:i * .06 })); },
+  nivel(){ [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tono(f, .18, { tipo:'square', vol:.12, desde:i * .09 })); },
+  logro(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.2, desde:i * .1 })); },
+  comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
+  paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
+  click(){ tono(1200, .03, { vol:.06 }); }
+};
+// reproduce un efecto (con un mínimo de tiempo entre repeticiones del mismo)
+function sfx(n, minimo = .03){
+  if (!SON.ctx || !SON.efectos || SON.ctx.state !== 'running') return;
+  const ahora = SON.ctx.currentTime;
+  if (ahora - (SON.ult[n] || 0) < minimo) return;
+  SON.ult[n] = ahora; SFX[n]();
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn,.wbtn,.wv-x,.micro-btn')) sfx('click'); });
+
+// música: cada lugar tiene su pista (escala, tempo y melodía); se programan las notas un poco por adelantado
+const NOTA = n => 440 * Math.pow(2, (n - 69) / 12);
+const PISTAS = {
+  posada:   { bpm:84,  raiz:57, escala:[0, 2, 4, 7, 9],      mel:[0, 2, 4, 2, 1, 2, 0, -1, 0, 4, 3, 2, 1, 0, 1, -1], bajo:[0, 0, -3, -3, -5, -5, -2, -2], onda:'triangle' },
+  ciudad:   { bpm:112, raiz:60, escala:[0, 2, 4, 5, 7, 9, 11], mel:[0, 2, 4, 5, 4, 2, 4, -1, 3, 4, 5, 7, 6, 4, 2, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'square' },
+  noche:    { bpm:76,  raiz:57, escala:[0, 2, 3, 5, 7, 8, 10], mel:[4, -1, 2, 3, 2, -1, 0, -1, 4, 5, 4, 2, 3, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' },
+  mazmorra: { bpm:100, raiz:50, escala:[0, 1, 3, 5, 7, 8, 10], mel:[0, -1, 2, 1, 0, -1, 4, 3, 2, -1, 1, 0, -1, 0, 1, 2], bajo:[0, 0, 0, 0, 5, 5, 4, 4], onda:'square' },
+  titan:    { bpm:138, raiz:50, escala:[0, 1, 3, 5, 6, 8, 10], mel:[0, 0, 4, 3, 0, 0, 5, 4, 0, 0, 6, 5, 4, 3, 2, 1], bajo:[0, 0, 0, 0, 1, 1, 0, 0], onda:'sawtooth' },
+  menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
+};
+function pistaActual(){
+  if (!enJuego) return 'menu';
+  if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
+  if (E.tipo === 'ciudad') return oscuridad() > .3 ? 'noche' : 'ciudad';
+  return 'posada';
+}
+function programarMusica(){
+  if (!SON.ctx || SON.ctx.state !== 'running') return;
+  SON.mus.gain.setTargetAtTime(SON.musica ? .22 : 0, SON.ctx.currentTime, .3);
+  const nueva = pistaActual();
+  if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
+  const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
+  const nota = (grado, oct = 0) => { const L = P0.escala.length, o = Math.floor(grado / L); return NOTA(P0.raiz + 12 * (o + oct) + P0.escala[((grado % L) + L) % L]); };
+  while (SON.sig < SON.ctx.currentTime + .3){
+    const i = SON.paso, desde = SON.sig - SON.ctx.currentTime, m = P0.mel[i % P0.mel.length];
+    if (m >= 0) tono(nota(m, 1), corchea * .9, { tipo:P0.onda, vol:.16, desde, destino:SON.mus, ataque:.01 });
+    if (i % 2 === 0) tono(nota(P0.bajo[(i >> 1) % P0.bajo.length], -1), corchea * 1.8, { tipo:'triangle', vol:.3, desde, destino:SON.mus, ataque:.01 });
+    if (SON.pista === 'mazmorra' || SON.pista === 'titan' || SON.pista === 'ciudad'){
+      if (i % 4 === 0) tono(90, .12, { tipo:'sine', vol:.35, hasta:45, desde, destino:SON.mus });
+      if (i % 4 === 2) ruido(.05, { vol:.12, filtro:6000, tipoF:'highpass', desde, destino:SON.mus });
+    }
+    SON.sig += corchea; SON.paso++;
+  }
+}
+function botonesSonido(){
+  $('btnMusica').textContent = `Música: ${SON.musica ? 'Sí' : 'No'}`;
+  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Sí' : 'No'}`;
+  if (SON.fx) SON.fx.gain.value = SON.efectos ? .5 : 0;
+}
+$('btnMusica').onclick = () => { SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+$('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); botonesSonido(); };
+botonesSonido();
+
+// =====================================================
 //  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE, CLIMA Y GATOS CALLEJEROS
 // =====================================================
 let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
@@ -4154,7 +4255,7 @@ const sueloConHuellas = () => E.tipo === 'ciudad' || E.tipo === 'mazmorra';
 // al caminar: una huella cada 20 px y un poco de polvo en los pies
 function ambientePaso(){
   if (!sueloConHuellas() || P.paso - ultimaHuella < 20) return;
-  ultimaHuella = P.paso; ladoHuella = -ladoHuella; contar('pasos');
+  ultimaHuella = P.paso; ladoHuella = -ladoHuella; contar('pasos'); sfx('paso');
   const v = Math.hypot(P.vx, P.vy) || 1, nx = -P.vy / v, ny = P.vx / v, pie = P.y + 12;
   huellas.push({ x:Math.round(P.x + nx * 4 * ladoHuella), y:Math.round(pie + ny * 3 * ladoHuella), t:0 });
   if (huellas.length > 60) huellas.shift();
