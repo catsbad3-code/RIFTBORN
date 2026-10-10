@@ -708,3 +708,17 @@ body.tactil .accion .seg:empty{display:none}
 /* al tocar, el botón se hunde y brilla para que se note que salió el poder */
 body.tactil .accion:active{transform:scale(.9);border-color:var(--corona);box-shadow:0 0 14px rgba(242,196,109,.8)}
 body.tactil .mbtn:active{transform:scale(.92);border-color:var(--corona)}
+
+/* =================== CHAT EN EL TELÉFONO =================== */
+/* chico, arriba a la izquierda bajo tu retrato, para no tapar el joystick ni los poderes */
+body.jugando.tactil #chat{display:flex;left:calc(8px + env(safe-area-inset-left,0px)) !important;right:auto !important;bottom:auto !important;
+  top:calc(92px + env(safe-area-inset-top,0px));width:min(260px,36vw) !important;height:96px !important;font-size:12px;
+  background:rgba(0,0,0,.28);border-color:rgba(201,164,60,.25)}
+body.jugando.tactil #chat.min{height:auto !important;width:auto !important}
+body.jugando.tactil #chat .chat-cab{cursor:default;padding:1px 4px 1px 6px;font-size:11px}
+body.jugando.tactil #chat .chat-cab button{width:26px;height:20px;line-height:16px}
+body.jugando.tactil #chat .chat-rs{display:none}
+body.jugando.tactil #chatLog{padding:2px 6px;line-height:1.15}
+@media (max-height:500px) and (pointer:coarse){
+  body.jugando.tactil #chat{top:calc(60px + env(safe-area-inset-top,0px));height:78px !important;font-size:11px}
+}
