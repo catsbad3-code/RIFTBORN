@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.8.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.8.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -97,15 +97,15 @@ const vibrar = p => { if (esTactil && navigator.vibrate) try { navigator.vibrate
 //  DATOS DEL JUEGO
 // =====================================================
 const CLASES = {
-  guerrero: { nombre:'Guerrero del Vacío', color:'#f2c46d', desc:'Resiste golpes y aplasta grupos enteros.',
+  guerrero: { nombre:'Guerrero del Vacío', color:'#e2443c', desc:'Resiste golpes y aplasta grupos enteros.',
     base:{ fue:14, agi:8, vit:14, int:6 },
     h1:{ n:'Tajo', d:'Corte en arco frente a ti.', cd:.45, ic:'⚔' },
     h2:{ n:'Golpe sísmico', d:'Onda que daña y empuja a todo a tu alrededor.', cd:4, coste:30, ic:'💥' } },
-  sombra: { nombre:'Cazador de Sombras', color:'#9b7bff', desc:'Rápido, letal y difícil de atrapar.',
+  sombra: { nombre:'Cazador de Sombras', color:'#5ad84a', desc:'Rápido, letal y difícil de atrapar.',
     base:{ fue:10, agi:16, vit:9, int:7 },
     h1:{ n:'Puñalada', d:'Golpes veloces con más crítico.', cd:.28, ic:'🗡' },
     h2:{ n:'Paso sombrío', d:'Te teletransportas atravesando y cortando enemigos.', cd:3, coste:25, ic:'🌑' } },
-  mago: { nombre:'Mago de las Sombras', color:'#8a6bff', desc:'Canaliza las sombras y la magia oscura. Elegante y letal.',
+  mago: { nombre:'Mago de las Sombras', color:'#4f9aff', desc:'Canaliza las sombras y la magia oscura. Elegante y letal.',
     base:{ fue:6, agi:9, vit:9, int:16 },
     h1:{ n:'Lanzamiento de sombras', d:'Rayo de sombra que explota al impactar.', cd:.55, ic:'🌑' },
     h2:{ n:'Bola de sombra', d:'Vórtice que arrastra, daña y ralentiza a los enemigos.', cd:5, coste:35, ic:'🌀' } }
@@ -134,9 +134,9 @@ const ENEM = {
 // =====================================================
 //  PODERES, OBJETOS Y EQUIPO
 // =====================================================
-CLASES.guerrero.h1.spr = 'corte'; CLASES.guerrero.h2.spr = 'domo';
-CLASES.sombra.h1.spr = 'corte';   CLASES.sombra.h2.spr = 'tp';
-CLASES.mago.h1.spr = 'rayo';      CLASES.mago.h2.spr = 'bola';
+CLASES.guerrero.h1.spr = 'px:espada'; CLASES.guerrero.h2.spr = 'px:onda';
+CLASES.sombra.h1.spr = 'px:daga';     CLASES.sombra.h2.spr = 'px:capa';
+CLASES.mago.h1.spr = 'px:estrella';   CLASES.mago.h2.spr = 'px:espiral';
 
 // Poderes de las sombras: se aprenden al subir de nivel y van en la barra (Q F R 1 2 3 4)
 const PODERES = {
@@ -668,7 +668,8 @@ function empezar(id){
   P = { x:0, y:0, mx:0, my:0, pose:{ n:'', t:0, dur:1 }, r:14, hp:D.maxHp, en:PJ.clase === 'guerrero' ? 0 : D.maxEn, combo:0, ang:Math.PI / 2, ldx:0, ldy:1,
         cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0 };
   const c = CLASES[PJ.clase];
-  $('mAtk').textContent = c.h1.ic; $('mHab').textContent = c.h2.ic;
+  $('mAtk').innerHTML = '<canvas width="64" height="64"></canvas>'; $('mHab').innerHTML = '<canvas width="64" height="64"></canvas>';
+  pintarIconoBoton($('mAtk').firstChild, c.h1.spr); pintarIconoBoton($('mHab').firstChild, c.h2.spr);
   enJuego = true; document.body.classList.add('jugando');
   portales = []; CIUDAD = crearCiudad();
   construirBarra();
@@ -1436,8 +1437,10 @@ function ataqueMonstruo(e, dx, dy, d, dt, lento){
   if (at.t <= 0){ e.at = null; e.cd = rand(A.cd[0], A.cd[1]); }
   return true;
 }
+// el aviso rojo de ataque está desactivado: en las mazmorras no se anticipa por dónde atacará el monstruo
+const AVISOS_ATAQUE = false;
 function dibujarAviso(e){
-  const at = e.at; if (!at || at.fase !== 'carga') return;
+  const at = e.at; if (!AVISOS_ATAQUE || !at || at.fase !== 'carga') return;
   const n = ENEM[e.tipo] && ENEM[e.tipo].spr, A = ATAQUES[n], k = 1 - at.t / A.carga;
   ctx.save(); ctx.globalAlpha = .18 + .3 * k; ctx.fillStyle = '#ff3040'; ctx.strokeStyle = '#ff3040'; ctx.lineWidth = 2;
   if (n === 'slime'){ ctx.beginPath(); ctx.ellipse(at.tx, at.ty + 8, 34 * k + 10, 14 * k + 4, 0, 0, TAU); ctx.fill(); }
@@ -1804,7 +1807,7 @@ function renderLibro(){
   const c = CLASES[PJ.clase];
   let h = `<div class="wl-hechizos"><div class="wl-sec">${c.nombre}</div>
     <div class="wl-h"><canvas data-icono="${c.h1.spr}" width="80" height="80"></canvas><div><b>${c.h1.n}</b><small>Clic izquierdo</small></div></div>
-    <div class="wl-h"><canvas data-icono="${c.h2.spr}" width="80" height="80"></canvas><div><b>${c.h2.n}</b><small>Clic derecho · ${c.h2.coste} energía</small></div></div>
+    <div class="wl-h"><canvas data-icono="${c.h2.spr}" width="80" height="80"></canvas><div><b>${c.h2.n}</b><small>Clic derecho · ${costeDe(c.h2)} ${recurso().n.toLowerCase()}</small></div></div>
     <div class="wl-sec">Habilidades de clase · ${recurso().n}</div>`;
   const filaPoder = (id, pw) => {
     const bloq = PJ.nivel < pw.nivel, tecla = TECLAS.find(t => PJ.barra[t] === id);
@@ -2039,6 +2042,8 @@ function dibujarFigura(t){
 }
 
 // ----- Iconos y barra de acción -----
+// ícono pixelado sin fondo para los botones redondos del teléfono
+function pintarIconoBoton(c, spr){ const a = c.getContext('2d'); a.clearRect(0, 0, c.width, c.height); a.imageSmoothingEnabled = false; const ic = iconoPx(spr.slice(3), PALETA_CLASE[PJ.clase]), k = Math.floor(c.width * .7 / 16); a.drawImage(ic, (c.width - 16 * k) / 2, (c.width - 16 * k) / 2, 16 * k, 16 * k); }
 function pintarIcono(c, spr){
   const a = c.getContext('2d'), s = c.width;
   a.clearRect(0, 0, s, s);
@@ -2251,38 +2256,38 @@ function usarHab(n){
 }
 
 const HAB = {
-  guerrero1(){ pose('atk', DUR_ATK); golpeArco(84, 1.9, D.fis); efectoCorte(1.5); },
+  guerrero1(){ pose('atk', DUR_ATK); golpeArco(84, 1.9, D.fis); fxArco(P.x, P.y, P.ang, 70, 1.9, '#e2443c'); },
   guerrero2(){
     pose('cast', .45);
     golpeCirculo(P.x, P.y, 140, D.fis * 2.3, { empuje:90 });
-    efecto('domo', P.x, P.y + 16, 1.2, { vida:.55, detras:true });
-    shake = 12; chispas(P.x, P.y, '#f2c46d', 26, 260);
+    fxAnillo(P.x, P.y, 12, 140, '#e2443c', .45); fxGrietas(P.x, P.y + 4, '#5a0c0c', .7);
+    shake = 12; chispas(P.x, P.y, '#ff5a4a', 26, 260);
   },
-  sombra1(){ pose('atk', DUR_ATK * .7); golpeArco(68, 1.4, D.fis * .85, .15); efectoCorte(1.1); if (enemigos.some(e => e.hp < e.maxHp && Math.hypot(e.x - P.x, e.y - P.y) < 68 + e.r) && Math.random() < .35) sumarCombo(1); },
+  sombra1(){ pose('atk', DUR_ATK * .7); golpeArco(68, 1.4, D.fis * .85, .15); fxArco(P.x, P.y, P.ang + rand(-.3, .3), 54, 1.2, '#5ad84a', .16); if (enemigos.some(e => e.hp < e.maxHp && Math.hypot(e.x - P.x, e.y - P.y) < 68 + e.r) && Math.random() < .35) sumarCombo(1); },
   sombra2(){
-    efecto('tp', P.x, P.y + 14, .5, { vida:.45 });
     const x0 = P.x, y0 = P.y, a = P.ang;
+    fxAnillo(x0, y0, 28, 4, '#5ad84a', .3);
     let paso = 0;
     while (paso < 220 && !solidoEn(P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 16)){ P.x += Math.cos(a) * 8; P.y += Math.sin(a) * 8; paso += 8; }
     colisiones(P); P.inv = Math.max(P.inv, .35);
     golpeLinea(x0, y0, P.x, P.y, 30, D.fis * 2.4);
-    efectos.push({ t:'linea', x:x0, y:y0, x2:P.x, y2:P.y, vida:.3, max:.3, color:'#7b4dff' });
-    efecto('tp', P.x, P.y + 14, .5, { vida:.45 });
+    fxEstela(x0, y0, P.x, P.y, '#5ad84a', .35);
+    fxAnillo(P.x, P.y, 4, 30, '#c8ff8a', .3);
     pose('oculto', .12);
   },
   mago1(){
     pose('atk', DUR_ATK);
-    const a = P.ang, flipV = Math.cos(a) < 0;
-    efecto('mano', P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 10, .6, { rot:a, flipV, alt:32, vida:.3, sigue:true });
-    proys.push({ x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 480, vy:Math.sin(a) * 480, r:9, alt:30,
-      dmg:D.mag * 1.1, vida:1.1, color:'#8a6bff', aoe:50, spr:'rayo', esc:.5 });
+    const a = P.ang;
+    fxAnillo(P.x + Math.cos(a) * 18, P.y + Math.sin(a) * 10, 14, 4, '#4f9aff', .2);
+    proys.push({ px:'arcano', x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 480, vy:Math.sin(a) * 480, r:9, alt:30,
+      dmg:D.mag * 1.1, vida:1.1, color:'#4f9aff', aoe:50 });
   },
   mago2(){
     pose('cast', .5);
     const a = P.ang;
     proys.push({ bola:true, x:P.x + Math.cos(a) * 30, y:P.y + Math.sin(a) * 30, vx:Math.cos(a) * 210, vy:Math.sin(a) * 210, r:34, alt:22,
-      dmg:D.mag * .45, vida:2.4, tick:0, color:'#8a6bff' });
-    chispas(P.x, P.y - 30, '#8a6bff', 16, 160);
+      dmg:D.mag * .45, vida:2.4, tick:0, color:'#4f9aff' });
+    chispas(P.x, P.y - 30, '#4f9aff', 16, 160);
   }
 };
 
@@ -2382,7 +2387,7 @@ function sumarCombo(n = 1){ if (PJ.clase !== 'sombra') return; P.combo = Math.mi
 function gastarCombo(){ const c = P.combo || 0; P.combo = 0; return c; }
 
 const blanco = (alcance = 110) => objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < alcance + P.objetivo.r ? P.objetivo : enemigoCercano(P.x, P.y, alcance);
-function golpeUnico(e, dmg, critExtra = 0){ if (!e) return false; P.ang = Math.atan2(e.y - P.y, e.x - P.x); herir(e, dmg, critExtra); efectoCorte(1.3); return true; }
+function golpeUnico(e, dmg, critExtra = 0){ if (!e) return false; P.ang = Math.atan2(e.y - P.y, e.x - P.x); herir(e, dmg, critExtra); fxArco(P.x, P.y, P.ang, 56, 1.6, colFx()); return true; }
 
 Object.assign(PODERES, {
   // guerrero
@@ -2409,13 +2414,13 @@ TECLAS.push('5', '6', '7', '8');
 Object.assign(CODIGO_TECLA, { Digit5:'5', Digit6:'6', Digit7:'7', Digit8:'8' });
 
 Object.assign(PODER_FN, {
-  heroico(){ pose('atk', DUR_ATK); const e = blanco(100); if (!golpeUnico(e, D.fis * 2.2)) golpeArco(84, 1.4, D.fis * 2.2); chispas(P.x + Math.cos(P.ang) * 40, P.y - 10, '#ffb347', 12, 160); },
-  grito(){ pose('cast', .45); ponerEfecto('atk_up', 30); chispas(P.x, P.y - 20, '#ff6a3d', 30, 220); shake = 6; },
+  heroico(){ pose('atk', DUR_ATK); const e = blanco(100); if (!golpeUnico(e, D.fis * 2.2)) golpeArco(84, 1.4, D.fis * 2.2); chispas(P.x + Math.cos(P.ang) * 40, P.y - 10, '#ff5a4a', 12, 160); },
+  grito(){ pose('cast', .45); ponerEfecto('atk_up', 30); chispas(P.x, P.y - 20, '#e2443c', 30, 220); fxAnillo(P.x, P.y, 10, 90, '#e2443c', .4); shake = 6; },
   provocar(){
     const e = blanco(380); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); return; }
     provocarA(e); ganarIra(15); texto(e.x, e.y - 60, '¡Provocado!', '#ff6a3d', 14);
   },
-  torbellino(){ pose('cast', .4); golpeCirculo(P.x, P.y, 110, D.fis * 1.6); efecto('domo', P.x, P.y + 16, .9, { vida:.4, detras:true }); chispas(P.x, P.y, '#f2c46d', 24, 240); },
+  torbellino(){ pose('cast', .4); golpeCirculo(P.x, P.y, 110, D.fis * 1.6); fxArco(P.x, P.y, P.ang, 90, TAU, '#e2443c', .3); fxAnillo(P.x, P.y, 20, 110, '#ff9a8a', .35); chispas(P.x, P.y, '#e2443c', 24, 240); },
   ejecutar(){
     const e = blanco(100);
     if (!e || e.hp > e.maxHp * .2){ texto(P.x, P.y - 74, 'El objetivo debe tener menos del 20%', '#9a91c2', 13); P.en += 20; return; }
@@ -2437,13 +2442,13 @@ Object.assign(PODER_FN, {
     if (e.jefe){ if (e.aviso > 0){ e.aviso = 0; e.cd = 2; texto(e.x, e.y - 70, '¡Interrumpido!', '#ffe25a', 15); } }
     else { e.aturdido = 2; texto(e.x, e.y - 60, 'Aturdido', '#ffe3a1', 13); }
   },
-  esfumarse(){ P.inv = Math.max(P.inv, .8); pose('oculto', .5); reducirAmenaza(.2); for (const e of enemigos) if (!e.jefe && e.objetivo === P) e.aggro = false; efecto('tp', P.x, P.y + 14, .5, { vida:.45 }); },
+  esfumarse(){ P.inv = Math.max(P.inv, .8); pose('oculto', .5); reducirAmenaza(.2); for (const e of enemigos) if (!e.jefe && e.objetivo === P) e.aggro = false; fxAnillo(P.x, P.y, 36, 4, '#5ad84a', .4); },
   escarcha(){
     pose('atk', DUR_ATK); const a = P.ang;
     proys.push({ x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 520, vy:Math.sin(a) * 520, r:9, alt:30,
       dmg:D.mag * 1.5, vida:1.1, color:'#9fd8ff', aoe:34, spr:'rayo', esc:.5, lento:2 });
   },
-  nova(){ pose('cast', .4); golpeCirculo(P.x, P.y, 130, D.mag * .5); for (const e of enemigos) if (Math.hypot(e.x - P.x, e.y - P.y) < 130 + e.r) e.raiz = e.jefe ? 1 : 3; chispas(P.x, P.y, '#bff0ff', 40, 260); efecto('domo', P.x, P.y + 16, 1, { vida:.5, detras:true }); },
+  nova(){ pose('cast', .4); golpeCirculo(P.x, P.y, 130, D.mag * .5); for (const e of enemigos) if (Math.hypot(e.x - P.x, e.y - P.y) < 130 + e.r) e.raiz = e.jefe ? 1 : 3; chispas(P.x, P.y, '#bff0ff', 40, 260); fxAnillo(P.x, P.y, 10, 130, '#c8f0ff', .4); },
   arcana(){ pose('cast', .35); golpeCirculo(P.x, P.y, 120, D.mag * 1.3); chispas(P.x, P.y, '#d08aff', 34, 260); },
   evocacion(){ P.en = Math.min(D.maxEn, P.en + D.maxEn * .5); pose('cast', .8); chispas(P.x, P.y - 20, '#5591ff', 26, 160); },
   bloque(){ ponerEfecto('hielo', 4); P.inv = Math.max(P.inv, 4); chispas(P.x, P.y - 20, '#bff0ff', 30, 180); }
@@ -2479,8 +2484,10 @@ const GLIFOS = {
   reloj:   ['................','...aaaaaaaaaa...','...abbbbbbbba...','....accccccа....','....abddddba....','.....abddba.....','......abba......','......abba......','.....abccba.....','....abcddcba....','....acddddca....','...abbbbbbbba...','...aaaaaaaaaa...','................','................','................'],
   puno:    ['................','................','....aaaaaa......','...abbbbbba.....','..abcbcbcbba....','..abcbcbcbbaa...','..abbbbbbbbba...','..abcccbbbbba...','..abbbbbbbbba...','...abbbbbbba....','....abbbbba.....','....abbbbba.....','....aaaaaaa.....','................','................','................']
 };
+const COLOR_FX = { guerrero:['#e2443c', '#ff9a8a', '#ffffff'], sombra:['#5ad84a', '#c8ff8a', '#ffffff'], mago:['#4f9aff', '#c8f0ff', '#ffffff'] };
+const colFx = (i = 0) => (COLOR_FX[PJ.clase] || COLOR_FX.mago)[i];
 const PALETA_CLASE = {
-  guerrero:{ a:'#2a1004', b:'#d8682a', c:'#ffd27a', d:'#c0c8d8' },
+  guerrero:{ a:'#2a0606', b:'#d8283c', c:'#ff9a8a', d:'#c0c8d8' },
   sombra:  { a:'#100a1e', b:'#5aa83a', c:'#c8ff8a', d:'#b98bff' },
   mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' }
 };
@@ -2497,7 +2504,7 @@ function iconoPx(glifo, pal){
 // los 7 poderes de la barra (Q F R 1 2 3 4), distintos para cada clase; los poderes de sombra compartidos quedan fuera
 const PODERES_CLASE = {
   guerrero:[
-    ['carga',      'Carga',              'Cargas contra tu objetivo y lo aturdes 1,5 s. Te da 20 de ira.', 2, 10, 0, 'carga', '#ff8a3d'],
+    ['carga',      'Carga',              'Cargas contra tu objetivo y lo aturdes 1,5 s. Te da 20 de ira.', 2, 10, 0, 'carga', '#e2443c'],
     ['hender',     'Hender',             'Tajo enorme frente a ti que golpea a todos los enemigos.', 4, 4, 20, 'hacha', '#ff8a3d'],
     ['estandarte', 'Estandarte de guerra','Clavas un estandarte 15 s: tú y tu grupo hacéis un 20% más de daño cerca de él.', 6, 25, 10, 'estandarte', '#ffd27a'],
     ['ondachoque', 'Onda de choque',     'Onda frente a ti que daña y aturde 2 s.', 9, 12, 15, 'onda', '#ffd27a'],
@@ -2540,6 +2547,8 @@ function barraDeClase(pj){
 let fxPx = [];
 const PX = 3; // tamaño de cada "píxel" de los efectos
 function pxCuadro(x, y, col, t = PX){ ctx.fillStyle = col; ctx.fillRect(Math.round(x / t) * t, Math.round(y / t) * t, t, t); }
+function fxArco(x, y, ang, radio, abre, col, vida = .22){ fxPx.push({ t:'arco', x, y, ang, radio, abre, col, vida, max:vida }); }
+function fxGrietas(x, y, col, vida = .6){ const r = []; for (let i = 0; i < 7; i++){ const a = rand(0, TAU), l = rand(50, 120), q = []; let px = 0, py = 0; for (let k = 0; k < 6; k++){ px += Math.cos(a + rand(-.4, .4)) * l / 6; py += Math.sin(a + rand(-.4, .4)) * l / 6 * .55; q.push([px, py]); } r.push(q); } fxPx.push({ t:'grietas', x, y, r, col, vida, max:vida }); }
 function fxAnillo(x, y, r0, r1, col, vida = .35){ fxPx.push({ t:'anillo', x, y, r0, r1, col, vida, max:vida }); }
 function fxEstela(x1, y1, x2, y2, col, vida = .35){ fxPx.push({ t:'estela', x1, y1, x2, y2, col, vida, max:vida }); }
 function fxCono(x, y, ang, largo, abre, col, vida = .3){ fxPx.push({ t:'cono', x, y, ang, largo, abre, col, vida, max:vida }); }
@@ -2556,6 +2565,12 @@ function dibujarFxPx(t){
       for (let i = 0; i <= n; i++){ const u = i / n; if (Math.random() < .7) pxCuadro(f.x1 + (f.x2 - f.x1) * u + rand(-4, 4), f.y1 + (f.y2 - f.y1) * u - 20 + rand(-10, 10), u > .8 ? '#ffffff' : f.col); }
     } else if (f.t === 'cono'){
       for (let i = 0; i < 40; i++){ const d = rand(20, f.largo) * (.4 + k * .6), a = f.ang + rand(-f.abre / 2, f.abre / 2); pxCuadro(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d * .7 - 16, Math.random() < .3 ? '#ffffff' : f.col); }
+    } else if (f.t === 'arco'){
+      // barrido de un tajo: avanza de un lado al otro dejando estela
+      const fin = f.ang - f.abre / 2 + f.abre * Math.min(1, k * 1.5), ini = Math.max(f.ang - f.abre / 2, fin - f.abre * .7);
+      for (let a = ini; a <= fin; a += .06){ const u = (a - ini) / Math.max(.01, fin - ini); for (let g = 0; g < 2; g++) pxCuadro(f.x + Math.cos(a) * (f.radio - g * 7), f.y - 20 + Math.sin(a) * (f.radio - g * 7) * .6, u > .75 ? '#ffffff' : f.col); }
+    } else if (f.t === 'grietas'){
+      for (const q of f.r) for (const [dx, dy] of q) pxCuadro(f.x + dx, f.y + dy, f.col);
     } else if (f.t === 'meteoro'){
       // cae desde arriba, con la sombra que crece en el suelo
       const y = f.y - 420 * (1 - k);
@@ -2582,9 +2597,15 @@ function dibujarFxPx(t){
   if (P.escudo > 0){ const n = 28; for (let i = 0; i < n; i++){ const a = i / n * TAU + t / 900; pxCuadro(P.x + Math.cos(a) * 30, P.y - 26 + Math.sin(a) * 36, i % 4 ? 'rgba(200,240,255,.75)' : '#ffffff'); } }
   if (estados.muro){ ctx.drawImage(iconoPx('escudo', PALETA_CLASE.guerrero), Math.round(P.x + 12), Math.round(P.y - 70), 24, 24); }
 }
+// torbellino de escarcha del mago (clic derecho)
+function dibujarVortice(p, t, esc){
+  const y = p.y - p.alt, R = 34 * esc;
+  for (let b = 0; b < 3; b++) for (let i = 0; i < 14; i++){ const a = t / 160 + b * TAU / 3 + i * .22, r = R * (1 - i / 16); pxCuadro(p.x + Math.cos(a) * r, y + Math.sin(a) * r * .8, i < 3 ? '#ffffff' : i < 8 ? '#9fd8ff' : '#4f9aff', i < 6 ? 4 : 3); }
+  pxCuadro(p.x - 3, y - 3, '#ffffff', 6);
+}
 // proyectiles en pixel art (bola de fuego, escarcha, cuchillos)
 function dibujarProyPx(p, t){
-  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
+  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], arcano:['#4f9aff', '#c8f0ff', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
   const y = p.y - (p.alt || 0);
   if (p.px === 'cuchillo'){ for (let i = 0; i < 4; i++) pxCuadro(p.x - Math.cos(a) * i * 4, y - Math.sin(a) * i * 4, i ? cols[0] : cols[1], 3); return; }
   for (let i = 0; i < 8; i++) pxCuadro(p.x - Math.cos(a) * i * 5 + rand(-3, 3), y - Math.sin(a) * i * 5 + rand(-3, 3), cols[Math.min(2, i / 3 | 0)], i < 2 ? 5 : 3);
@@ -2606,17 +2627,17 @@ Object.assign(PODER_FN, {
     const e = objetivoOMira(320); if (!e){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.cdP.carga = 0; P.gcd = 0; return; }
     const x0 = P.x, y0 = P.y, a = Math.atan2(e.y - P.y, e.x - P.x), d = Math.hypot(e.x - P.x, e.y - P.y) - e.r - P.r - 4;
     let paso = 0; while (paso < d && !solidoEn(P.x + Math.cos(a) * 12, P.y + Math.sin(a) * 12)){ P.x += Math.cos(a) * 6; P.y += Math.sin(a) * 6; paso += 6; }
-    colisiones(P); fxEstela(x0, y0, P.x, P.y, '#ff8a3d', .4); ganarIra(20);
+    colisiones(P); fxEstela(x0, y0, P.x, P.y, '#e2443c', .4); ganarIra(20);
     if (e.jefe){ if (e.aviso > 0){ e.aviso = 0; e.cd = 2; } } else e.aturdido = 1.5;
-    herir(e, D.fis * .8); shake = 8; texto(e.x, e.y - 60, '¡Cargado!', '#ffd27a', 13);
+    herir(e, D.fis * .8); shake = 8; texto(e.x, e.y - 60, '¡Cargado!', '#ff8a7a', 13);
   },
-  hender(){ pose('atk', DUR_ATK); golpeArco(120, 2.2, D.fis * 1.8); fxCono(P.x, P.y, P.ang, 120, 2.2, '#ff8a3d'); shake = 6; },
+  hender(){ pose('atk', DUR_ATK); golpeArco(120, 2.2, D.fis * 1.8); fxCono(P.x, P.y, P.ang, 120, 2.2, '#e2443c'); shake = 6; },
   estandarte(){ pose('cast', .4); fxPx.push({ t:'estandarte', x:P.x + 30, y:P.y + 10, vida:15, max:15, paso:(f) => { if (Math.hypot(P.x - f.x, P.y - f.y) < 170) ponerEfecto('atk_up', .6); } }); },
   ondachoque(){
-    pose('atk', DUR_ATK); fxCono(P.x, P.y, P.ang, 170, 1.1, '#ffd27a', .4); shake = 10;
+    pose('atk', DUR_ATK); fxCono(P.x, P.y, P.ang, 170, 1.1, '#ff8a7a', .4); shake = 10;
     for (const e of enemigos){ const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy); if (d < 170 + e.r && Math.abs(angDif(Math.atan2(dy, dx), P.ang)) < .55){ herir(e, D.fis * 1.2); if (!e.jefe) e.aturdido = 2; } }
   },
-  atronar(){ pose('cast', .35); danioZona(P.x, P.y, 140, D.fis * 1.4, { lento:3 }); fxAnillo(P.x, P.y, 10, 140, '#ffe25a', .4); shake = 9; },
+  atronar(){ pose('cast', .35); danioZona(P.x, P.y, 140, D.fis * 1.4, { lento:3 }); fxAnillo(P.x, P.y, 10, 140, '#ff5a4a', .4); shake = 9; },
   muro(){ ponerEfecto('muro', 10); fxAnillo(P.x, P.y, 40, 10, '#c0c8d8', .4); },
   avatar(){ ponerEfecto('avatar', 20); const c = Math.round(D.maxHp * .3); P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x, P.y - 74, '+' + c, '#7dffa8', 16); fxAnillo(P.x, P.y, 10, 90, '#ff5a3a', .5); banner('¡Avatar!', 'Tu furia no conoce límites'); },
   // cazador de sombras
@@ -2635,7 +2656,7 @@ Object.assign(PODER_FN, {
   // mago
   traslacion(){ const x0 = P.x, y0 = P.y, a = P.ang; let paso = 0; while (paso < 230 && !solidoEn(P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 16)){ P.x += Math.cos(a) * 8; P.y += Math.sin(a) * 8; paso += 8; } colisiones(P); P.inv = Math.max(P.inv, .3); fxEstela(x0, y0, P.x, P.y, '#c8f0ff', .3); fxAnillo(P.x, P.y, 26, 4, '#ffffff', .3); },
   fuego(){ pose('atk', DUR_ATK); const a = P.ang; proys.push({ px:'fuego', x:P.x + Math.cos(a) * 22, y:P.y + Math.sin(a) * 22, vx:Math.cos(a) * 430, vy:Math.sin(a) * 430, r:10, alt:30, dmg:D.mag * 2, vida:1.2, color:'#ff8a1e', aoe:46, quema:true }); },
-  ventisca(){ pose('cast', .6); const p = puntoMira(320); zonas.push({ x:p.x, y:p.y, r:110, ticks:8, cada:.38, t:.2, dmg:D.mag * .6, lento:2 }); fxPx.push({ t:'zona', x:p.x, y:p.y, r:110, col:'#c8f0ff', vida:3.1, max:3.1 }); },
+  ventisca(){ pose('cast', .6); const p = puntoMira(320); zonas.push({ x:p.x, y:p.y, r:110, ticks:8, cada:.38, t:.2, dmg:D.mag * .6, lento:2, col:'#c8f0ff' }); fxPx.push({ t:'zona', x:p.x, y:p.y, r:110, col:'#c8f0ff', vida:3.1, max:3.1 }); },
   conofrio(){ pose('cast', .35); fxCono(P.x, P.y, P.ang, 150, 1.3, '#9fd8ff', .35); for (const e of enemigos){ const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy); if (d < 150 + e.r && Math.abs(angDif(Math.atan2(dy, dx), P.ang)) < .65){ herir(e, D.mag * 1.5); e.lento = 3; } } },
   elemental(){ pose('invocar', .5); if (soldados.length >= 5) soldados.shift(); soldados.push({ elemental:true, x:P.x - 40, y:P.y + 20, r:14, vida:20, max:20, cd:.5, golpe:0, flip:false, idx:soldados.length }); fxAnillo(P.x - 40, P.y + 20, 30, 4, '#3a8ad8', .4); },
   barrera(){ P.escudo = Math.round(D.maxHp * .3); P.tEscudo = 30; fxAnillo(P.x, P.y, 10, 40, '#c8f0ff', .4); texto(P.x, P.y - 80, 'Barrera de hielo', '#c8f0ff', 13); },
@@ -3124,10 +3145,10 @@ function updateMazmorra(dt){
         const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
         if (!e.jefe && d < 130 && d > 8){ e.x += dx / d * 90 * dt; e.y += dy / d * 90 * dt; }
       }
-      if (Math.random() < .5) chispas(p.x + rand(-25, 25), p.y + rand(-25, 25), '#6a4dff', 1, 60);
+      if (Math.random() < .5) chispas(p.x + rand(-25, 25), p.y + rand(-25, 25), '#9fd8ff', 1, 60);
       if (p.vida <= 0){
         golpeCirculo(p.x, p.y, 85, p.dmg * 2.5);
-        chispas(p.x, p.y, '#8a6bff', 30, 240); shake = Math.max(shake, 6);
+        chispas(p.x, p.y, '#4f9aff', 30, 240); fxAnillo(p.x, p.y, 10, 90, '#9fd8ff', .35); shake = Math.max(shake, 6);
       }
       continue;
     }
@@ -3190,53 +3211,58 @@ function actualizarJefe(e, dx, dy, d, dt){
   if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; pegar(U, false, e.dmg, e); }
 }
 
+// la interfaz sólo se toca cuando un valor cambia (escribir en la página en cada cuadro es caro)
+const HUD_EL = {}, HUD_V = {};
+const hudEl = id => HUD_EL[id] || (HUD_EL[id] = $(id));
+function hudT(id, v){ v = String(v); if (HUD_V['t' + id] !== v){ HUD_V['t' + id] = v; hudEl(id).textContent = v; } }
+function hudS(id, prop, v){ const k = 's' + id + prop; if (typeof v === 'number') v = String(Math.round(v * 1000) / 1000); else if (typeof v === 'string' && v.endsWith('%')) v = Math.round(parseFloat(v) * 10) / 10 + '%'; if (HUD_V[k] !== v){ HUD_V[k] = v; if (prop.startsWith('--')) hudEl(id).style.setProperty(prop, v); else hudEl(id).style[prop] = v; } }
+function hudC(id, cls, on){ const k = 'c' + id + cls; on = !!on; if (HUD_V[k] !== on){ HUD_V[k] = on; hudEl(id).classList.toggle(cls, on); } }
 function actualizarHUD(){
   const r = rangoCazador(), R = RANGOS[r];
-  $('hNombre').textContent = PJ.nombre;
-  $('hNivel').textContent = PJ.nivel;
-  $('hRango').textContent = R.l; $('hRango').style.color = R.color;
-  $('hpFill').style.width = (P.hp / D.maxHp * 100) + '%';
-  $('hpTxt').textContent = `${Math.ceil(P.hp)} / ${D.maxHp}`;
-  $('enFill').style.width = (P.en / D.maxEn * 100) + '%';
-  $('enTxt').textContent = `${recurso().n} ${Math.floor(P.en)} / ${D.maxEn}`;
+  hudT('hNombre', PJ.nombre);
+  hudT('hNivel', PJ.nivel);
+  hudT('hRango', R.l); hudS('hRango', 'color', R.color);
+  hudS('hpFill', 'width', (P.hp / D.maxHp * 100) + '%');
+  hudT('hpTxt', `${Math.ceil(P.hp)} / ${D.maxHp}`);
+  hudS('enFill', 'width', (P.en / D.maxEn * 100) + '%');
+  hudT('enTxt', `${recurso().n} ${Math.floor(P.en)} / ${D.maxEn}`);
   if ($('enFill').dataset.clase !== PJ.clase){ $('enFill').dataset.clase = PJ.clase; $('enFill').style.background = recurso().col; }
   const cb = PJ.clase === 'sombra' ? (P.combo || 0) : -1;
   if ($('combo').dataset.n !== String(cb)){ $('combo').dataset.n = cb; $('combo').innerHTML = cb < 0 ? '' : [0, 1, 2, 3, 4].map(i => `<i class="${i < cb ? 'on' : ''}"></i>`).join(''); }
-  $('xpFill').style.width = (PJ.xp / PJ.xpSig * 100) + '%';
-  $('xpTxt').textContent = `${PJ.xp} / ${PJ.xpSig}`;
+  hudS('xpFill', 'width', (PJ.xp / PJ.xpSig * 100) + '%');
+  hudT('xpTxt', `${PJ.xp} / ${PJ.xpSig}`);
   // marco de objetivo: tu objetivo, el jefe en combate, o el personaje amistoso que seleccionaste
   let ob = null;
   if (objetivoValido()) ob = P.objetivo;
   else if (jefeVivo && jefeVivo.aggro) ob = jefeVivo;
   const amigo = !ob && amigoValido() ? P.amigo : null;
-  const mo = $('marcoObjetivo');
-  mo.classList.toggle('oculto', !ob && !amigo);
-  mo.classList.toggle('amistoso', !!amigo);
+  hudC('marcoObjetivo', 'oculto', !ob && !amigo);
+  hudC('marcoObjetivo', 'amistoso', !!amigo);
   pintarRetratoObjetivo(ob || amigo);
   if (amigo){
-    mo.classList.remove('elite');
-    $('oNombre').textContent = amigo.nombre;
-    $('oRango').textContent = 'Amistoso'; $('oRango').style.color = '#7dffa8';
-    $('oFill').style.width = '100%'; $('oTxt').textContent = amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria';
+    hudC('marcoObjetivo', 'elite', false);
+    hudT('oNombre', amigo.nombre);
+    hudT('oRango', 'Amistoso'); hudS('oRango', 'color', '#7dffa8');
+    hudS('oFill', 'width', '100%'); hudT('oTxt', amigo.mision ? 'Tiene una misión para ti' : 'Habitante de Lumeria');
   }
   if (ob){
-    mo.classList.toggle('elite', !!ob.jefe);
-    $('oNombre').textContent = ob.nombre;
-    $('oRango').textContent = ob.jefe ? 'Jefe' : (E.R ? E.R.l : ''); $('oRango').style.color = E.R ? E.R.color : '#fff';
-    $('oFill').style.width = Math.max(0, ob.hp / ob.maxHp * 100) + '%';
-    $('oTxt').textContent = `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`;
+    hudC('marcoObjetivo', 'elite', !!ob.jefe);
+    hudT('oNombre', ob.nombre);
+    hudT('oRango', ob.jefe ? 'Jefe' : (E.R ? E.R.l : '')); hudS('oRango', 'color', E.R ? E.R.color : '#fff');
+    hudS('oFill', 'width', Math.max(0, ob.hp / ob.maxHp * 100) + '%');
+    hudT('oTxt', `${Math.max(0, Math.ceil(ob.hp))} / ${ob.maxHp}`);
     const oo = objetivoDe(ob);
-    $('odoNombre').textContent = oo.nombre;
-    $('odoFill').style.width = Math.max(0, oo.hp / oo.maxHp * 100) + '%';
+    hudT('odoNombre', oo.nombre);
+    hudS('odoFill', 'width', Math.max(0, oo.hp / oo.maxHp * 100) + '%');
   }
-  $('marcoOdO').classList.toggle('oculto', !ob || !ob.aggro);
+  hudC('marcoOdO', 'oculto', !ob || !ob.aggro);
   if (hPocPrev !== PJ.pociones){ hPocPrev = PJ.pociones; $('hPoc').innerHTML = `${ic3('pocion')}<b>${PJ.pociones}</b>`; }
-  $('btnPuntos').classList.toggle('oculto', !PJ.puntos);
-  if (PJ.puntos) $('btnPuntos').textContent = `${PJ.puntos} puntos por repartir`;
+  hudC('btnPuntos', 'oculto', !PJ.puntos);
+  if (PJ.puntos) hudT('btnPuntos', `${PJ.puntos} puntos por repartir`);
   actualizarBarra();
   const c = CLASES[PJ.clase];
   const cd1 = clamp(P.cd1 / c.h1.cd, 0, 1), cd2 = P.en < costeDe(c.h2) ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1), cdp = clamp(P.cdPoc, 0, 1);
-  $('mAtk').style.setProperty('--cd', cd1); $('mHab').style.setProperty('--cd', cd2); $('mPoc').style.setProperty('--cd', cdp);
+  hudS('mAtk', '--cd', cd1); hudS('mHab', '--cd', cd2); hudS('mPoc', '--cd', cdp);
 }
 
 // =====================================================
@@ -3350,6 +3376,36 @@ function dibujarEquipoGato(c, img, fr, set, esc, equipo, capa){
   }
 }
 
+// ---------- textos ya dibujados (rendimiento) ----------
+// dibujar letras en el lienzo es caro: los nombres y números que se repiten se dibujan una vez en un lienzo chico y se reutilizan
+const ROTULOS = new Map();
+let fuentesListas = false;
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fuentesListas = true; ROTULOS.clear(); });
+function rotulo(txt, x, y, font, fill, stroke = null, lw = 0, sombra = false){
+  txt = String(txt);
+  if (!fuentesListas){
+    ctx.font = font; ctx.textAlign = 'center';
+    if (sombra){ ctx.fillStyle = '#000'; ctx.fillText(txt, x + 1, y + 1); }
+    if (stroke){ ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(txt, x, y); }
+    ctx.fillStyle = fill; ctx.fillText(txt, x, y); return;
+  }
+  const clave = txt + '|' + font + '|' + fill + '|' + stroke + '|' + lw + '|' + sombra + '|' + DPR;
+  let r = ROTULOS.get(clave);
+  if (!r){
+    if (ROTULOS.size > 600) ROTULOS.clear();
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const px = parseFloat(font.match(/(\d+(?:\.\d+)?)px/)[1]), pad = Math.ceil(lw / 2) + 2;
+    const w = Math.ceil(m.measureText(txt).width) + pad * 2 + 1, h = Math.ceil(px * 1.35) + pad * 2 + 1, base = pad + Math.ceil(px);
+    const c = document.createElement('canvas'); c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
+    const a = c.getContext('2d'); a.scale(DPR, DPR); a.font = font; a.textAlign = 'center'; a.lineJoin = 'miter';
+    if (sombra){ a.fillStyle = '#000'; a.fillText(txt, w / 2 + 1, base + 1); }
+    if (stroke){ a.lineWidth = lw; a.strokeStyle = stroke; a.strokeText(txt, w / 2, base); }
+    a.fillStyle = fill; a.fillText(txt, w / 2, base);
+    r = { c, w, h, base }; ROTULOS.set(clave, r);
+  }
+  const dx = Math.round((x - r.w / 2) * DPR) / DPR, dy = Math.round((y - r.base) * DPR) / DPR;
+  ctx.drawImage(r.c, dx, dy, r.w, r.h);
+}
 // silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
 const SILUETAS = new Map();
 function siluetaBlanca(img){
@@ -3470,11 +3526,10 @@ function dibujarJugador(t){
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
   const ny = pie - ALTO_GATO_PJ - 10;
-  ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(PJ.nombre, P.x, ny);
-  ctx.fillStyle = '#7fc8ff'; ctx.fillText(PJ.nombre, P.x, ny);
+  rotulo(PJ.nombre, P.x, ny, '700 14px Rajdhani, sans-serif', '#7fc8ff', 'rgba(0,0,0,.85)', 3);
   const tit = tituloActual();
-  if (tit){ ctx.font = '600 12px Rajdhani, sans-serif'; ctx.strokeText(`«${tit}»`, P.x, ny - 15); ctx.fillStyle = '#ffd100'; ctx.fillText(`«${tit}»`, P.x, ny - 15); }
+  if (tit) rotulo(`«${tit}»`, P.x, ny - 15, '600 12px Rajdhani, sans-serif', '#ffd100', 'rgba(0,0,0,.85)', 3);
+  ctx.font = '700 14px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
   if (PJ.hermandad){
     const hy = ny - (tit ? 30 : 15); ctx.font = '600 12px Rajdhani, sans-serif';
     const tx = `<${PJ.hermandad.nombre}>`;
@@ -3526,7 +3581,7 @@ function updateAliados(dt){
     if (z.t <= 0 && z.ticks > 0){
       z.t = z.cada; z.ticks--;
       golpeCirculo(z.x, z.y, z.r, z.dmg, z.lento ? { lento:z.lento } : {});
-      chispas(z.x + rand(-z.r, z.r) * .7, z.y + rand(-z.r, z.r) * .5, '#8a6bff', 6, 90);
+      chispas(z.x + rand(-z.r, z.r) * .7, z.y + rand(-z.r, z.r) * .5, z.col || '#8a6bff', 6, 90);
     }
   }
   zonas = zonas.filter(z => z.ticks > 0);
@@ -3964,9 +4019,7 @@ function dibujarMascota(t){
   // la hoja ya trae izquierda y derecha: no hace falta reflejar
   const q = cuadroRata(PJ.mascota.tipo, M.dir || 'abajo', M.mov, M.paso || 0, M.flip);
   pintarGato(ctx, PJ.mascota.tipo, M.x, pie, ALTO_GATO, t, M.mov, false, M.quieto || 0, null, q.img, q.fr);
-  ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillStyle = '#000'; ctx.fillText(PJ.mascota.nombre, M.x + 1, pie - ALTO_GATO - 3);
-  ctx.fillStyle = '#e9e4ff'; ctx.fillText(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4);
+  rotulo(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4, '700 12px Rajdhani, sans-serif', '#e9e4ff', null, 0, true);
   if (M.tFrase > 0) burbuja(M.x, pie - ALTO_GATO - 18, M.frase, Math.min(1, M.tFrase));
 }
 
@@ -4110,16 +4163,21 @@ function dibujarCiudad(t){
 }
 
 // halo de las bombillas por encima de todo
+// brillo redondo ya pintado (se reutiliza en vez de crear un degradado en cada cuadro)
+const BRILLOS = {};
+function brillo(col, r){
+  const k = col + r; if (BRILLOS[k]) return BRILLOS[k];
+  const c = document.createElement('canvas'); c.width = c.height = r * 2; const a = c.getContext('2d');
+  const g = a.createRadialGradient(r, r, 1, r, r, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  a.fillStyle = g; a.fillRect(0, 0, r * 2, r * 2);
+  return BRILLOS[k] = c;
+}
 function dibujarLucesCiudad(t){
   if (E.tipo !== 'ciudad') return;
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  const parpadeo = .7 + oscuridad() * 1.2;
-  for (const f of E.farolas) for (const [dx, dy] of f.luces){
-    const x = f.x + dx, y = f.y + dy;
-    const g = ctx.createRadialGradient(x, y, 1, x, y, 34);
-    g.addColorStop(0, `rgba(255,215,140,${.45 * parpadeo})`); g.addColorStop(1, 'rgba(255,215,140,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - 34, y - 34, 68, 68);
-  }
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+  const parpadeo = .7 + oscuridad() * 1.2, b = brillo('rgb(255,215,140)', 34);
+  ctx.globalAlpha = Math.min(1, .45 * parpadeo);
+  for (const f of E.farolas) for (const [dx, dy] of f.luces) ctx.drawImage(b, f.x + dx - 34, f.y + dy - 34, 68, 68);
   ctx.restore();
 }
 
@@ -4413,15 +4471,11 @@ function dibujarNPCSprite(n, t){
   }
   // nombre y signo de misión
   const ny = pie - alto - 8;
-  ctx.textAlign = 'center'; ctx.font = '700 13px Rajdhani, sans-serif';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(n.nombre, n.x, ny);
-  ctx.fillStyle = n.mision ? '#ffd76a' : '#9fe39a'; ctx.fillText(n.nombre, n.x, ny);
+  rotulo(n.nombre, n.x, ny, '700 13px Rajdhani, sans-serif', n.mision ? '#ffd76a' : '#9fe39a', 'rgba(0,0,0,.85)', 3);
   const mk = marcaNPC(n);
   if (mk){
     const by = ny - 16 + (sinMovimiento ? 0 : Math.sin(t / 260) * 3);
-    ctx.font = '900 30px Marcellus, Georgia, serif';
-    ctx.lineWidth = 5; ctx.strokeStyle = '#2a1a00'; ctx.strokeText(mk.c, n.x, by);
-    ctx.fillStyle = mk.col; ctx.fillText(mk.c, n.x, by);
+    rotulo(mk.c, n.x, Math.round(by), '900 30px Marcellus, Georgia, serif', mk.col, '#2a1a00', 5);
   }
 }
 
@@ -4913,15 +4967,19 @@ function dibujarAliado(g, t){
   ctx.drawImage(g.golpe > 0 && g.rol === 'tanque' ? siluetaBlanca(img) : img, sx, sy, w, h, -ax, -ay, w, h);
   dibujarEquipoGato(ctx, img, fr, g.dir, 1, g.equipo, 'frente');
   ctx.restore();
-  ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
-  ctx.strokeText(g.nombre, g.x, pie - h - 10); ctx.fillStyle = '#a8d8ff'; ctx.fillText(g.nombre, g.x, pie - h - 10);
+  rotulo(g.nombre, g.x, pie - h - 10, '700 12px Rajdhani, sans-serif', '#a8d8ff', 'rgba(0,0,0,.85)', 3);
 }
 // marcos de grupo (a la derecha, bajo el minimapa)
 let firmaGrupo = '';
 function pintarGrupo(forzar){
   const c = $('grupo'); if (!c) return;
-  const f = GRUPO.map(g => g.nombre + Math.round(g.hp) + g.vivo).join('|');
-  if (!forzar && f === firmaGrupo) return; firmaGrupo = f;
+  const f = GRUPO.map(g => g.nombre + g.vivo).join('|');
+  if (!forzar && f === firmaGrupo){
+    // misma estructura: sólo se mueven las barras de vida
+    c.querySelectorAll('.gm i b').forEach((b, i) => { const g = GRUPO[i]; if (!g) return; const w = Math.max(0, Math.round(g.hp / g.maxHp * 1000) / 10) + '%'; if (b.style.width !== w) b.style.width = w; });
+    return;
+  }
+  firmaGrupo = f;
   c.classList.toggle('oculto', !GRUPO.length);
   c.innerHTML = GRUPO.map(g => `<div class="gm ${g.vivo ? '' : 'muerto'}"><span class="gm-rol" style="color:${ROL[g.rol].col}" title="${ROL[g.rol].n}">${ROL[g.rol].ic}</span>
     <div><b>${g.nombre}</b><i><b style="width:${Math.max(0, g.hp / g.maxHp * 100)}%"></b></i></div></div>`).join('');
@@ -5162,9 +5220,9 @@ function dibujarAdornosEvento(t){
   const ev = eventoActual(); if (!ev || E.tipo !== 'ciudad') return;
   const c = lienzoAdorno(ev.adorno), esc = ev.adorno === 'arbol' ? 4 : 3;
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  const pon = (x, y, brillo) => {
+  const pon = (x, y, conBrillo) => {
     x = Math.round(x); y = Math.round(y);
-    if (brillo){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + .1 * Math.sin(t / 300 + x); const g = ctx.createRadialGradient(x, y - c.height * esc / 2, 2, x, y - c.height * esc / 2, 34); g.addColorStop(0, ev.col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - 34, y - c.height * esc / 2 - 34, 68, 68); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+    if (conBrillo){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + .1 * Math.sin(t / 300 + x); ctx.imageSmoothingEnabled = true; ctx.drawImage(brillo(ev.col, 34), x - 34, y - c.height * esc / 2 - 34, 68, 68); ctx.imageSmoothingEnabled = false; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
     ctx.drawImage(c, x - c.width * esc / 2, y - c.height * esc, c.width * esc, c.height * esc);
   };
   for (const f of E.farolas || []) pon(f.x + 22, f.y + 6, ev.adorno !== 'arbol');
@@ -5389,8 +5447,7 @@ function draw(t){
   }
   dibujarLucesCiudad(t);
   if (E.etiquetas){
-    ctx.font = '600 15px Marcellus, Georgia, serif'; ctx.textAlign = 'center';
-    for (const et of E.etiquetas){ ctx.fillStyle = '#000'; ctx.fillText(et.txt, et.x + 1, et.y + 1); ctx.fillStyle = '#e9e4ff'; ctx.fillText(et.txt, et.x, et.y); }
+    for (const et of E.etiquetas) rotulo(et.txt, et.x, et.y, '600 15px Marcellus, Georgia, serif', '#e9e4ff', null, 0, true);
   }
 
   for (const p of proysE){ ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ff4f8b'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -5404,7 +5461,7 @@ function draw(t){
     }
     if (spriteListo && p.bola){
       const esc = .75 + .08 * Math.sin(t / 80) + (p.vida < .3 ? (.3 - p.vida) * 2 : 0);
-      ctx.globalAlpha = Math.min(1, p.vida * 3); dibujarFrame('bola', p.x, p.y - p.alt, esc, false, t / 250); ctx.globalAlpha = 1; continue;
+      ctx.globalAlpha = Math.min(1, p.vida * 3); dibujarVortice(p, t, esc); ctx.globalAlpha = 1; continue;
     }
     ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill();
   }
@@ -5415,24 +5472,16 @@ function draw(t){
   ctx.globalAlpha = 1;
   ctx.textAlign = 'center';
   for (const tx of textos){
-    ctx.globalAlpha = Math.min(1, tx.vida * 2); ctx.font = `700 ${tx.size}px Rajdhani, sans-serif`;
-    ctx.fillStyle = '#000'; ctx.fillText(tx.txt, tx.x + 1, tx.y + 1);
-    ctx.fillStyle = tx.color; ctx.fillText(tx.txt, tx.x, tx.y);
+    ctx.globalAlpha = Math.min(1, tx.vida * 2);
+    rotulo(tx.txt, tx.x, tx.y, `700 ${tx.size}px Rajdhani, sans-serif`, tx.color, null, 0, true);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
 
   // iluminación
   const sx = P.x - cam.x, sy = P.y - 20 - cam.y;
-  if (E.tipo === 'mazmorra'){
-    const g = ctx.createRadialGradient(sx, sy, 120, sx, sy, Math.max(360, Math.min(W, H) * .75));
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  } else if (esInterior()){
-    const g = ctx.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, Math.max(W, H) * .7);
-    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  }
+  if (E.tipo === 'mazmorra') ctx.drawImage(penumbra('cueva'), Math.round(sx - W), Math.round(sy - H), W * 2, H * 2);
+  else if (esInterior()) ctx.drawImage(penumbra('interior'), 0, 0, W, H);
 
   dibujarNocheCiudad();
   dibujarClima(t);
@@ -5476,7 +5525,7 @@ function pintarMonstruo(n, idx, x, pie, alto, ref, flip, flash, brillo){
 function dibujarEnemigo(e){
   const n = sprDe(e);
   if (!monListo || !n) return dibujarEnemigoViejo(e);
-  if (e.jefe && e.aviso > 0){
+  if (AVISOS_ATAQUE && e.jefe && e.aviso > 0){
     ctx.strokeStyle = 'rgba(226,68,92,.45)'; ctx.lineWidth = e.r * 1.6;
     ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.cdir) * 340, e.y + Math.sin(e.cdir) * 340); ctx.stroke();
   }
@@ -5514,9 +5563,7 @@ function placaEnemigo(e, tope){
   ctx.fillStyle = '#2a0c10'; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = e.aggro ? '#d8283c' : '#d8b02c'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), h);
   ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x, y, Math.round(w * Math.max(0, e.hp / e.maxHp)), 1);
-  ctx.font = `700 ${obj ? 12 : 11}px Rajdhani, sans-serif`; ctx.textAlign = 'center';
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(e.nombre, e.x, y - 3);
-  ctx.fillStyle = obj ? '#ffffff' : (e.aggro ? '#ff8a8a' : '#ffe08a'); ctx.fillText(e.nombre, e.x, y - 3);
+  rotulo(e.nombre, e.x, y - 3, `700 ${obj ? 12 : 11}px Rajdhani, sans-serif`, obj ? '#ffffff' : (e.aggro ? '#ff8a8a' : '#ffe08a'), 'rgba(0,0,0,.85)', 3);
   ctx.globalAlpha = 1;
 }
 function dibujarCadaver(c){
@@ -5528,7 +5575,7 @@ function dibujarCadaver(c){
 }
 
 function dibujarEnemigoViejo(e){
-  if (e.jefe && e.aviso > 0){
+  if (AVISOS_ATAQUE && e.jefe && e.aviso > 0){
     ctx.strokeStyle = 'rgba(226,68,92,.45)'; ctx.lineWidth = e.r * 1.6;
     ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.cdir) * 340, e.y + Math.sin(e.cdir) * 340); ctx.stroke();
   }
@@ -5551,6 +5598,27 @@ function dibujarEnemigoViejo(e){
   }
 }
 
+// penumbra de las cuevas e interiores: el degradado se pinta una vez por tamaño de pantalla y luego sólo se coloca
+const PENUMBRA = {};
+function penumbra(tipo){
+  const clave = tipo + W + 'x' + H;
+  if (PENUMBRA[tipo] && PENUMBRA[tipo].clave === clave) return PENUMBRA[tipo].c;
+  const c = document.createElement('canvas'), a = c.getContext('2d');
+  if (tipo === 'cueva'){
+    c.width = W * 2; c.height = H * 2;
+    const g = a.createRadialGradient(W, H, 120, W, H, Math.max(360, Math.min(W, H) * .75));
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
+    a.fillStyle = g; a.fillRect(0, 0, W * 2, H * 2);
+  } else {
+    c.width = W; c.height = H;
+    const g = a.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, Math.max(W, H) * .7);
+    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
+    a.fillStyle = g; a.fillRect(0, 0, W, H);
+  }
+  PENUMBRA[tipo] = { clave, c };
+  return c;
+}
+const CARTEL = {};
 function dibujarMinimapa(){
   const bajo = H < 500; // teléfono acostado: minimapa más chico para dejar ver el mundo
   const s = bajo ? 92 : W < 600 ? 104 : 140, r = s / 2, cx = W - r - (bajo ? 10 : 16);
@@ -5560,9 +5628,14 @@ function dibujarMinimapa(){
   // placa con el nombre de la zona
   ctx.font = '15px Marcellus, Georgia, serif'; ctx.textAlign = 'center';
   // la placa nunca se sale de la pantalla: se corre hacia dentro y, si hace falta, se achica la letra
-  let fs = 15, tw = ctx.measureText(nombre).width + 24;
   const izq = W < 600 ? 244 : 8; // a la derecha del marco del jugador en pantallas chicas
-  while (tw > W - izq - 8 && fs > 9){ fs--; ctx.font = `${fs}px Marcellus, Georgia, serif`; tw = ctx.measureText(nombre).width + 16; }
+  const claveCartel = nombre + '|' + W + '|' + fuentesListas;
+  if (CARTEL.clave !== claveCartel){
+    let fs = 15, tw = ctx.measureText(nombre).width + 24;
+    while (tw > W - izq - 8 && fs > 9){ fs--; ctx.font = `${fs}px Marcellus, Georgia, serif`; tw = ctx.measureText(nombre).width + 16; }
+    Object.assign(CARTEL, { clave:claveCartel, fs, tw });
+  }
+  const fs = CARTEL.fs, tw = CARTEL.tw; ctx.font = `${fs}px Marcellus, Georgia, serif`;
   const pxp = clamp(cx, izq + tw / 2, W - tw / 2 - 8);
   ctx.fillStyle = 'rgba(15,11,28,.85)'; ctx.fillRect(pxp - tw / 2, cy - r - 24, tw, 20);
   ctx.strokeStyle = '#b8933f'; ctx.lineWidth = 1; ctx.strokeRect(pxp - tw / 2 + .5, cy - r - 23.5, tw - 1, 19);
@@ -5628,7 +5701,7 @@ function loop(t){
   if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
   if (pantallaActual === 'pCrear') dibujarEscenaPj($('crearCv'), gatoPj, claseElegida, t, rotSel, null);
-  if (enJuego && PJ){
+  if (enJuego && PJ && tSeg % 6 === 0){
     const fb = PJ.bolsa.length + '|' + PJ.bolsa.map(o => o.id).join(',') + '|' + PJ.pociones + '|' + PJ.oro + '|' + JSON.stringify(PJ.mats);
     if (fb !== firmaBolsa){ firmaBolsa = fb; renderBolsa(); }
     const fp = [PJ.nivel, PJ.puntos, JSON.stringify(PJ.stats), Object.values(PJ.equipo).map(o => o ? o.id : '-').join(','), PJ.arma, wTab, !!M].join('|');
