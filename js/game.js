@@ -2936,13 +2936,13 @@ const GATOS = null;
 const GATOS_IMG = new Image();
 // Mist (Gato Carmesí) tiene su propia hoja: frente, espalda, izquierda y derecha, 4 cuadros cada una
 const MIST_IMG = new Image();
-GATOS_DIR[0] = Object.assign({"ab": [[2, 5, 67, 96, 33.5, 96], [71, 3, 68, 98, 34.0, 98], [141, 4, 68, 97, 34.0, 97], [211, 2, 68, 99, 34.0, 99]], "ar": [[2, 103, 65, 97, 32.5, 97], [69, 105, 64, 95, 32.0, 95], [135, 103, 64, 97, 32.0, 97], [201, 103, 64, 97, 32.0, 97]], "lado": [[2, 203, 72, 91, 30.2, 91], [76, 202, 72, 92, 30.2, 92], [150, 203, 72, 91, 30.2, 91], [224, 202, 72, 92, 30.2, 92]], "de": [[2, 297, 72, 92, 41.8, 92], [76, 296, 72, 93, 41.8, 93], [150, 296, 72, 93, 41.8, 93], [224, 296, 72, 93, 41.8, 93]]}, { img:MIST_IMG });
+GATOS_DIR[0] = Object.assign({"ab": [[2, 3, 59, 97, 29.5, 97], [63, 3, 59, 97, 29.5, 97], [124, 2, 61, 98, 30.5, 98], [187, 6, 59, 94, 29.5, 94]], "ar": [[2, 105, 57, 94, 28.5, 94], [61, 104, 53, 95, 26.5, 95], [116, 105, 56, 94, 28.0, 94], [174, 102, 53, 97, 26.5, 97]], "lado": [[2, 203, 60, 88, 25.2, 88], [64, 201, 60, 90, 25.2, 90], [126, 201, 59, 90, 24.8, 90], [187, 201, 58, 90, 24.4, 90]], "de": [[2, 295, 60, 88, 34.8, 88], [64, 293, 63, 90, 36.5, 90], [129, 295, 62, 88, 36.0, 88], [193, 294, 61, 89, 35.4, 89]]}, { img:MIST_IMG });
 const imgGato = tipo => (GATOS_DIR[tipo] && GATOS_DIR[tipo].img) || GATOS_IMG;
 let gatosListo = false, gatosPend = 2;
 const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
 GATOS_IMG.src = 'img/gatos.png';
-MIST_IMG.src = 'img/mist.png?v=1.4.0';
+MIST_IMG.src = 'img/mist.png?v=1.4.1';
 const TIPOS_GATO = ['Gato Carmesí', 'Gato Ejecutivo', 'Gato Calicó', 'Gato Misterioso'];
 // Mascotas: 4 ratas con 4 direcciones (ar arriba, ab abajo, iz izquierda, de derecha) de 4 cuadros
 // cada cuadro: [x, y, ancho, alto, anclaX, anclaY]
