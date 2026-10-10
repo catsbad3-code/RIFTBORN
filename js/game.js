@@ -50,6 +50,18 @@ function marcarPantallaCompleta(){
 document.addEventListener('fullscreenchange', marcarPantallaCompleta);
 document.addEventListener('webkitfullscreenchange', marcarPantallaCompleta);
 // vibración corta al usar poderes en el teléfono (en PC no hace nada)
+// ajustes solo del teléfono: tamaño de botones y ataque automático
+const AJ_TEL = { tam:1, auto:false };
+try { Object.assign(AJ_TEL, JSON.parse(localStorage.getItem('rb_tel') || '{}')); } catch (e) {}
+const TAMANOS = ['Chicos', 'Normales', 'Grandes'];
+function aplicarAjustesTel(){
+  document.body.classList.toggle('bt-chico', esTactil && AJ_TEL.tam === 0);
+  document.body.classList.toggle('bt-grande', esTactil && AJ_TEL.tam === 2);
+  const t = $('btnTamTel'), a = $('btnAutoTel');
+  if (t) t.textContent = 'Botones: ' + TAMANOS[AJ_TEL.tam];
+  if (a) a.textContent = 'Ataque automático: ' + (AJ_TEL.auto ? 'Sí' : 'No');
+  try { localStorage.setItem('rb_tel', JSON.stringify(AJ_TEL)); } catch (e) {}
+}
 const vibrar = p => { if (esTactil && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
 
 // Las cuentas y el guardado están en auth/auth.js
@@ -1342,6 +1354,10 @@ $('btnPersonaje').onclick = () => { wTab = 'personaje'; alternarVentana('wPj'); 
 $('btnPuntos').onclick = () => abrirPerfil('personaje');
 $('btnInteractuar').onclick = () => { if (interCerca) interCerca.accion(); };
 $('btnSeguir').onclick = () => pantalla(null);
+$('btnTamTel').onclick = () => { AJ_TEL.tam = (AJ_TEL.tam + 1) % 3; aplicarAjustesTel(); };
+$('btnAutoTel').onclick = () => { AJ_TEL.auto = !AJ_TEL.auto; aplicarAjustesTel(); };
+$('btnChatTel').onclick = () => { reiniciarChat(); $('notaGuardado').textContent = 'El chat volvió a su lugar.'; };
+aplicarAjustesTel();
 $('btnVerPerfil').onclick = () => abrirPerfil('personaje');
 $('btnGuardar').onclick = () => { guardar(); $('notaGuardado').textContent = E.tipo === 'mazmorra' ? 'Partida guardada. Si sales ahora, apareces en la ciudad.' : 'Partida guardada.'; };
 $('btnSalir').onclick = () => { guardar(); cerrarVentanas(); enJuego = false; document.body.classList.remove('jugando', 'combate'); M = null; ir('pPersonajes'); };
@@ -1874,6 +1890,11 @@ function objetivoTactil(max = 360){
   if (o && !o.muerto && o.hp > 0 && enemigos.includes(o) && Math.hypot(o.x - P.x, o.y - P.y) < Math.max(max, 420)) return o;
   return enemigoCercano(P.x, P.y, max);
 }
+// ataque automático (teléfono): golpea solo cuando hay un monstruo a tu alcance
+function autoAtaque(){
+  if (!esTactil || !AJ_TEL.auto || E.tipo !== 'mazmorra' || P.cd1 > 0) return false;
+  return !!objetivoTactil(PJ.clase === 'mago' ? 330 : 105);
+}
 function apuntar(){
   if (!esTactil){ P.ang = Math.atan2(mouse.y + cam.y - (P.y - 20), mouse.x + cam.x - P.x); return; }
   const e = objetivoTactil(360);
@@ -2216,11 +2237,15 @@ function chispas(x, y, color, n, v = 180){
 }
 function texto(x, y, txt, color, size){ if (textos.length < 70) textos.push({ x, y, txt, color, size, vida:.8 }); }
 
+let reiniciarChat = () => {};
 // ventana de chat: se mueve desde la cabecera y cambia de tamaño desde la esquina
 (function(){
   const ch = $('chat');
-  const guardarChat = () => { try { localStorage.setItem('rb_chat', JSON.stringify({ l:ch.style.left, b:ch.style.bottom, w:ch.style.width, h:ch.style.height, min:ch.classList.contains('min') })); } catch (e) {} };
-  try { const g = JSON.parse(localStorage.getItem('rb_chat') || 'null'); if (g){ Object.assign(ch.style, { left:g.l, bottom:g.b, width:g.w, height:g.h }); ch.classList.toggle('min', !!g.min); } } catch (e) {}
+  // en el teléfono el chat guarda su propio lugar y tamaño (se ancla por arriba), sin tocar el de la PC
+  const CLAVE = esTactil ? 'rb_chat_tel' : 'rb_chat';
+  const guardarChat = () => { try { localStorage.setItem(CLAVE, JSON.stringify({ l:ch.style.left, t:ch.style.top, b:ch.style.bottom, w:ch.style.width, h:ch.style.height, min:ch.classList.contains('min') })); } catch (e) {} };
+  try { const g = JSON.parse(localStorage.getItem(CLAVE) || 'null'); if (g){ Object.assign(ch.style, esTactil ? { left:g.l, top:g.t, width:g.w, height:g.h } : { left:g.l, bottom:g.b, width:g.w, height:g.h }); ch.classList.toggle('min', !!g.min); } } catch (e) {}
+  reiniciarChat = () => { ch.style.left = ch.style.top = ch.style.bottom = ch.style.width = ch.style.height = ''; ch.classList.remove('min'); $('chatMin').textContent = '–'; guardarChat(); };
   const arrastre = (el, fn) => el.addEventListener('pointerdown', e => {
     if (e.target.closest('button')) return;
     e.preventDefault(); const r = ch.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
@@ -2228,8 +2253,13 @@ function texto(x, y, txt, color, size){ if (textos.length < 70) textos.push({ x,
     const fin = () => { removeEventListener('pointermove', mover); removeEventListener('pointerup', fin); guardarChat(); };
     addEventListener('pointermove', mover); addEventListener('pointerup', fin);
   });
+  if (esTactil){
+    arrastre($('chatCab'), (r, dx, dy) => { ch.style.left = clamp(r.left + dx, 0, innerWidth - 80) + 'px'; ch.style.top = clamp(r.top + dy, 0, innerHeight - 30) + 'px'; });
+    arrastre($('chatRs'), (r, dx, dy) => { ch.style.width = clamp(r.width + dx, 150, innerWidth - r.left - 4) + 'px'; ch.style.height = clamp(r.height + dy, 60, innerHeight - r.top - 4) + 'px'; });
+  } else {
   arrastre($('chatCab'), (r, dx, dy) => { ch.style.left = clamp(r.left + dx, 0, innerWidth - 120) + 'px'; ch.style.bottom = clamp(innerHeight - r.bottom - dy, 0, innerHeight - 60) + 'px'; });
   arrastre($('chatRs'), (r, dx, dy) => { ch.style.width = clamp(r.width + dx, 200, innerWidth - r.left - 8) + 'px'; ch.style.height = clamp(r.height - dy, 90, r.bottom - 8) + 'px'; });
+  }
   $('chatMin').onclick = () => { ch.classList.toggle('min'); $('chatMin').textContent = ch.classList.contains('min') ? '+' : '–'; guardarChat(); };
   if (ch.classList.contains('min')) $('chatMin').textContent = '+';
 })();
@@ -2354,7 +2384,7 @@ function update(dt){
 
 function updateMazmorra(dt){
   if (!esTactil) apuntar();
-  if (mouse.izq || holdAtk) usarHab(1);
+  if (mouse.izq || holdAtk || autoAtaque()) usarHab(1);
 
   // exploración
   const pcx = Math.floor(P.x / T), pcy = Math.floor(P.y / T);
