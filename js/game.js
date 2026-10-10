@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.8.1'; // también en index.html (estilos y scripts)
+const VERSION = '1.9.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -413,7 +413,7 @@ function migrar(pj){
 }
 
 let pjSel = null, rotSel = 0, borrarArmado = false;
-const LUGAR_PJ = { posada:'Posada del Eclipse', tienda:'Mercado de Lumeria', asociacion:'Asociación de Cazadores', ciudad:'Ciudad de Lumeria', mazmorra:'Ciudad de Lumeria' };
+const LUGAR_PJ = { posada:'Posada del Eclipse', tienda:'Mercado de Lumeria', asociacion:'Asociación de Cazadores', casino:'Casino de Lumeria', ciudad:'Ciudad de Lumeria', mazmorra:'Ciudad de Lumeria' };
 function renderPersonajes(){
   const c = cuenta(), lista = $('listaPj');
   lista.innerHTML = '';
@@ -697,7 +697,7 @@ function limpiarEscena(){
   if (P) P.objetivo = null;
   interCerca = null; $('btnInteractuar').classList.add('oculto');
 }
-const esInterior = () => E.tipo === 'posada' || E.tipo === 'tienda' || E.tipo === 'asociacion';
+const esInterior = () => E.tipo === 'posada' || E.tipo === 'tienda' || E.tipo === 'asociacion' || E.tipo === 'casino';
 function colocar(x, y){ P.x = x; P.y = y; P.vx = P.vy = 0; centrarCam(true); if (M){ M.x = x - 34; M.y = y + 8; colisiones(M); } }
 function pose(n, dur){ P.pose = { n, t:dur, dur }; }
 
@@ -768,9 +768,9 @@ function crearCiudad(){
   G.props = []; G.edificios = []; G.etiquetas = [];
   // edificio: sprite, centro x, base y, escala, nombre
   const edificio = (spr, cx, base, esc, nombre) => {
-    const A = spr.startsWith('c_') ? CASAS : EDIF;
-    const w = A[spr][2] * esc, h = A[spr][3] * esc;
-    G.props.push({ spr, x:cx, y:base, esc, casa:spr.startsWith('c_') });
+    const R = spr === 'casino' ? CAS.fachada : (spr.startsWith('c_') ? CASAS : EDIF)[spr];
+    const w = R[2] * esc, h = R[3] * esc;
+    G.props.push(spr === 'casino' ? { casino:true, x:cx, y:base, esc } : { spr, x:cx, y:base, esc, casa:spr.startsWith('c_') });
     const x0 = Math.round((cx - w / 2 + 10) / T), x1 = Math.round((cx + w / 2 - 10) / T);
     const y0 = Math.round((base - h * .55) / T), y1 = Math.round(base / T);
     setSolido(G, x0, y0, x1, y1);
@@ -780,6 +780,7 @@ function crearCiudad(){
   edificio('c_posada',     20 * T,   7 * T,  .85,  'Posada del Eclipse');
   edificio('c_asociacion', 7 * T,    7 * T,  .9,   'Asociación de Cazadores');
   edificio('c_mercado',    32.5 * T, 7 * T,  1.25, 'Mercado');
+  edificio('casino',       26.4 * T, 7 * T,  1,    'Casino');
   // casas del sur: el tejado queda pegado al borde de la acera (fila 24)
   const alSur = (spr, cx, esc) => edificio(spr, cx, 24 * T + 4 + CASAS[spr][3] * esc, esc);
   alSur('c_casa', 6 * T, 1.15); alSur('c_casamod', 34 * T, 1.05); alSur('c_cabana', 13.5 * T, .95); alSur('c_apart', 27 * T, .95);
@@ -803,6 +804,7 @@ function crearCiudad(){
   for (const [c, r] of [[12, 11.75], [28, 11.75], [12, 19.6], [28, 19.6]]){
     pon('farola', c, r, .75, 7); G.farolas.push({ x:c * T, y:r * T, luces:[[0, -78]] });
   }
+  G.farolas.push({ x:26.4 * T, y:7 * T, luces:[[-56, -148], [0, -150], [56, -148]] });  // letrero del casino
   pon('farola2', 17.2, 23.75, .8, 7); G.farolas.push({ x:17.2 * T, y:23.75 * T, luces:[[-34, -80], [34, -80]] });
   // mobiliario urbano, sin recargar
   pon('semaforo', 17.95, 11.8, .7, 7); pon('semaforo', 22.05, 19.6, .7, 7);
@@ -822,11 +824,12 @@ function crearCiudad(){
   G.inter.push({ x:20 * T, y:7 * T + 22, r:58, texto:'Entrar a la posada', accion:() => irPosada('puerta') });
   G.inter.push({ x:32.5 * T, y:7 * T + 22, r:58, texto:'Entrar al mercado', accion:irTienda });
   G.inter.push({ x:6.6 * T, y:7 * T + 22, r:54, texto:'Entrar a la Asociación de Cazadores', accion:irAsociacion });
+  G.inter.push({ x:26.4 * T, y:7 * T + 22, r:46, texto:'Entrar al casino', accion:irCasino });
   // habitantes: algunos dan misiones
   G.npcs = [
     { cam:'claire', nombre:'Comandante Claire', x:12, y:7.62, ruta:[9.6, 15], mision:'caza' },
     { cam:'ruarc', nombre:'Sabio Ruarc', x:17.3, y:13.1, ruta:[16.2, 18], mision:'portales' },
-    { spr:'panda', nombre:'Bao, el mercader', x:27.4, y:7.62, mision:'rango' },
+    { spr:'panda', nombre:'Bao, el mercader', x:29.6, y:7.62, mision:'rango' },
     { cam:'eldrin', nombre:'Eldrin, el elfo', x:35.6, y:19.45, ruta:[32.6, 37.4], mision:'nucleos', frases:['Dicen que el Rey Gato de la estatua fue el primer cazador de rango S.', 'Los portales rojos son de rango S. Si ves uno, no entres sin preparación.', 'En el mercado el herrero puede forjarte un arma mejor.'] },
     { cam:'calebe', nombre:'Calebe, el guardia', x:36.6, y:11.75, ruta:[32.5, 37.6], mision:'pinzas', frases:['Vigilo la entrada este de la ciudad. Nada pasa sin que yo lo vea.', 'Los monstruos de rango A huelen el miedo. No se lo des.'] },
     { cam:'benja', nombre:'Benja', x:23.2, y:23.62, ruta:[21.6, 26], mision:'seda', frases:['Espero el autobús... aunque desde que salieron los portales ya no pasa.', 'Mi hermano es cazador de rango C. ¡Quiero ser como él!'] },
@@ -848,6 +851,7 @@ function irCiudad(desde){
   if (desde === 'posada') colocar(20 * T, 9 * T);
   else if (desde === 'tienda') colocar(32.5 * T, 9 * T);
   else if (desde === 'asociacion') colocar(6.6 * T, 9 * T);
+  else if (desde === 'casino') colocar(26.4 * T, 9 * T);
   else colocar(20 * T, 17.6 * T);
   chat('Entras en la Ciudad de Lumeria.', '#ffd76a');
   while (portales.length < 3) crearPortal();
@@ -988,6 +992,301 @@ function dibujarAsociacionInt(t){
     ctx.fillStyle = '#b8862f'; ctx.fillRect(tb.x + dx + 8, tb.y + dy + 1, 4, 3);
   });
   dibujarPuertaInterior(G);
+}
+
+// =====================================================
+//  CASINO: tres tragaperras y una ruleta
+// =====================================================
+const CAS = {"fachada":[0,0,184,168],"tragaperras":[186,0,48,76],"ruleta":[236,0,132,88],"alfombra":[370,0,48,48],"pared":[420,0,64,88],"sim0":[486,0,28,28],"sim1":[516,0,28,28],"sim2":[546,0,28,28],"sim3":[576,0,28,28],"sim4":[606,0,28,28],"sim5":[636,0,28,28]};
+const CAS_IMG = new Image();
+let casListo = false, PAT_ALFOMBRA = null;
+CAS_IMG.onload = () => {
+  const [sx, sy, w, h] = CAS.alfombra, c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(CAS_IMG, sx, sy, w, h, 0, 0, w, h);
+  PAT_ALFOMBRA = ctx.createPattern(c, 'repeat'); casListo = true;
+};
+CAS_IMG.src = 'img/casino.png?v=' + VERSION;
+function dibujarCas(n, x, y, esc = 1){
+  if (!casListo) return;
+  const [sx, sy, w, h] = CAS[n], dw = w * esc, dh = h * esc;
+  ctx.drawImage(CAS_IMG, sx, sy, w, h, Math.round(x - dw / 2), Math.round(y - dh), Math.round(dw), Math.round(dh));
+}
+function crearCasino(){
+  const G = nuevaGrilla(12, 9); G.tipo = 'casino'; G.nombre = 'Casino de Lumeria';
+  setSolido(G, 0, 0, 12, 1); setSolido(G, 0, 8, 12, 9); setSolido(G, 0, 0, 1, 9); setSolido(G, 11, 0, 12, 9);
+  G.props = [];
+  // tres tragaperras contra la pared del fondo
+  [2.5, 4.5, 6.5].forEach((c, i) => {
+    setMueble(G, Math.floor(c), 1, Math.floor(c) + 1, 2);
+    G.props.push({ cas:'tragaperras', x:c * T, y:2 * T + 6, luz:i });
+    G.inter.push({ x:c * T, y:2.9 * T, r:40, texto:'Jugar a la tragaperras', accion:() => abrirTragaperras(i) });
+  });
+  // la ruleta
+  setMueble(G, 7, 4, 10, 6);
+  G.props.push({ cas:'ruleta', x:8.5 * T, y:6 * T });
+  G.inter.push({ x:8.5 * T, y:6.6 * T, r:60, texto:'Jugar a la ruleta', accion:abrirRuleta });
+  G.puerta = 6 * T;
+  G.inter.push({ x:6 * T, y:7.4 * T, r:50, texto:'Salir a la ciudad', accion:() => irCiudad('casino') });
+  return G;
+}
+const CASINO = crearCasino();
+function irCasino(){
+  E = CASINO; limpiarEscena(); modoCombate(false);
+  colocar(6 * T, 6.6 * T);
+  chat('Entras en el Casino de Lumeria.', '#ffd76a');
+}
+function dibujarCasinoInt(t){
+  const G = E;
+  ctx.fillStyle = PAT_ALFOMBRA || '#6a1226'; ctx.fillRect(0, 0, G.w, G.h);
+  // pared del fondo y muros
+  const alto = 1.8 * T, tope = T - alto - 4 - T * .3;
+  ctx.fillStyle = '#2a1236';
+  ctx.fillRect(0, tope, T, G.h - tope); ctx.fillRect(G.w - T, tope, T, G.h - tope); ctx.fillRect(0, G.h - T, G.w, T);
+  ctx.fillStyle = '#b8862f';
+  ctx.fillRect(T - 4, T * .3 + tope, 4, G.h - T + 4 - tope - T * .3); ctx.fillRect(G.w - T, T * .3 + tope, 4, G.h - T + 4 - tope - T * .3);
+  ctx.fillRect(T - 4, G.h - T, G.w - 2 * T + 8, 4);
+  if (casListo){
+    const [sx, sy, w, h] = CAS.pared, k = alto / h, ancho = w * k;
+    for (let x = T; x < G.w - T; x += ancho){
+      const dw = Math.min(ancho, G.w - T - x);
+      ctx.drawImage(CAS_IMG, sx, sy, dw / k, h, Math.round(x), Math.round(T - alto), Math.ceil(dw), Math.round(alto));
+    }
+  }
+  ctx.fillStyle = '#f2c14e'; ctx.fillRect(T - 4, T - alto - 4, G.w - 2 * T + 8, 4);
+  ctx.fillStyle = '#2a1236'; ctx.fillRect(0, tope, G.w, T * .3);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(T, T, G.w - 2 * T, 10);
+  dibujarPuertaInterior(G);
+}
+function dibujarPropCasino(pr){
+  const t = performance.now() / 1000;
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  if (pr.cas === 'tragaperras'){
+    ctx.fillRect(pr.x - 20, pr.y - 6, 40, 8);
+    dibujarCas('tragaperras', pr.x, pr.y);
+    // la bombilla de arriba parpadea, cada máquina a su ritmo
+    if (!sinMovimiento && Math.floor(t * 3 + pr.luz) % 2){ ctx.fillStyle = '#ff5a5a'; ctx.fillRect(pr.x - 6, pr.y - 74, 8, 4); }
+    return;
+  }
+  ctx.fillRect(pr.x - 60, pr.y - 6, 120, 8);
+  dibujarCas('ruleta', pr.x, pr.y);
+}
+
+// ---------- juegos ----------
+const SIMBOLOS = ['Pez', 'Ovillo', 'Huella', 'Campana', 'Diamante', 'Siete'];
+const PESO_SIM = [6, 5, 4, 3, 2, 1];
+const PAGO_TRIO = [5, 8, 12, 20, 50, 200];
+const APUESTAS = [100, 1000, 10000];   // 1 de plata, 10 de plata, 1 de oro
+let casApuesta = 100, casJuego = 0;
+function simboloAzar(){
+  let r = Math.random() * 21;
+  for (let i = 0; i < 6; i++){ r -= PESO_SIM[i]; if (r < 0) return i; }
+  return 0;
+}
+// tres iguales pagan según la tabla; dos sietes pagan x4; cualquier otra pareja devuelve la apuesta
+function pagoTragaperras(r){
+  const [a, b, c] = r;
+  if (a === b && b === c) return PAGO_TRIO[a];
+  if (r.filter(x => x === 5).length === 2) return 4;
+  return a === b || b === c || a === c ? 1 : 0;
+}
+function botonesApuesta(id){
+  const et = v => `<span class="dinero"><span class="mon">${v >= 10000 ? v / 10000 : v / 100}<i class="${v >= 10000 ? 'm-o' : 'm-p'}"></i></span></span>`;
+  return `<div class="cas-apuestas">${APUESTAS.map(v => `<button type="button" class="btn cas-ap" data-ap="${v}" aria-pressed="${v === casApuesta}">${et(v)}</button>`).join('')}</div>`;
+}
+function enlazarApuestas(){
+  $('miCuerpo').querySelectorAll('.cas-ap').forEach(b => b.onclick = () => {
+    casApuesta = +b.dataset.ap;
+    $('miCuerpo').querySelectorAll('.cas-ap').forEach(x => x.setAttribute('aria-pressed', x === b));
+    casRefrescar && casRefrescar();
+  });
+}
+let casRefrescar = null;
+function abrirTragaperras(maq){
+  npcHablando = null;
+  const juego = ++casJuego, si = $('miSi'), no = $('miNo');
+  $('miNombre').textContent = 'Casino de Lumeria';
+  $('miTitulo').textContent = `Tragaperras ${maq + 1}`;
+  $('miCuerpo').innerHTML = `<div class="cas"><canvas id="tgCan" class="cas-can" width="240" height="156"></canvas>
+    <p id="tgMsg" class="cas-msg">Elige tu apuesta y tira de la palanca.</p>
+    <div class="linea"><span>Apuesta</span>${botonesApuesta()}</div>
+    <div class="linea"><span>Tu dinero</span><b id="tgOro"></b></div>
+    <div class="cas-tabla">${SIMBOLOS.map((n, i) => `<span><i class="cas-sim" style="background-position:-${CAS['sim' + i][0]}px 0"></i>×3 = x${PAGO_TRIO[i]}</span>`).join('')}
+      <span>Dos <i class="cas-sim" style="background-position:-${CAS.sim5[0]}px 0"></i> = x4</span><span>Pareja = recuperas la apuesta</span></div></div>`;
+  const cv = $('tgCan'), c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  // cada rodillo es una tira de símbolos que gira; la fila del medio es la línea de premio
+  const N = 64, rod = [0, 1, 2].map(() => ({ tira:Array.from({ length:N }, simboloAzar), pos:Math.random() * N | 0, ini:0, fin:0, t0:0, dur:0 }));
+  let girando = false, pendiente = 0, premio = null;
+  const oroVisible = () => PJ.oro - pendiente;
+  casRefrescar = () => { $('tgOro').innerHTML = dinero(oroVisible()); si.disabled = girando || PJ.oro < casApuesta; };
+  function pintar(ahora){
+    c.fillStyle = '#1c1424'; c.fillRect(0, 0, 240, 156);
+    for (let k = 0; k < 3; k++){
+      const R = rod[k], x0 = 12 + k * 76;
+      let p = R.pos;
+      if (R.dur){ const u = Math.min(1, (ahora - R.t0) / R.dur); p = R.ini + (R.fin - R.ini) * (1 - Math.pow(1 - u, 3)); }
+      c.fillStyle = '#f4f0e6'; c.fillRect(x0, 8, 64, 140);
+      c.save(); c.beginPath(); c.rect(x0, 8, 64, 140); c.clip();
+      const base = Math.floor(p), frac = p - base;
+      for (let f = 0; f < 5; f++){
+        const s = R.tira[(base + f) % N], y = Math.round((78 + (f - 2) * 52 - frac * 52) / 2) * 2;
+        const [sx, sy, w, h] = CAS['sim' + s];
+        if (casListo) c.drawImage(CAS_IMG, sx, sy, w, h, x0 + 4, y - 26, 56, 56);
+      }
+      c.restore();
+      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x0, 8, 64, 20); c.fillRect(x0, 128, 64, 20);
+      c.strokeStyle = '#b8862f'; c.lineWidth = 4; c.strokeRect(x0 - 2, 6, 68, 144);
+    }
+    // línea de premio
+    c.fillStyle = premio && premio.x ? (Math.floor(ahora / 150) % 2 ? '#ffe9a0' : '#ff4a5c') : '#ff4a5c';
+    c.fillRect(2, 76, 8, 4); c.fillRect(230, 76, 8, 4);
+  }
+  function bucle(){
+    if (casJuego !== juego || pantallaActual !== 'pMision'){ casRefrescar = null; return; }
+    const ahora = performance.now();
+    pintar(ahora);
+    if (girando){
+      rod.forEach((R, k) => { if (R.dur && ahora - R.t0 >= R.dur && !R.parado){ R.parado = true; sfx('golpe'); } });
+      if (ahora % 90 < 20) sfx('click', .07);
+      if (rod.every(R => R.parado)){
+        girando = false; rod.forEach(R => { R.pos = R.fin % N; R.dur = 0; });
+        pendiente = 0;
+        if (premio.x >= 50){ sfx('nivel'); banner('¡Premio mayor!', `Ganas ${dineroTxt(premio.gana)}`); chat(`¡Premio mayor en la tragaperras! Ganas ${dineroTxt(premio.gana)}.`, '#ffd23f'); }
+        else if (premio.x > 1) sfx('botin'); else if (premio.x === 1) sfx('moneda');
+        $('tgMsg').innerHTML = premio.x > 1 ? `<b style="color:#7dffa8">¡Ganas ${dinero(premio.gana)}!</b>` : premio.x === 1 ? 'Una pareja: recuperas tu apuesta.' : 'Nada esta vez. ¿Otra tirada?';
+        casRefrescar();
+      }
+    }
+    requestAnimationFrame(bucle);
+  }
+  si.classList.remove('oculto'); si.textContent = 'Girar'; no.textContent = 'Salir';
+  si.onclick = () => {
+    if (girando || PJ.oro < casApuesta) return;
+    const r = [simboloAzar(), simboloAzar(), simboloAzar()], x = pagoTragaperras(r), gana = casApuesta * x;
+    // el dinero se cobra y se paga al momento (cerrar la ventana no cambia el resultado); la cifra se actualiza al parar
+    PJ.oro += gana - casApuesta; pendiente = gana; premio = { x, gana };
+    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += gana - casApuesta;
+    guardar();
+    const ahora = performance.now();
+    rod.forEach((R, k) => {
+      R.ini = R.pos; R.fin = R.pos + 24 + k * 8; R.t0 = ahora; R.dur = 900 + k * 450; R.parado = false;
+      R.tira[(R.fin + 2) % N] = r[k];   // la fila del medio
+    });
+    girando = true; $('tgMsg').textContent = 'Girando…'; sfx('poder');
+    $('tgOro').innerHTML = dinero(PJ.oro - gana); si.disabled = true;
+  };
+  enlazarApuestas(); casRefrescar();
+  pantalla('pMision'); requestAnimationFrame(bucle);
+}
+
+// ruleta europea: 37 casillas (0 al 36)
+const ORDEN_RULETA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+const ROJOS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const colorNum = n => n === 0 ? 'verde' : ROJOS.has(n) ? 'rojo' : 'negro';
+const COL_NUM = { verde:'#2a9a4a', rojo:'#d02838', negro:'#1c1424' };
+const APUESTAS_RULETA = {
+  rojo:   { n:'Rojo',          x:2,  gana:n => ROJOS.has(n) },
+  negro:  { n:'Negro',         x:2,  gana:n => n > 0 && !ROJOS.has(n) },
+  par:    { n:'Par',           x:2,  gana:n => n > 0 && n % 2 === 0 },
+  impar:  { n:'Impar',         x:2,  gana:n => n % 2 === 1 },
+  bajo:   { n:'1 al 18',       x:2,  gana:n => n >= 1 && n <= 18 },
+  alto:   { n:'19 al 36',      x:2,  gana:n => n >= 19 },
+  doc1:   { n:'1ª docena',     x:3,  gana:n => n >= 1 && n <= 12 },
+  doc2:   { n:'2ª docena',     x:3,  gana:n => n >= 13 && n <= 24 },
+  doc3:   { n:'3ª docena',     x:3,  gana:n => n >= 25 },
+  numero: { n:'Un número',     x:36, gana:(n, v) => n === v }
+};
+let rulTipo = 'rojo', rulNumero = 7, rulHistorial = [];
+function abrirRuleta(){
+  npcHablando = null;
+  const juego = ++casJuego, si = $('miSi'), no = $('miNo');
+  $('miNombre').textContent = 'Casino de Lumeria';
+  $('miTitulo').textContent = 'Ruleta';
+  $('miCuerpo').innerHTML = `<div class="cas"><div class="cas-ru-cab"><canvas id="ruCan" class="cas-can cas-rueda" width="104" height="104"></canvas>
+    <div><p id="ruMsg" class="cas-msg">Elige a qué apostar y pulsa Girar.</p>
+    <div class="cas-hist" id="ruHist"></div></div></div>
+    <div class="cas-tipos">${Object.entries(APUESTAS_RULETA).map(([k, A]) => `<button type="button" class="btn cas-tipo${k === 'rojo' ? ' cas-rojo' : k === 'negro' ? ' cas-negro' : ''}" data-tipo="${k}" aria-pressed="${k === rulTipo}">${A.n}<small>paga x${A.x}</small></button>`).join('')}</div>
+    <div class="linea" id="ruNumFila"><span>Número</span><b><input id="ruNum" type="number" min="0" max="36" value="${rulNumero}" class="cas-num"></b></div>
+    <div class="linea"><span>Apuesta</span>${botonesApuesta()}</div>
+    <div class="linea"><span>Tu dinero</span><b id="ruOro"></b></div></div>`;
+  const cv = $('ruCan'), c = cv.getContext('2d'), S = 104, cx = S / 2, cy = S / 2, PASO = TAU / 37;
+  let girando = false, pendiente = 0, res = null, rot = 0, bola = -Math.PI / 2, t0 = 0, dur = 0, rot0 = 0, rot1 = 0, bola0 = 0, bola1 = 0, rBola = 46;
+  const pintarHist = () => $('ruHist').innerHTML = rulHistorial.map(n => `<span style="background:${COL_NUM[colorNum(n)]}">${n}</span>`).join('');
+  casRefrescar = () => {
+    $('ruOro').innerHTML = dinero(PJ.oro - pendiente); si.disabled = girando || PJ.oro < casApuesta;
+    $('ruNumFila').style.display = rulTipo === 'numero' ? '' : 'none';
+  };
+  function pintar(){
+    c.clearRect(0, 0, S, S);
+    // borde de madera y casillas
+    c.fillStyle = '#4e2c12'; c.beginPath(); c.arc(cx, cy, 51, 0, TAU); c.fill();
+    c.fillStyle = '#a06a38'; c.beginPath(); c.arc(cx, cy, 48, 0, TAU); c.fill();
+    c.fillStyle = '#3a2010'; c.beginPath(); c.arc(cx, cy, 43, 0, TAU); c.fill();
+    for (let i = 0; i < 37; i++){
+      const a = rot - Math.PI / 2 + i * PASO;
+      c.fillStyle = COL_NUM[colorNum(ORDEN_RULETA[i])];
+      c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, 41, a, a + PASO); c.closePath(); c.fill();
+    }
+    c.fillStyle = '#3a2010'; c.beginPath(); c.arc(cx, cy, 27, 0, TAU); c.fill();
+    c.fillStyle = '#c0884a'; c.beginPath(); c.arc(cx, cy, 25, 0, TAU); c.fill();
+    c.fillStyle = '#d8a860'; c.beginPath(); c.arc(cx, cy, 15, 0, TAU); c.fill();
+    // cruceta dorada que gira con la rueda
+    c.strokeStyle = '#f2c14e'; c.lineWidth = 3;
+    for (let k = 0; k < 4; k++){ const a = rot + k * Math.PI / 2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 13, cy + Math.sin(a) * 13); c.stroke(); }
+    c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(cx, cy, 4, 0, TAU); c.fill();
+    // bola
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx + Math.cos(bola) * rBola, cy + Math.sin(bola) * rBola, 3, 0, TAU); c.fill();
+  }
+  function bucle(){
+    if (casJuego !== juego || pantallaActual !== 'pMision'){ casRefrescar = null; return; }
+    const ahora = performance.now();
+    if (girando){
+      const u = Math.min(1, (ahora - t0) / dur), e = 1 - Math.pow(1 - u, 3);
+      rot = rot0 + (rot1 - rot0) * e; bola = bola0 + (bola1 - bola0) * e;
+      rBola = u < .6 ? 46 : 46 - (46 - 35) * Math.min(1, (u - .6) / .3);
+      if (u < .85 && Math.random() < .25) sfx('click', .06 + u * .2);
+      if (u >= 1){
+        girando = false; pendiente = 0;
+        const A = APUESTAS_RULETA[res.tipo];
+        rulHistorial = [res.n, ...rulHistorial].slice(0, 10); pintarHist();
+        const col = { verde:'verde', rojo:'rojo', negro:'negro' }[colorNum(res.n)];
+        $('ruMsg').innerHTML = `Sale el <b style="color:${COL_NUM[colorNum(res.n)] === '#1c1424' ? '#c8c0d8' : COL_NUM[colorNum(res.n)]}">${res.n} ${col}</b>. ` + (res.gana ? `<b style="color:#7dffa8">¡Ganas ${dinero(res.gana)}!</b>` : `Pierdes tu apuesta a ${A.n.toLowerCase()}.`);
+        if (res.gana){ sfx(A.x >= 36 ? 'nivel' : 'botin'); if (A.x >= 36){ banner('¡Pleno en la ruleta!', `Ganas ${dineroTxt(res.gana)}`); chat(`¡Pleno al ${res.n} en la ruleta! Ganas ${dineroTxt(res.gana)}.`, '#ffd23f'); } }
+        casRefrescar();
+      }
+    }
+    pintar();
+    requestAnimationFrame(bucle);
+  }
+  $('miCuerpo').querySelectorAll('.cas-tipo').forEach(b => b.onclick = () => {
+    rulTipo = b.dataset.tipo;
+    $('miCuerpo').querySelectorAll('.cas-tipo').forEach(x => x.setAttribute('aria-pressed', x === b));
+    casRefrescar();
+  });
+  $('ruNum').oninput = () => { const v = Math.round(+$('ruNum').value); if (v >= 0 && v <= 36) rulNumero = v; };
+  si.classList.remove('oculto'); si.textContent = 'Girar'; no.textContent = 'Salir';
+  si.onclick = () => {
+    if (girando || PJ.oro < casApuesta) return;
+    if (rulTipo === 'numero'){
+      const v = Math.round(+$('ruNum').value);
+      if (!(v >= 0 && v <= 36)){ $('ruMsg').textContent = 'Elige un número del 0 al 36.'; return; }
+      rulNumero = v;
+    }
+    const n = ORDEN_RULETA[Math.random() * 37 | 0], A = APUESTAS_RULETA[rulTipo];
+    const gana = A.gana(n, rulNumero) ? casApuesta * A.x : 0;
+    PJ.oro += gana - casApuesta; pendiente = gana; res = { n, gana, tipo:rulTipo };
+    PJ.casino = PJ.casino || { jugadas:0, ganado:0 }; PJ.casino.jugadas++; PJ.casino.ganado += gana - casApuesta;
+    guardar();
+    // la rueda gira a la derecha y la bola a la izquierda; al final la bola cae en la casilla del número
+    const i = ORDEN_RULETA.indexOf(n);
+    rot0 = rot % TAU; rot1 = rot0 + TAU * 3 + Math.random() * TAU;
+    bola1 = rot1 - Math.PI / 2 + (i + .5) * PASO; bola0 = bola1 + TAU * 6;
+    t0 = performance.now(); dur = 4200; girando = true;
+    $('ruMsg').textContent = rulTipo === 'numero' ? `Apuestas al ${rulNumero}…` : `Apuestas a ${A.n.toLowerCase()}…`;
+    $('ruOro').innerHTML = dinero(PJ.oro - gana); si.disabled = true; sfx('poder');
+  };
+  pintarHist(); enlazarApuestas(); casRefrescar();
+  pantalla('pMision'); requestAnimationFrame(bucle);
 }
 
 // ---------- hermandades ----------
@@ -3654,6 +3953,12 @@ function dibujarProp(pr){
     return;
   }
   if (pr.mu) return dibujarMueble(pr);
+  if (pr.cas) return dibujarPropCasino(pr);
+  if (pr.casino){
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(pr.x, pr.y - 2, 92, 10, 0, 0, TAU); ctx.fill();
+    dibujarCas('fachada', pr.x, pr.y + 4, pr.esc);
+    return;
+  }
   if (pr.casa){
     if (!casasListo) return;
     const [sx, sy, w, h] = CASAS[pr.spr], dw = w * pr.esc, dh = h * pr.esc;
@@ -4775,12 +5080,14 @@ const PISTAS = {
   noche:    { bpm:76,  raiz:57, escala:[0, 2, 3, 5, 7, 8, 10], mel:[4, -1, 2, 3, 2, -1, 0, -1, 4, 5, 4, 2, 3, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' },
   mazmorra: { bpm:100, raiz:50, escala:[0, 1, 3, 5, 7, 8, 10], mel:[0, -1, 2, 1, 0, -1, 4, 3, 2, -1, 1, 0, -1, 0, 1, 2], bajo:[0, 0, 0, 0, 5, 5, 4, 4], onda:'square' },
   titan:    { bpm:138, raiz:50, escala:[0, 1, 3, 5, 6, 8, 10], mel:[0, 0, 4, 3, 0, 0, 5, 4, 0, 0, 6, 5, 4, 3, 2, 1], bajo:[0, 0, 0, 0, 1, 1, 0, 0], onda:'sawtooth' },
+  casino:   { bpm:126, raiz:58, escala:[0, 2, 4, 7, 9, 10],  mel:[0, 2, 4, 3, 5, -1, 4, 2, 0, 2, 4, 5, 3, 2, 1, -1], bajo:[0, 4, 3, 4, 0, 4, 3, 2], onda:'triangle' },
   menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
 };
 function pistaActual(){
   if (!enJuego) return 'menu';
   if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
   if (E.tipo === 'ciudad') return oscuridad() > .3 ? 'noche' : 'ciudad';
+  if (E.tipo === 'casino') return 'casino';
   return 'posada';
 }
 function programarMusica(){
@@ -5382,6 +5689,7 @@ function draw(t){
   else if (E.tipo === 'posada') dibujarPosadaInt(t);
   else if (E.tipo === 'tienda') dibujarTiendaInt(t);
   else if (E.tipo === 'asociacion') dibujarAsociacionInt(t);
+  else if (E.tipo === 'casino') dibujarCasinoInt(t);
   else dibujarMazmorra(t);
   dibujarHuellas();
   dibujarAdornosEvento(t);
