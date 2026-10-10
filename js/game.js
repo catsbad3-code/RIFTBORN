@@ -23,6 +23,33 @@ addEventListener('resize', resize); resize();
 const esTactil = matchMedia('(pointer: coarse)').matches;
 if (esTactil) document.body.classList.add('tactil');
 
+// Pantalla completa: en el teléfono se activa sola al entrar al mundo (necesita un toque del jugador)
+const docEl = document.documentElement;
+const pcSoportada = !!(docEl.requestFullscreen || docEl.webkitRequestFullscreen);
+const enPantallaCompleta = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const esApp = !!(matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone);
+function pedirPantallaCompleta(){
+  if (!pcSoportada || enPantallaCompleta()) return;
+  const r = docEl.requestFullscreen ? docEl.requestFullscreen({ navigationUI:'hide' }) : docEl.webkitRequestFullscreen();
+  if (r && r.then) r.then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
+}
+function alternarPantallaCompleta(){
+  if (enPantallaCompleta()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else pedirPantallaCompleta();
+}
+function marcarPantallaCompleta(){
+  const on = enPantallaCompleta();
+  for (const id of ['btnPantalla', 'btnPantallaPausa']){
+    const b = $(id); if (!b) continue;
+    b.classList.toggle('oculto', !pcSoportada || esApp);
+    b.title = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+    if (id === 'btnPantallaPausa') b.textContent = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+  }
+  setTimeout(resize, 100);
+}
+document.addEventListener('fullscreenchange', marcarPantallaCompleta);
+document.addEventListener('webkitfullscreenchange', marcarPantallaCompleta);
+
 // Las cuentas y el guardado están en auth/auth.js
 
 // =====================================================
@@ -316,6 +343,7 @@ function renderPersonajes(){
 }
 function entrarMundo(){
   if (!pjSel) return;
+  if (esTactil) pedirPantallaCompleta();
   try { localStorage.setItem('rb_ultimo', pjSel); } catch (e) {}
   $('fundido').classList.add('ver');
   setTimeout(() => { empezar(pjSel); $('fundido').classList.remove('ver'); }, 450);
@@ -1293,6 +1321,9 @@ $('mHab').addEventListener('pointerdown', e => { e.preventDefault(); usarHab(2);
 $('mPoc').addEventListener('pointerdown', e => { e.preventDefault(); beberPocion(); });
 
 $('btnMenuJuego').onclick = pausar;
+$('btnPantalla').onclick = alternarPantallaCompleta;
+$('btnPantallaPausa').onclick = alternarPantallaCompleta;
+marcarPantallaCompleta();
 $('btnMascota').onclick = toggleMascota;
 $('btnBolsa').onclick = () => alternarVentana('wBolsa');
 $('btnLibro').onclick = () => alternarVentana('wLibro');
@@ -3668,8 +3699,9 @@ function dibujarEnemigoViejo(e){
 }
 
 function dibujarMinimapa(){
-  const s = W < 600 ? 104 : 140, r = s / 2, cx = W - r - 16;
-  const cy = INSET + (esTactil ? 84 : 30) + r;
+  const bajo = H < 500; // teléfono acostado: minimapa más chico para dejar ver el mundo
+  const s = bajo ? 92 : W < 600 ? 104 : 140, r = s / 2, cx = W - r - (bajo ? 10 : 16);
+  const cy = INSET + (esTactil ? (bajo ? 74 : 84) : 30) + r;
   const nombre = E.tipo === 'mazmorra' ? `Rango ${E.R.l}: ${E.R.tema}` : E.nombre;
   const colorZona = E.tipo === 'mazmorra' ? E.R.color : '#ffd76a';
   // placa con el nombre de la zona
