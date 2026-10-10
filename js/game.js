@@ -192,8 +192,8 @@ const TAM_BOLSA = 24;
 
 let uidObj = 0;
 // íconos de objetos de uso, cofre y minerales
-const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24};
-const IC3_URL = 'img/ic3.png';
+const IC3 = {"libro": 0, "corazon": 1, "bomba": 2, "pergamino": 3, "pocion": 4, "farol": 5, "tetera": 6, "bolsa": 7, "seta": 8, "calavera": 9, "escudo": 10, "cofre": 11, "m_plata": 12, "m_cobre": 13, "m_hierro": 14, "m_estano": 15, "m_plomo": 16, "m_zinc": 17, "m_oro": 18, "p_gelatina": 19, "p_guadana": 20, "p_colmillo": 21, "p_pinza": 22, "p_seda": 23, "p_nucleo": 24, "queso": 25, "tinte": 26, "trofeo": 27};
+const IC3_URL = 'img/ic3.png?v=' + VERSION;
 const IC3_N = Object.keys(IC3).length;
 const IC3_IMG = new Image(); IC3_IMG.src = IC3_URL;
 const ic3 = k => `<span class="ic3" style="background-image:url(${IC3_URL});background-position:${(IC3[k] / (IC3_N - 1) * 100).toFixed(4)}% 0"></span>`;
@@ -204,6 +204,7 @@ const APILABLES = {
   seta:      { n:'Seta saltarina',          d:'Obtienes Celeridad durante 30 segundos.', valor:400, usa:true, r:1 },
   libro:     { n:'Tomo de furia',           d:'Obtienes Furia de sombras durante 30 segundos.', valor:800, usa:true, r:2 },
   pergamino: { n:'Pergamino de protección', d:'Obtienes Coraza de sombras durante 30 segundos.', valor:800, usa:true, r:2 },
+  queso:     { n:'Galleta de queso',        d:'Alimenta a tu mascota: llena su barriga y le da experiencia.', valor:150, usa:true, r:1 },
   tetera:    { n:'Té de la posada',         d:'Recupera la mitad de tu energía y te deja Descansado 2 minutos.', valor:300, usa:true, r:1 },
   farol:     { n:'Farol purificador',       d:'Elimina todos tus efectos negativos (veneno, lentitud...).', valor:600, usa:true, r:1 },
   bomba:     { n:'Bomba de sombras',        d:'Explota a tu alrededor y daña a los enemigos cercanos. Solo dentro de los portales.', valor:700, usa:true, r:2 },
@@ -238,6 +239,7 @@ function usarApilable(k){
   else if (k === 'pergamino') ponerEfecto('def_up', 30);
   else if (k === 'tetera'){ P.en = Math.min(D.maxEn, P.en + D.maxEn * .5); ponerEfecto('spi_up', 120); }
   else if (k === 'farol'){ limpiarEfectos(true); texto(P.x, P.y - 70, 'Purificado', '#ffe3a1', 15); }
+  else if (k === 'queso'){ if (!alimentarMascota()) return; }
   PJ.mats[k]--; if (PJ.mats[k] <= 0) delete PJ.mats[k];
   chat(`Usas [${A.n}].`, '#ffe3a1'); guardar(); renderBolsa();
 }
@@ -375,6 +377,7 @@ function migrar(pj){
   if (!pj.monedaCobre){ pj.oro = Math.round((pj.oro || 0) * 100); pj.monedaCobre = true; }
   pj.barra = pj.barra || { Q:'paso', F:'luna', R:'soldado', '1':'lluvia', '2':'ola', '3':'domo', '4':'ejercito' };
   pj.talentos = pj.talentos || {};
+  if (pj.mascota){ pj.mascota.nivel = pj.mascota.nivel || 1; pj.mascota.xp = pj.mascota.xp || 0; if (pj.mascota.hambre === undefined) pj.mascota.hambre = 100; }
   return pj;
 }
 
@@ -1092,6 +1095,7 @@ function abrirTienda(msg){
       <button class="btn" id="cP5" ${PJ.oro < p * 5 ? 'disabled' : ''}><span>Comprar 5 pociones</span><span>${dinero(p * 5)}</span></button>
       <button class="btn" id="cTe" ${PJ.oro < 600 ? 'disabled' : ''}><span class="tienda-ic">${ic3('tetera')}Té de la posada</span><span>${dinero(600)}</span></button>
       <button class="btn" id="cFarol" ${PJ.oro < 1200 ? 'disabled' : ''}><span class="tienda-ic">${ic3('farol')}Farol purificador</span><span>${dinero(1200)}</span></button>
+      <button class="btn" id="cQueso" ${PJ.oro < 300 ? 'disabled' : ''}><span class="tienda-ic">${ic3('queso')}Galleta de queso (mascota)</span><span>${dinero(300)}</span></button>
       ${botonEncargo('tendera')}
       <button class="btn dorado" id="cMin" ${valorMinerales() ? '' : 'disabled'}><span>Vender todos los minerales</span><span>${dinero(valorMinerales())}</span></button>
     </div>
@@ -1099,6 +1103,7 @@ function abrirTienda(msg){
   enlazarEncargo('tendera');
   $('cTe').onclick = () => { if (PJ.oro >= 600){ PJ.oro -= 600; darApilable('tetera'); guardar(); abrirTienda('Compraste un Té de la posada.'); } };
   $('cFarol').onclick = () => { if (PJ.oro >= 1200){ PJ.oro -= 1200; darApilable('farol'); guardar(); abrirTienda('Compraste un Farol purificador.'); } };
+  $('cQueso').onclick = () => { if (PJ.oro >= 300){ PJ.oro -= 300; darApilable('queso'); guardar(); abrirTienda('Compraste una Galleta de queso.'); } };
   $('cMin').onclick = () => { const v = valorMinerales(); if (!v) return; for (const k in PJ.mats) if (k.startsWith('m_')) delete PJ.mats[k]; PJ.oro += v; guardar(); abrirTienda(`Vendiste tus minerales por ${dineroTxt(v)}.`); };
   const comprar = n => { if (PJ.oro >= p * n){ PJ.oro -= p * n; PJ.pociones += n; guardar(); abrirTienda(`Compraste ${n} ${n > 1 ? 'pociones' : 'poción'}.`); } };
   $('cP1').onclick = () => comprar(1);
@@ -1677,11 +1682,19 @@ function renderPj(){
     cuerpo.querySelectorAll('.pd-mas').forEach(b => b.onclick = () => { if (PJ.puntos <= 0) return; PJ.stats[b.dataset.stat]++; PJ.puntos--; recalcular(); });
   } else if (wTab === 'mascota'){
     cuerpo.innerHTML = PJ.mascota
-      ? `<div class="pd-caja" style="text-align:center"><h4>${escapar(PJ.mascota.nombre)}</h4><p>${TIPOS_RATA[PJ.mascota.tipo]}</p>
-         <p class="gris" style="color:#9d9d9d;margin:6px 0">${M ? 'Te acompaña ahora mismo.' : 'Está descansando en las sombras.'}</p>
-         <button class="wbtn" id="wPet">${M ? 'Guardar mascota' : 'Invocar mascota'}</button></div>`
+      ? (() => { const m = PJ.mascota, H = HAB_MASCOTA[m.tipo], g = (PJ.mats || {}).queso || 0, sig = xpMascotaSig(m.nivel);
+         return `<div class="pd-caja pet-caja"><h4>${escapar(m.nombre)} <small>nivel ${m.nivel}</small></h4><p>${TIPOS_RATA[m.tipo]} · <b>${H.n}</b></p>
+         <p class="pet-hab">${H.d(m.nivel)}</p>
+         <div class="pet-barra"><span>Experiencia</span><i><b style="width:${m.nivel >= MAX_NV_MASCOTA ? 100 : Math.round(m.xp / sig * 100)}%;background:#ffd100"></b></i><small>${m.nivel >= MAX_NV_MASCOTA ? 'máximo' : `${m.xp}/${sig}`}</small></div>
+         <div class="pet-barra"><span>Barriga</span><i><b style="width:${Math.round(m.hambre)}%;background:${m.hambre < 20 ? '#ff5a5a' : '#7dffa8'}"></b></i><small>${Math.round(m.hambre)}%</small></div>
+         ${m.hambre < 20 ? '<p class="pet-aviso">Tiene hambre: no te ayudará hasta que coma.</p>' : ''}
+         <p class="gris" style="color:#9d9d9d;margin:6px 0">${M ? 'Te acompaña ahora mismo. Gana experiencia cuando derrotas monstruos.' : 'Está descansando en las sombras.'}</p>
+         <div class="pet-bot"><button class="wbtn" id="wPet">${M ? 'Guardar mascota' : 'Invocar mascota'}</button>
+         <button class="wbtn" id="wPetQueso" ${g ? '' : 'disabled'}>Dar galleta (${g})</button></div>
+         ${g ? '' : '<p class="nota">Compra galletas de queso en el mercado.</p>'}</div>`; })()
       : `<div class="pd-caja" style="text-align:center"><h4>Sin mascota</h4><p>Pulsa G o el botón de la huella para elegir tu primera mascota.</p></div>`;
     const b = $('wPet'); if (b) b.onclick = () => { toggleMascota(); renderPj(); };
+    const bq = $('wPetQueso'); if (bq) bq.onclick = () => { usarApilable('queso'); renderPj(); };
   } else cuerpo.innerHTML = htmlRegistro();
 }
 
@@ -2219,6 +2232,7 @@ function herir(e, dmg, critExtra = 0){
 
 function matar(e){
   e.muerto = true; PJ.kills++;
+  if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
   ganarXP(e.xp);
@@ -2504,7 +2518,7 @@ function update(dt){
         PJ.bolsa.push(o.obj); texto(P.x, P.y - 78, o.obj.nombre, RAREZAS[o.obj.rareza].c, 15);
         chat(`Recibes botín: [${o.obj.nombre}]`, RAREZAS[o.obj.rareza].c);
       }
-      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm())); PJ.oro += c; texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
+      else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
       else if (o.t === 'cons'){ darApilable(o.k); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
       else { PJ.pociones++; texto(P.x, P.y - 74, '+1 poción', '#7dffa8', 15); chat('Recibes botín: [Poción de vida]', '#7dffa8'); }
       o.tomado = true;
@@ -3287,7 +3301,7 @@ function abrirElegirMascota(){
 $('btnInvocarPet').onclick = () => {
   const n = $('mNombre').value.trim();
   if (n.length < 2){ $('mErr').textContent = 'Ponle un nombre de al menos 2 letras.'; return; }
-  PJ.mascota = { tipo:gatoElegido, nombre:n };
+  PJ.mascota = { tipo:gatoElegido, nombre:n, nivel:1, xp:0, hambre:100 };
   if (window.pintarIcoPet) pintarIcoPet();
   pantalla(null);
   invocarMascota(false);
@@ -3295,8 +3309,67 @@ $('btnInvocarPet').onclick = () => {
   guardar();
 };
 
+// cada rata ayuda a su manera; sube hasta nivel 10 y con hambre no ayuda
+const HAB_MASCOTA = [
+  { n:'Recolectora', d:nv => `Atrae hacia ti las monedas y el botín a ${110 + nv * 12} px.` },
+  { n:'Curandera',   d:nv => `Cada 25 s te cura un ${(2 + nv * .5).toFixed(1)}% de vida.` },
+  { n:'Negociante',  d:nv => `Ganas un ${4 + nv}% más de dinero.` },
+  { n:'Sombra',      d:nv => `Muerde a los enemigos cercanos (${12 + nv * 2}% de tu poder).` }
+];
+const MAX_NV_MASCOTA = 10, xpMascotaSig = nv => 20 * nv;
+const mascotaActiva = () => M && PJ.mascota && PJ.mascota.hambre >= 20;
+const bonoOroMascota = () => mascotaActiva() && PJ.mascota.tipo === 2 ? (4 + PJ.mascota.nivel) / 100 : 0;
+function ganarXPMascota(n){
+  const m = PJ.mascota; if (m.nivel >= MAX_NV_MASCOTA) return;
+  m.xp += n;
+  while (m.nivel < MAX_NV_MASCOTA && m.xp >= xpMascotaSig(m.nivel)){
+    m.xp -= xpMascotaSig(m.nivel); m.nivel++;
+    if (M){ chispas(M.x, M.y - 15, '#ffd100', 24, 160); texto(M.x, M.y - 50, `¡${m.nombre} sube a nivel ${m.nivel}!`, '#ffd100', 14); }
+    chat(`${m.nombre} sube a nivel ${m.nivel}.`, '#ffd100');
+  }
+  if (m.nivel >= MAX_NV_MASCOTA) m.xp = 0;
+}
+function alimentarMascota(){
+  const m = PJ.mascota;
+  if (!m){ texto(P.x, P.y - 74, 'No tienes mascota', '#9a91c2', 14); return false; }
+  if (m.hambre >= 100){ texto(P.x, P.y - 74, `${m.nombre} no tiene hambre`, '#9a91c2', 14); return false; }
+  m.hambre = 100; ganarXPMascota(15);
+  const x = M ? M.x : P.x, y = M ? M.y : P.y;
+  chispas(x, y - 15, '#ff8fc8', 18, 120); texto(x, y - 50, '♥ ¡Ñam!', '#ff8fc8', 15);
+  if (abierta('wPj')) renderPj();
+  return true;
+}
+function habilidadMascota(dt){
+  const m = PJ.mascota;
+  m.hambre = Math.max(0, m.hambre - dt / 30); // se vacía en unos 50 minutos de juego
+  M.tHab = (M.tHab || 0) - dt; M.tHambre = (M.tHambre || 0) - dt;
+  if (m.hambre < 20){
+    if (M.tHambre <= 0){ M.tHambre = 25; M.frase = '¡Tengo hambre!'; M.tFrase = 3; }
+    return;
+  }
+  if (m.tipo === 0){
+    const r = 110 + m.nivel * 12;
+    for (const o of botin){
+      const dx = P.x - o.x, dy = P.y - o.y, d = Math.hypot(dx, dy);
+      if (d >= 100 && Math.hypot(M.x - o.x, M.y - o.y) < r){ o.x += dx / d * 260 * dt; o.y += dy / d * 260 * dt; }
+    }
+  } else if (m.tipo === 1){
+    if (M.tHab <= 0){
+      M.tHab = 25;
+      if (P.hp < D.maxHp){ const c = Math.round(D.maxHp * (2 + m.nivel * .5) / 100); P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x, P.y - 74, '+' + c, '#7dffa8', 14); chispas(P.x, P.y - 20, '#7dffa8', 10, 100); }
+    }
+  } else if (m.tipo === 3 && E.tipo === 'mazmorra'){
+    if (M.tHab <= 0){
+      let obj = null, md = 80;
+      for (const e of enemigos){ if (e.muerto) continue; const d = Math.hypot(e.x - M.x, e.y - M.y); if (d < md){ md = d; obj = e; } }
+      if (obj){ M.tHab = 1.6; herir(obj, D.poder * (12 + m.nivel * 2) / 100); chispas(obj.x, obj.y - 10, '#b98bff', 10, 140); }
+    }
+  }
+}
 function updateMascota(dt){
   if (!M) return;
+  M.tFrase = (M.tFrase || 0) - dt;
+  habilidadMascota(dt);
   const dx = P.x - M.x, dy = P.y - M.y, d = Math.hypot(dx, dy);
   if (d > 450){ M.x = P.x - 34; M.y = P.y + 8; colisiones(M); return; }
   M.mov = false;
@@ -3368,6 +3441,7 @@ function dibujarMascota(t){
   ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
   ctx.fillStyle = '#000'; ctx.fillText(PJ.mascota.nombre, M.x + 1, pie - ALTO_GATO - 3);
   ctx.fillStyle = '#e9e4ff'; ctx.fillText(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4);
+  if (M.tFrase > 0) burbuja(M.x, pie - ALTO_GATO - 18, M.frase, Math.min(1, M.tFrase));
 }
 
 // =====================================================

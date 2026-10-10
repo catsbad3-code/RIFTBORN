@@ -777,3 +777,14 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
   body.tactil .wv-retrato.ico{font-size:20px}
   body.tactil .wv-x{width:28px;height:24px;top:4px}
 }
+
+/* ---------- Mascota: nivel, barriga y habilidad ---------- */
+.pet-caja{text-align:center}
+.pet-caja h4 small{font:600 12px Rajdhani,sans-serif;color:#ffd100;margin-left:4px}
+.pet-hab{margin:4px 0 8px;color:#7dffa8;font-weight:600}
+.pet-barra{display:grid;grid-template-columns:78px 1fr 52px;align-items:center;gap:6px;margin:4px 0;font:600 12px Rajdhani,sans-serif;text-align:left}
+.pet-barra i{display:block;height:9px;background:#120d0a;border:1px solid #5a4a2a;image-rendering:pixelated}
+.pet-barra i b{display:block;height:100%}
+.pet-barra small{color:#cfc4a8;text-align:right}
+.pet-aviso{color:#ff8a8a;font-weight:700;margin:4px 0}
+.pet-bot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
