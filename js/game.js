@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.12.1'; // también en index.html (estilos y scripts)
+const VERSION = '1.13.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -1801,7 +1801,7 @@ function dialogo(lineas, alTerminar){
 }
 function mostrarLinea(){
   const [quien, t] = dlg.lineas[dlg.i];
-  dlg.txt = typeof t === 'function' ? t() : t; dlg.t0 = performance.now(); dlg.lleno = false;
+  dlg.txt = window.tr(typeof t === 'function' ? t() : t); dlg.t0 = performance.now(); dlg.lleno = false;   // se traduce entero antes de escribirlo letra a letra
   const caja = $('pDialogo');
   caja.dataset.quien = quien;
   $('dlgNombre').textContent = nombreHablante(quien);
@@ -1890,7 +1890,7 @@ function iniciarCinematica(alTerminar){
 }
 function lineaCine(){
   const [quien, t] = CINE[cine.e].lineas[cine.l];
-  cine.txt = typeof t === 'function' ? t() : t; cine.t0 = performance.now(); cine.lleno = false;
+  cine.txt = window.tr(typeof t === 'function' ? t() : t); cine.t0 = performance.now(); cine.lleno = false;
   $('prTexto').className = 'pr-texto' + (quien === 'voz' ? ' voz' : '');
   $('prTexto').textContent = '';
   // el destello blanco cuando las luces llegan
@@ -2813,6 +2813,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && enJ
 
 function pausar(){ $('notaGuardado').textContent = ''; $('btnSaltarPrologo').classList.toggle('oculto', !prologo); pantalla('pPausa'); }
 $('btnHistoria').onclick = () => verHistoria();
+// idioma: en el inicio de sesión y en la pausa (se guarda y la página se recarga en el idioma elegido)
+document.querySelectorAll('[data-idioma]').forEach(b => {
+  b.setAttribute('aria-pressed', b.dataset.idioma === window.IDIOMA);
+  b.onclick = () => { if (b.dataset.idioma !== window.IDIOMA) window.cambiarIdioma(b.dataset.idioma); };
+});
+$('btnIdioma').textContent = `Idioma · Language: ${window.IDIOMA === 'en' ? 'English' : 'Español'}`;
+$('btnIdioma').onclick = () => { guardar(); window.cambiarIdioma(window.IDIOMA === 'en' ? 'es' : 'en'); };
 $('btnSaltarPrologo').onclick = () => saltarPrologo();
 
 // =====================================================
