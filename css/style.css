@@ -819,3 +819,6 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .tinte.sel{border-color:#ffd100;box-shadow:0 0 8px rgba(255,209,0,.6)}
 .tinte:disabled{opacity:.5;cursor:default}
 @media (max-width:520px){.tintes{grid-template-columns:repeat(3,1fr)}}
+
+.ayuda-lista{margin:8px 0 0 18px;line-height:1.45}
+.ayuda-lista li{margin-bottom:4px}
