@@ -44,6 +44,8 @@
   <div class="marco odo oculto" id="marcoOdO" title="Objetivo de tu objetivo"><small>ataca a</small><b id="odoNombre"></b><div class="barra vida"><span id="odoFill"></span></div></div>
   </div>
 </div>
+<div id="grupo" class="oculto" aria-label="Tu grupo"></div>
+<button id="ojoLFD" class="oculto" title="Buscando grupo"><b>👁</b><span>0:00</span></button>
 <div id="jefe" class="oculto"><p id="jefeNombre"></p><div class="barra"><span id="jefeFill"></span></div></div>
 <div id="banner"></div>
 <div id="fundido"></div>
@@ -60,6 +62,7 @@
   <button id="btnLibro" class="micro-btn" title="Libro de poderes (P)" aria-label="Libro de poderes">📖</button><button id="btnMis" class="micro-btn" title="Registro de misiones (L)" aria-label="Registro de misiones">📜</button>
   <button id="btnMascota" class="micro-btn" title="Mascota (G)" aria-label="Mascota">🐾</button>
   <button id="btnBolsa" class="micro-btn" title="Bolsa (B)" aria-label="Bolsa">🎒</button>
+  <button id="btnBuscador" class="micro-btn" title="Buscador de mazmorras (I)" aria-label="Buscador de mazmorras">🔍</button>
   <button id="btnPantalla" class="micro-btn oculto" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
   <button id="btnMenuJuego" class="micro-btn" title="Menú (Esc)" aria-label="Menú">☰</button>
 </div>
@@ -272,6 +275,17 @@
   </div>
 </div>
 
+<div id="pBuscador" class="overlay oculto">
+  <h2>Buscador de mazmorras</h2>
+  <div class="panel" id="buscCuerpo"></div>
+  <button class="btn" data-cerrar>Cerrar</button>
+</div>
+<div id="pListo" class="overlay oculto">
+  <h2>¡Tu grupo está listo!</h2>
+  <p class="tenue" id="listoTxt"></p>
+  <p class="tenue">Tiempo para aceptar: <b id="listoT">40</b> s</p>
+  <div class="menu fila"><button class="btn" id="btnRechazar">Rechazar</button><button class="btn principal" id="btnAceptarGrupo">Entrar</button></div>
+</div>
 <div id="pMuerte" class="overlay oculto">
   <h2>Has caído</h2>
   <p class="tenue" id="muerteTxt"></p>

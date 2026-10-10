@@ -843,3 +843,20 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 @media (max-width:520px) and (orientation:portrait){
   body.jugando.tactil #chat{top:calc(178px + env(safe-area-inset-top,0px))}
 }
+
+/* ---------- grupo y buscador ---------- */
+#grupo{position:fixed;right:12px;top:calc(232px + env(safe-area-inset-top,0px));z-index:3;display:flex;flex-direction:column;gap:4px;pointer-events:none;width:170px}
+#grupo.oculto{display:none}
+.gm{display:flex;align-items:center;gap:6px;padding:3px 6px;background:linear-gradient(#211a36,#0f0b1c);border:1px solid #b8933f;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.6)}
+.gm-rol{font-size:15px;width:18px;text-align:center}
+.gm>div{flex:1;min-width:0}
+.gm>div>b{display:block;font:700 12px Rajdhani,sans-serif;color:#fff}
+.gm i{display:block;height:8px;background:#151515;border:1px solid #000}
+.gm i b{display:block;height:100%;background:linear-gradient(#41d65c,#128a29)}
+.gm.muerto{filter:grayscale(1);opacity:.6}
+#ojoLFD{position:fixed;left:50%;transform:translateX(-50%);top:calc(8px + env(safe-area-inset-top,0px));z-index:4;display:flex;gap:6px;align-items:center;padding:4px 12px;cursor:pointer;
+  color:#ffd100;font:700 13px Rajdhani,sans-serif;background:rgba(20,14,36,.9);border:1px solid #b8933f;border-radius:14px}
+#ojoLFD.oculto{display:none}
+.busc-sel{display:flex;gap:8px;align-items:center;margin:8px 0;font:700 13px Rajdhani,sans-serif}
+.busc-sel select{flex:1;padding:4px;background:#120d0a;color:#ffd100;border:1px solid #5a4a2a;font:600 13px Rajdhani,sans-serif}
+@media (max-width:520px){ #grupo{top:auto;bottom:calc(200px + env(safe-area-inset-bottom,0px));width:140px} }

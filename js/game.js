@@ -314,8 +314,8 @@ function dineroTxt(c){
 // =====================================================
 //  NAVEGACIÓN
 // =====================================================
-const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision'];
-const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision'];
+const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo'];
+const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador'];
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
@@ -812,6 +812,7 @@ function crearCiudad(){
 }
 
 function irCiudad(desde){
+  disolverGrupo();
   E = CIUDAD; limpiarEscena(); modoCombate(false);
   if (desde === 'posada') colocar(20 * T, 9 * T);
   else if (desde === 'tienda') colocar(32.5 * T, 9 * T);
@@ -1271,6 +1272,7 @@ function entrarPortal(portal){
     }
     crearJefe();
     if (portal.semanal) hacerTitan();
+    GRUPO = []; if (portal.grupo){ crearGrupo(); E.lfd = true; } else pintarGrupo(true);
     $('fundido').classList.remove('ver');
     banner(`Portal de rango ${R.l}`, R.tema);
     chat(`Entras en un portal de rango ${R.l}: ${R.tema}.`, R.color);
@@ -1285,7 +1287,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
-  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); premioTitan();
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); premioTitan(); premioLFD();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });
@@ -1316,50 +1318,51 @@ const ATAQUES = {
   jabali:    { alcance:360, min:110, carga:.65, golpe:.7, fin:.8, cd:[3, 4] } // embestida
 };
 function ataqueMonstruo(e, dx, dy, d, dt, lento){
+  const U = e.blanco || P; // a quién ataca (jugador o un aliado)
   const n = ENEM[e.tipo] && ENEM[e.tipo].spr, A = ATAQUES[n];
   if (!A) return false;
   if (!e.at){
-    if (e.cd > 0 || d > A.alcance || (A.min && d < A.min) || !lineaVision(e.x, e.y, P.x, P.y)) return false;
-    e.at = { fase:'carga', t:A.carga, ux:dx / d, uy:dy / d, tx:P.x, ty:P.y, golpeo:0 };
+    if (e.cd > 0 || d > A.alcance || (A.min && d < A.min) || !lineaVision(e.x, e.y, U.x, U.y)) return false;
+    e.at = { fase:'carga', t:A.carga, ux:dx / d, uy:dy / d, tx:U.x, ty:U.y, golpeo:0 };
     if (Math.abs(dx) > 2) e.face = dx > 0 ? 1 : -1;
     return true;
   }
   const at = e.at; at.t -= dt;
   if (at.fase === 'carga'){
-    if (n !== 'jabali' && n !== 'escorpion'){ const d2 = Math.hypot(P.x - e.x, P.y - e.y) || 1; at.ux = (P.x - e.x) / d2; at.uy = (P.y - e.y) / d2; at.tx = P.x; at.ty = P.y; }
+    if (n !== 'jabali' && n !== 'escorpion'){ const d2 = Math.hypot(U.x - e.x, U.y - e.y) || 1; at.ux = (U.x - e.x) / d2; at.uy = (U.y - e.y) / d2; at.tx = U.x; at.ty = U.y; }
     if (at.t <= 0){ at.fase = 'golpe'; at.t = A.golpe; }
     return true;
   }
   if (at.fase === 'golpe'){
-    const pd = Math.hypot(P.x - e.x, P.y - e.y);
+    const pd = Math.hypot(U.x - e.x, U.y - e.y);
     if (n === 'slime'){
       e.x += at.ux * 430 * lento * dt; e.y += at.uy * 430 * lento * dt; colisiones(e);
-      if (!at.golpeo && pd < e.r + P.r + 10){ at.golpeo = 1; P.inv = 0; golpearJugador(e.dmg * 1.3, e); }
+      if (!at.golpeo && pd < e.r + U.r + 10){ at.golpeo = 1; pegar(U, true, e.dmg * 1.3, e); }
       if (at.t <= 0){ chispas(e.x, e.y + 8, '#6fd36b', 10, 120); }
     } else if (n === 'mantis'){
       const golpes = [A.golpe, A.golpe * .45];
       for (let k = 0; k < 2; k++){
         if (at.golpeo === k && at.t <= golpes[k]){
           at.golpeo++;
-          const ang = Math.atan2(P.y - e.y, P.x - e.x) - Math.atan2(at.uy, at.ux);
-          if (pd < 92 && Math.cos(ang) > .2){ P.inv = 0; golpearJugador(e.dmg * .9, e); }
+          const ang = Math.atan2(U.y - e.y, U.x - e.x) - Math.atan2(at.uy, at.ux);
+          if (pd < 92 && Math.cos(ang) > .2){ pegar(U, true, e.dmg * .9, e); }
           chispas(e.x + at.ux * 40, e.y + at.uy * 40, '#e8e0a0', 6, 160);
         }
       }
     } else if (n === 'escorpion'){
       if (!at.golpeo){
         at.golpeo = 1;
-        const px = P.x - e.x, py = P.y - e.y, largo = px * at.ux + py * at.uy, lado = Math.abs(px * at.uy - py * at.ux);
-        if (largo > -10 && largo < 135 && lado < 26){ P.inv = 0; golpearJugador(e.dmg * 1.5, e); ponerEfecto('def_dn', 4); }
+        const px = U.x - e.x, py = U.y - e.y, largo = px * at.ux + py * at.uy, lado = Math.abs(px * at.uy - py * at.ux);
+        if (largo > -10 && largo < 135 && lado < 26){ pegar(U, true, e.dmg * 1.5, e); if (U === P) ponerEfecto('def_dn', 4); }
         chispas(e.x + at.ux * 110, e.y + at.uy * 110, '#ff6a3d', 8, 160);
       }
     } else if (n === 'jabali'){
       const ox = e.x, oy = e.y;
       e.x += at.ux * 520 * lento * dt; e.y += at.uy * 520 * lento * dt; colisiones(e);
       if (Math.hypot(e.x - ox, e.y - oy) < 520 * lento * dt * .3){ at.fase = 'fin'; at.t = A.fin + .6; shake = Math.max(shake, 6); chispas(e.x + at.ux * e.r, e.y + at.uy * e.r, '#c8b49a', 12, 160); texto(e.x, e.y - 50, 'Aturdido', '#ffe3a1', 13); return true; }
-      if (!at.golpeo && pd < e.r + P.r + 8){
-        at.golpeo = 1; P.inv = 0; golpearJugador(e.dmg * 1.6, e);
-        P.x += at.ux * 60; P.y += at.uy * 60; colisiones(P); shake = Math.max(shake, 10);
+      if (!at.golpeo && pd < e.r + U.r + 8){
+        at.golpeo = 1; pegar(U, true, e.dmg * 1.6, e);
+        U.x += at.ux * 60; U.y += at.uy * 60; colisiones(U); shake = Math.max(shake, 10);
       }
     }
     if (at.fase === 'golpe' && at.t <= 0){ at.fase = 'fin'; at.t = A.fin; }
@@ -1390,9 +1393,9 @@ function crearJefe(){
 }
 
 const DIR8 = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
-function direccionHacia(e){
-  const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1;
-  if (d < 240 && lineaVision(e.x, e.y, P.x, P.y)) return [dx / d, dy / d];
+function direccionHacia(e, U = P){
+  const dx = U.x - e.x, dy = U.y - e.y, d = Math.hypot(dx, dy) || 1;
+  if (d < 240 && lineaVision(e.x, e.y, U.x, U.y)) return [dx / d, dy / d];
   if (!campo) return [dx / d, dy / d];
   const cx = Math.floor(e.x / T), cy = Math.floor(e.y / T);
   let md = campo[cy * E.cols + cx]; if (md < 0) md = 1e9;
@@ -1425,7 +1428,8 @@ addEventListener('keydown', e => {
     else if (PANELES_JUEGO.includes(pantallaActual)) pantalla(null);
     return;
   }
-  const vent = { KeyC:'wPj', KeyB:'wBolsa', KeyI:'wBolsa', KeyP:'wLibro', KeyL:'wMis' };
+  const vent = { KeyC:'wPj', KeyB:'wBolsa', KeyP:'wLibro', KeyL:'wMis' };
+  if (e.code === 'KeyI' && pantallaActual === null){ abrirBuscador(); return; }
   if (vent[e.code] && pantallaActual === null){
     if (e.code === 'KeyC') wTab = 'personaje';
     alternarVentana(vent[e.code]);
@@ -1483,6 +1487,10 @@ $('btnPantallaPausa').onclick = alternarPantallaCompleta;
 marcarPantallaCompleta();
 $('btnMascota').onclick = toggleMascota;
 $('btnBolsa').onclick = () => alternarVentana('wBolsa');
+$('btnBuscador').onclick = () => abrirBuscador();
+$('ojoLFD').onclick = () => abrirBuscador();
+$('btnAceptarGrupo').onclick = () => aceptarGrupo();
+$('btnRechazar').onclick = () => { LFD.listo = false; pantalla(null); chat('Rechazaste el grupo.', '#9a91c2'); actualizarOjo(); };
 $('btnLibro').onclick = () => alternarVentana('wLibro');
 $('btnMis').onclick = () => alternarVentana('wMis');
 $('btnPerfil').onclick = () => { wTab = 'personaje'; alternarVentana('wPj'); };
@@ -2253,9 +2261,13 @@ function updateRecurso(dt){
   }
 }
 // puntos de combo (sombra): se ganan con los golpes y los gastan los remates
-// amenaza: se completa con el grupo; provocar hace que el enemigo te ataque a ti
-function provocarA(e){ e.aggro = true; e.objetivo = P; e.provocado = 4; }
-function reducirAmenaza(k){}
+// provocar: el enemigo te ataca a ti unos segundos y quedas arriba en su tabla de amenaza
+function provocarA(e, quien = P){
+  e.aggro = true; e.provocado = 4; e.provocador = quien;
+  const max = Math.max(0, ...amenazas(e).values()); amenazas(e).set(quien, max * 1.1 + 50);
+  e.blanco = e.objetivo = quien; e.tBlanco = .5;
+}
+function reducirAmenaza(k){ for (const e of enemigos){ const m = amenazas(e); if (m.has(P)) m.set(P, m.get(P) * k); } }
 function sumarCombo(n = 1){ if (PJ.clase !== 'sombra') return; P.combo = Math.min(5, (P.combo || 0) + n); }
 function gastarCombo(){ const c = P.combo || 0; P.combo = 0; return c; }
 
@@ -2367,6 +2379,7 @@ function herir(e, dmg, critExtra = 0){
   const crit = Math.random() < D.crit + critExtra;
   if (crit) dmg *= 1.8;
   e.hp -= dmg; e.flash = .1; e.aggro = true;
+  sumarAmenaza(e, FUENTE || P, dmg);
   if (!objetivoValido()) P.objetivo = e;
   ganarIra(3);
   texto(e.x + rand(-8, 8), e.y - e.r - 4, Math.round(dmg), crit ? '#f2c46d' : '#ffffff', crit ? 19 : 14);
@@ -2708,22 +2721,23 @@ function updateMazmorra(dt){
   if (timerCampo <= 0){ timerCampo = .25; campo = bfs(E, pcx, pcy); }
 
   for (const e of enemigos){
-    const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const U = blancoEnemigo(e, dt);
+    const dx = U.x - e.x, dy = U.y - e.y, d = Math.hypot(dx, dy) || 1;
     const lento = e.lento > 0 ? .45 : 1;
     e.lento -= dt; e.flash -= dt; e.cd -= dt; e.cdGolpe -= dt;
     e.aturdido = (e.aturdido || 0) - dt; e.raiz = (e.raiz || 0) - dt;
     if (e.aturdido > 0){ e.mueve = false; continue; }
     if (e.jefe){ actualizarJefe(e, dx, dy, d, dt); continue; }
 
-    if (!e.aggro && d < 300 && lineaVision(e.x, e.y, P.x, P.y)) e.aggro = true;
+    if (!e.aggro && d < 300 && lineaVision(e.x, e.y, U.x, U.y)) e.aggro = true;
     if (e.aggro && d > 900) e.aggro = false;
 
     let vx = 0, vy = 0, vel = e.vel * lento;
     if (e.aggro && ataqueMonstruo(e, dx, dy, d, dt, lento)){ e.mueve = true; continue; }
     if (e.aggro){
-      [vx, vy] = direccionHacia(e);
+      [vx, vy] = direccionHacia(e, U);
       if (e.rango){
-        const vision = lineaVision(e.x, e.y, P.x, P.y);
+        const vision = lineaVision(e.x, e.y, U.x, U.y);
         if (vision && d < 190){ vx = -dx / d; vy = -dy / d; }
         else if (vision && d < 300){ vx = -dy / d * .6; vy = dx / d * .6; }
         if (vision && e.cd <= 0 && d < 480){
@@ -2744,7 +2758,7 @@ function updateMazmorra(dt){
     e.x += vx * vel * dt; e.y += vy * vel * dt;
     e.mueve = Math.abs(vx) + Math.abs(vy) > .05;
     colisiones(e);
-    if (d < e.r + P.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = 1; golpearJugador(e.dmg * .6, e); }
+    if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = 1; pegar(U, false, e.dmg * .6, e); }
   }
   for (let i = 0; i < enemigos.length; i++){
     const a = enemigos[i];
@@ -2759,6 +2773,7 @@ function updateMazmorra(dt){
   enemigos = enemigos.filter(e => !e.muerto);
 
   updateAliados(dt);
+  updateGrupo(dt);
   for (const p of proys){
     if (p.perfora){
       p.x += p.vx * dt; p.y += p.vy * dt; p.vida -= dt;
@@ -2806,12 +2821,14 @@ function updateMazmorra(dt){
   for (const p of proysE){
     p.x += p.vx * dt; p.y += p.vy * dt; p.vida -= dt;
     if (solidoEn(p.x, p.y)) p.vida = 0;
+    else if (golpeAliado(p)) p.vida = 0;
     else if (Math.hypot(p.x - P.x, p.y - P.y) < p.r + P.r - 2){ golpearJugador(p.dmg, p.src); if (p.tela){ ponerEfecto('agi_dn', 2.5); texto(P.x, P.y - 90, '¡Atrapado en la telaraña!', '#f2f2f2', 13); } p.vida = 0; }
   }
   proysE = proysE.filter(p => p.vida > 0);
 }
 
 function actualizarJefe(e, dx, dy, d, dt){
+  const U = e.blanco || P;
   if (!e.aggro && d < 430 && lineaVision(e.x, e.y, P.x, P.y)){
     e.aggro = true; E.jefeVisto = true; $('jefe').classList.remove('oculto'); banner(e.nombre, 'Jefe de la mazmorra'); shake = 10;
   }
@@ -2825,7 +2842,7 @@ function actualizarJefe(e, dx, dy, d, dt){
     e.aviso -= dt;
     if (e.aviso <= 0) e.carga = .5;
   } else {
-    const [vx, vy] = direccionHacia(e);
+    const [vx, vy] = direccionHacia(e, U);
     e.x += vx * e.vel * lento * dt; e.y += vy * e.vel * lento * dt;
     if (e.cd <= 0){
       e.patron = (e.patron + 1) % 3;
@@ -2843,7 +2860,7 @@ function actualizarJefe(e, dx, dy, d, dt){
     }
   }
   colisiones(e);
-  if (d < e.r + P.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; golpearJugador(e.dmg, e); }
+  if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; pegar(U, false, e.dmg, e); }
 }
 
 function actualizarHUD(){
@@ -4390,6 +4407,228 @@ $('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); b
 botonesSonido();
 
 // =====================================================
+//  AMENAZA, GRUPO (TANQUE Y SANADORA) Y BUSCADOR DE MAZMORRAS
+// =====================================================
+let FUENTE = null;            // quién causa el daño que se está aplicando (para la amenaza)
+let GRUPO = [];               // aliados controlados por el juego en la mazmorra
+const amenazas = e => e.amen || (e.amen = new Map());
+// el guerrero genera más amenaza (como en actitud defensiva); el tanque mucho más
+const multAmenaza = u => u === P ? (PJ.clase === 'guerrero' ? 1.5 : 1) : (u.mult || 1);
+function sumarAmenaza(e, u, n){ const m = amenazas(e); m.set(u, (m.get(u) || 0) + n * multAmenaza(u)); }
+const vivo = u => u === P ? P.hp > 0 : u.vivo;
+const unidadesGrupo = () => [P, ...GRUPO.filter(g => g.vivo)];
+// cada enemigo ataca a quien tenga más amenaza (o a quien lo provocó); sin combate, al más cercano
+function blancoEnemigo(e, dt){
+  if (!e.aggro){
+    let mejor = P, md = Math.hypot(P.x - e.x, P.y - e.y);
+    for (const g of GRUPO) if (g.vivo){ const d = Math.hypot(g.x - e.x, g.y - e.y); if (d < md){ md = d; mejor = g; } }
+    e.blanco = mejor; return mejor;
+  }
+  e.provocado = (e.provocado || 0) - dt; e.tBlanco = (e.tBlanco || 0) - dt;
+  if (e.provocado > 0 && e.provocador && vivo(e.provocador)) e.blanco = e.provocador;
+  else if (e.tBlanco <= 0 || !e.blanco || !vivo(e.blanco)){
+    e.tBlanco = .5;
+    let mejor = null, mv = -1;
+    for (const [u, v] of amenazas(e)) if (vivo(u) && (u === P || GRUPO.includes(u)) && v > mv){ mv = v; mejor = u; }
+    e.blanco = mejor || P;
+  }
+  e.objetivo = e.blanco;
+  return e.blanco;
+}
+// daño de un monstruo a su blanco
+function pegar(U, forzar, d, src){
+  if (U === P){ if (forzar) P.inv = 0; golpearJugador(d, src); return; }
+  danarAliado(U, d, src);
+}
+function danarAliado(g, d, src){
+  if (!g.vivo) return;
+  d *= 1 - g.def; g.hp -= d; g.golpe = .15;
+  texto(g.x + rand(-6, 6), g.y - 60, Math.round(d), '#ff8a8a', 12);
+  if (g.hp <= 0){ g.hp = 0; g.vivo = false; g.tRevive = 0; chat(`${g.nombre} ha muerto.`, '#ff8a9b'); chispas(g.x, g.y - 20, '#ffffff', 20, 160); }
+}
+function golpeAliado(p){
+  for (const g of GRUPO) if (g.vivo && Math.hypot(p.x - g.x, p.y - g.y) < p.r + g.r){ danarAliado(g, p.dmg, p.src); return true; }
+  return false;
+}
+
+// ---- miembros del grupo ----
+const ROL = {
+  tanque:  { n:'Tanque',   ic:'🛡', col:'#4fa3ff' },
+  sanador: { n:'Sanadora', ic:'✚', col:'#7dffa8' },
+  dps:     { n:'Daño',     ic:'⚔', col:'#ff8a8a' }
+};
+function crearGrupo(){
+  const libres = [1, 2, 3].filter(t => t !== PJ.gato), tq = libres[0], sn = libres[1];
+  const arma = (n, r) => ({ nombre:n + ' del grupo', rareza:r, slot:'arma', stats:{} }), cab = (n, r) => ({ nombre:n + ' del grupo', rareza:r, slot:'cabeza', stats:{} });
+  GRUPO = [
+    { rol:'tanque', nombre:'Bruma', gato:tq, maxHp:Math.round(D.maxHp * 1.9), def:.5, mult:6, vel:D.vel * .95, cd:0, cdProv:0, equipo:{ arma:arma('Espada', 3), cabeza:cab('Yelmo', 3) } },
+    { rol:'sanador', nombre:'Lumi', gato:sn, maxHp:Math.round(D.maxHp * 1.15), def:.2, mult:1, vel:D.vel * .95, cd:0, cdAtk:0, equipo:{ arma:arma('Báculo', 3), cabeza:cab('Capucha', 3) } }
+  ];
+  GRUPO.forEach((g, i) => Object.assign(g, { x:P.x - 40 + i * 30, y:P.y + 30, r:14, hp:g.maxHp, vivo:true, paso:0, dir:'ab', flip:false, mov:false, golpe:0, tRevive:0 }));
+  pintarGrupo(true);
+  chat('Te has unido a un grupo: Bruma (tanque) y Lumi (sanadora).', '#4fa3ff');
+}
+function disolverGrupo(){ if (GRUPO.length) chat('Tu grupo se ha disuelto.', '#9a91c2'); GRUPO = []; pintarGrupo(true); }
+function enCombate(){ return enemigos.some(e => e.aggro && !e.muerto); }
+function moverAliado(g, tx, ty, para, dt){
+  const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy) || 1;
+  if (d > 600){ g.x = P.x - 30; g.y = P.y + 20; colisiones(g); return; }
+  if (d > para){
+    const v = Math.min(g.vel * dt, d - para), ox = g.x, oy = g.y;
+    g.x += dx / d * v; g.y += dy / d * v; colisiones(g);
+    g.mov = Math.hypot(g.x - ox, g.y - oy) > .2; g.paso += v;
+    g.dir = Math.abs(dy) > Math.abs(dx) * 1.3 ? (dy < 0 ? 'ar' : 'ab') : 'lado'; if (Math.abs(dx) > 2) g.flip = dx > 0;
+  } else g.mov = false;
+}
+function updateGrupo(dt){
+  if (!GRUPO.length) return;
+  const combate = enCombate();
+  for (const g of GRUPO){
+    g.golpe -= dt; g.cd -= dt;
+    if (!g.vivo){
+      // fuera de combate vuelven a levantarse
+      if (!combate){ g.tRevive += dt; if (g.tRevive > 5){ g.vivo = true; g.hp = g.maxHp * .5; chat(`${g.nombre} vuelve a levantarse.`, '#7dffa8'); chispas(g.x, g.y - 20, '#7dffa8', 20, 140); } }
+      continue;
+    }
+    if (!combate) g.hp = Math.min(g.maxHp, g.hp + g.maxHp * .06 * dt);
+    if (g.rol === 'tanque') iaTanque(g, dt, combate);
+    else iaSanador(g, dt, combate);
+  }
+  pintarGrupo();
+}
+function iaTanque(g, dt, combate){
+  g.cdProv -= dt; g.cdTrueno = (g.cdTrueno || 0) - dt;
+  // atronar: golpe en área que le da mucha amenaza con todos los enemigos cercanos
+  if (combate && g.cdTrueno <= 0 && enemigos.some(e => e.aggro && !e.muerto && Math.hypot(e.x - g.x, e.y - g.y) < 150)){
+    g.cdTrueno = 5; FUENTE = g;
+    for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - g.x, e.y - g.y) < 150){ herir(e, D.poder * .2); sumarAmenaza(e, g, D.poder * 3); }
+    FUENTE = null; chispas(g.x, g.y, '#4fa3ff', 22, 220); texto(g.x, g.y - 70, 'Atronar', '#4fa3ff', 12);
+  }
+  // provoca a quien esté atacando a otro
+  if (g.cdProv <= 0) for (const e of enemigos){
+    if (e.muerto || !e.aggro || e.blanco === g || Math.hypot(e.x - g.x, e.y - g.y) > 420) continue;
+    provocarA(e, g); g.cdProv = 3; texto(g.x, g.y - 70, '¡Provocar!', '#4fa3ff', 13); break;
+  }
+  // primero va a por quien ataque a sus compañeros; si no, al objetivo del jugador o al enemigo más cercano
+  let obj = null;
+  { let md = 480; for (const e of enemigos){ if (e.muerto || !e.aggro || e.blanco === g) continue; const d = Math.hypot(e.x - g.x, e.y - g.y); if (d < md){ md = d; obj = e; } } }
+  if (!obj && objetivoValido() && P.objetivo.aggro) obj = P.objetivo;
+  if (!obj){ let md = 360; for (const e of enemigos){ if (e.muerto || !(e.aggro || Math.hypot(e.x - P.x, e.y - P.y) < 220)) continue; const d = Math.hypot(e.x - g.x, e.y - g.y); if (d < md){ md = d; obj = e; } } }
+  if (obj){
+    moverAliado(g, obj.x, obj.y, obj.r + g.r + 4, dt);
+    if (Math.hypot(obj.x - g.x, obj.y - g.y) < obj.r + g.r + 14 && g.cd <= 0){
+      g.cd = 1.1; g.golpe = .15; FUENTE = g; herir(obj, D.poder * .4); FUENTE = null;
+      chispas(obj.x, obj.y - 10, '#4fa3ff', 6, 140);
+    }
+  } else moverAliado(g, P.x + 46, P.y - 10, 18, dt);
+}
+function iaSanador(g, dt, combate){
+  // se queda detrás del jugador
+  const a = Math.atan2(P.ldy || 1, P.ldx || 0) + Math.PI;
+  moverAliado(g, P.x + Math.cos(a) * 80, P.y + Math.sin(a) * 50, 22, dt);
+  if (g.cd > 0) return;
+  let peor = null, pct = .88;
+  for (const u of unidadesGrupo()){ const hp = u === P ? P.hp / D.maxHp : u.hp / u.maxHp; if (hp < pct){ pct = hp; peor = u; } }
+  if (peor){
+    g.cd = 1.5; g.golpe = .2;
+    const max = peor === P ? D.maxHp : peor.maxHp, c = Math.round(max * .2);
+    if (peor === P) P.hp = Math.min(D.maxHp, P.hp + c); else peor.hp = Math.min(peor.maxHp, peor.hp + c);
+    texto(peor.x, peor.y - 76, '+' + c, '#7dffa8', 14); chispas(peor.x, peor.y - 20, '#7dffa8', 12, 120);
+    efectos.push({ t:'linea', x:g.x, y:g.y - 30, x2:peor.x, y2:peor.y - 30, vida:.25, max:.25, color:'#7dffa8' });
+    for (const e of enemigos) if (e.aggro && !e.muerto) sumarAmenaza(e, g, c * .12);
+    return;
+  }
+  // si nadie necesita curación, ataca al objetivo del jugador
+  g.cdAtk = (g.cdAtk || 0) - dt;
+  if (combate && objetivoValido() && g.cdAtk <= 0 && Math.hypot(P.objetivo.x - g.x, P.objetivo.y - g.y) < 380){
+    g.cdAtk = 2.2; FUENTE = g; herir(P.objetivo, D.poder * .25); FUENTE = null;
+    efectos.push({ t:'linea', x:g.x, y:g.y - 30, x2:P.objetivo.x, y2:P.objetivo.y - 20, vida:.2, max:.2, color:'#ffe08a' });
+  }
+}
+function dibujarAliado(g, t){
+  if (!gatosListo) return;
+  const pie = Math.round(g.y + 12), img = imgGato(g.gato);
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(g.x, pie, 15, 5, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = ROL[g.rol].col + '99'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(g.x, pie, 17, 6, 0, 0, TAU); ctx.stroke();
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  if (!g.vivo){
+    const [sx, sy, w, h] = GATOS_DIR[g.gato].ab[0];
+    ctx.globalAlpha = .7; ctx.translate(Math.round(g.x), Math.round(pie - w / 2)); ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(img, sx, sy, w, h, -w / 2, -h / 2, w, h); ctx.restore(); return;
+  }
+  const fr = cuadroGato(g.gato, g.dir, g.mov ? Math.floor(g.paso / 14) : 0), [sx, sy, w, h, ax, ay] = fr;
+  const flip = g.dir === 'lado' && g.flip;
+  ctx.translate(Math.round(g.x), pie + (!g.mov && Math.sin(t / 420 + g.x) > .6 ? -1 : 0)); ctx.scale(flip ? -1 : 1, 1);
+  dibujarEquipoGato(ctx, img, fr, g.dir, 1, g.equipo, 'atras');
+  ctx.drawImage(g.golpe > 0 && g.rol === 'tanque' ? siluetaBlanca(img) : img, sx, sy, w, h, -ax, -ay, w, h);
+  dibujarEquipoGato(ctx, img, fr, g.dir, 1, g.equipo, 'frente');
+  ctx.restore();
+  ctx.font = '700 12px Rajdhani, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+  ctx.strokeText(g.nombre, g.x, pie - h - 10); ctx.fillStyle = '#a8d8ff'; ctx.fillText(g.nombre, g.x, pie - h - 10);
+}
+// marcos de grupo (a la derecha, bajo el minimapa)
+let firmaGrupo = '';
+function pintarGrupo(forzar){
+  const c = $('grupo'); if (!c) return;
+  const f = GRUPO.map(g => g.nombre + Math.round(g.hp) + g.vivo).join('|');
+  if (!forzar && f === firmaGrupo) return; firmaGrupo = f;
+  c.classList.toggle('oculto', !GRUPO.length);
+  c.innerHTML = GRUPO.map(g => `<div class="gm ${g.vivo ? '' : 'muerto'}"><span class="gm-rol" style="color:${ROL[g.rol].col}" title="${ROL[g.rol].n}">${ROL[g.rol].ic}</span>
+    <div><b>${g.nombre}</b><i><b style="width:${Math.max(0, g.hp / g.maxHp * 100)}%"></b></i></div></div>`).join('');
+}
+
+// ---- buscador de mazmorras ----
+const LFD = { buscando:false, t:0, total:0, rango:0, listo:false, tListo:0 };
+function abrirBuscador(msg){
+  if (!enJuego) return;
+  const mio = rangoCazador(), hoy = PJ.lfdDia === diaHoy();
+  let opciones = '';
+  for (let r = 0; r <= mio; r++) opciones += `<option value="${r}" ${r === (LFD.rango ?? mio) ? 'selected' : ''}>Mazmorra aleatoria de rango ${RANGOS[r].l} (${RANGOS[r].nivel})</option>`;
+  $('buscCuerpo').innerHTML = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p>
+    <div class="linea"><span>Tu rol</span><b style="color:${ROL.dps.col}">${ROL.dps.ic} Daño</b></div>
+    <div class="linea"><span>Grupo</span><b>${ROL.tanque.ic} Tanque · ${ROL.sanador.ic} Sanadora · tú</b></div>
+    <label class="busc-sel">Mazmorra <select id="buscRango" ${LFD.buscando ? 'disabled' : ''}>${opciones}</select></label>
+    <div class="linea"><span>Recompensa</span><b>2 emblemas${hoy ? '' : ' + bolsa del día (1.ª mazmorra: dinero y 2 emblemas más)'}</b></div>
+    <p class="nota" style="margin-top:8px">${LFD.buscando ? `Buscando grupo… ${formatoTiempo(LFD.total)}` : 'Te juntamos con un tanque y una sanadora y te llevamos a una mazmorra aleatoria.'}</p>
+    <div class="compras"><button class="btn ${LFD.buscando ? '' : 'principal'}" id="buscBtn">${LFD.buscando ? 'Salir de la cola' : 'Buscar grupo'}</button></div>`;
+  $('buscBtn').onclick = () => {
+    if (LFD.buscando){ LFD.buscando = false; actualizarOjo(); abrirBuscador('Saliste de la cola.'); return; }
+    if (E.tipo === 'mazmorra'){ abrirBuscador('No puedes buscar grupo dentro de una mazmorra.'); return; }
+    LFD.rango = +$('buscRango').value; LFD.buscando = true; LFD.t = rand(3, 7); LFD.total = 0; actualizarOjo();
+    chat('Te uniste a la cola del buscador de mazmorras.', '#4fa3ff'); pantalla(null);
+  };
+  pantalla('pBuscador');
+}
+function updateBuscador(dt){
+  if (LFD.listo){ LFD.tListo -= dt; $('listoT').textContent = Math.ceil(LFD.tListo); if (LFD.tListo <= 0){ LFD.listo = false; pantalla(null); chat('No aceptaste a tiempo: saliste de la cola.', '#ff8a9b'); actualizarOjo(); } return; }
+  if (!LFD.buscando) return;
+  LFD.total += dt; LFD.t -= dt;
+  if (tSegOjo++ % 20 === 0) actualizarOjo();
+  if (LFD.t <= 0 && E.tipo !== 'mazmorra' && !pantallaActual){
+    LFD.buscando = false; LFD.listo = true; LFD.tListo = 40; sfx('logro');
+    $('listoTxt').textContent = `Mazmorra aleatoria de rango ${RANGOS[LFD.rango].l}: ${RANGOS[LFD.rango].tema}`;
+    pantalla('pListo'); actualizarOjo();
+  }
+}
+let tSegOjo = 0;
+function actualizarOjo(){
+  const o = $('ojoLFD'); if (!o) return;
+  o.classList.toggle('oculto', !LFD.buscando);
+  if (LFD.buscando) o.querySelector('span').textContent = formatoTiempo(LFD.total);
+}
+function aceptarGrupo(){
+  LFD.listo = false; actualizarOjo();
+  entrarPortal({ x:0, y:0, punto:{ libre:true }, rango:LFD.rango, grupo:true });
+}
+function premioLFD(){
+  if (!E.lfd) return;
+  let em = 2, txt = '';
+  if (PJ.lfdDia !== diaHoy()){ PJ.lfdDia = diaHoy(); em += 2; const oro = 8000 * (1 + E.rango); PJ.oro += oro; txt = ` y la bolsa del día (${dineroTxt(oro)})`; }
+  PJ.emblemas = (PJ.emblemas || 0) + em;
+  chat(`Buscador de mazmorras: recibes ${em} emblemas${txt}.`, '#ffd100');
+}
+
+// =====================================================
 //  AMBIENTE: HUELLAS, POLVO, DÍA Y NOCHE Y CLIMA
 // =====================================================
 let huellas = [], clima = [], ultimaHuella = 0, ladoHuella = 1, tClima = 0;
@@ -4570,6 +4809,7 @@ function draw(t){
   if (E.tipo === 'ciudad') for (const p of portales) lista.push({ y:p.y + 40, f:() => dibujarPortalCiudad(p, t) });
   if (E.props) for (const pr of E.props){ if (pr.x > cam.x - 200 && pr.x < cam.x + W + 200 && pr.y > cam.y - 40 && pr.y < cam.y + H + 300) lista.push({ y:pr.y, f:() => dibujarProp(pr) }); }
   for (const s of soldados) lista.push({ y:s.y, f:() => dibujarSoldado(s, t) });
+  if (E.tipo === 'mazmorra') for (const g of GRUPO) lista.push({ y:g.y, f:() => dibujarAliado(g, t) });
   if (E.npcs) for (const n of E.npcs) lista.push({ y:n.y, f:() => (n.spr || n.cam) ? dibujarNPCSprite(n, t) : dibujarNPC(n.x, n.y, n.ropa, n.pelo, t) });
   const ahora = performance.now();
   cadaveres = cadaveres.filter(c => ahora - c.t0 < 1100);
@@ -4821,6 +5061,7 @@ function loop(t){
   if (tSeg % 60 === 0 && enJuego) revisarLogros();
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (enJuego && !pantallaActual) update(dt);
+  if (enJuego) updateBuscador(dt);
   draw(t);
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
   if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
