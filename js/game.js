@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.6.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.7.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 const TAU = Math.PI * 2;
 const T = 48; // tamaño de casilla
