@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.15.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.16.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -712,7 +712,8 @@ function empezar(id){
   PJ = migrar(cuenta().personajes.find(p => p.id === id));
   derivar();
   P = { x:0, y:0, mx:0, my:0, pose:{ n:'', t:0, dur:1 }, r:14, hp:D.maxHp, en:PJ.clase === 'guerrero' ? 0 : D.maxEn, combo:0, ang:Math.PI / 2, ldx:0, ldy:1,
-        cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0 };
+        cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0, montura:!!PJ.montado };
+  $('btnMontura').setAttribute('aria-pressed', P.montura);
   const c = CLASES[PJ.clase];
   $('mAtk').innerHTML = '<canvas width="64" height="64"></canvas>'; $('mHab').innerHTML = '<canvas width="64" height="64"></canvas>';
   pintarIconoBoton($('mAtk').firstChild, c.h1.spr); pintarIconoBoton($('mHab').firstChild, c.h2.spr);
@@ -741,7 +742,7 @@ function guardar(){
 }
 
 function limpiarEscena(){
-  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = [];
+  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = []; peligros = [];
   jefeVivo = null; campo = null; $('jefe').classList.add('oculto');
   if (P) P.objetivo = null;
   interCerca = null; $('btnInteractuar').classList.add('oculto');
@@ -807,15 +808,14 @@ function bfs(G, sx, sy){
   const dist = new Int16Array(G.cols * G.rows).fill(-1), cola = new Int32Array(G.cols * G.rows);
   if (sx < 0 || sy < 0 || sx >= G.cols || sy >= G.rows || G.solido[sy * G.cols + sx]) return dist;
   let a = 0, b = 0; cola[b++] = sy * G.cols + sx; dist[sy * G.cols + sx] = 0;
+  // vecinos a mano (antes se creaban 5 listas por casilla visitada)
+  const C = G.cols, S = G.solido;
   while (a < b){
-    const i = cola[a++], x = i % G.cols, y = (i / G.cols) | 0;
-    for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx = x + ox, ny = y + oy;
-      if (nx < 0 || ny < 0 || nx >= G.cols || ny >= G.rows) continue;
-      const j = ny * G.cols + nx;
-      if (G.solido[j] || dist[j] >= 0) continue;
-      dist[j] = dist[i] + 1; cola[b++] = j;
-    }
+    const i = cola[a++], x = i % C, d1 = dist[i] + 1;
+    if (x + 1 < C && !S[i + 1] && dist[i + 1] < 0){ dist[i + 1] = d1; cola[b++] = i + 1; }
+    if (x > 0 && !S[i - 1] && dist[i - 1] < 0){ dist[i - 1] = d1; cola[b++] = i - 1; }
+    if (i + C < S.length && !S[i + C] && dist[i + C] < 0){ dist[i + C] = d1; cola[b++] = i + C; }
+    if (i - C >= 0 && !S[i - C] && dist[i - C] < 0){ dist[i - C] = d1; cola[b++] = i - C; }
   }
   return dist;
 }
@@ -3074,6 +3074,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyZ') usarDevorada();
   if (e.code === 'KeyE' && interCerca) interCerca.accion();
   if (e.code === 'KeyG') toggleMascota();
+  if (e.code === 'KeyY') toggleMontura();
   if (e.code === 'Tab'){ e.preventDefault(); siguienteObjetivo(); }
   if (e.code === 'KeyV'){ VER_PLACAS = !VER_PLACAS; try { localStorage.setItem('rb_placas', VER_PLACAS ? '1' : '0'); } catch (er) {} texto(P.x, P.y - 74, VER_PLACAS ? 'Placas de vida: sí' : 'Placas de vida: no', '#e9e4ff', 13); }
   const tecla = CODIGO_TECLA[e.code];
@@ -3122,6 +3123,7 @@ $('btnPantalla').onclick = alternarPantallaCompleta;
 $('btnPantallaPausa').onclick = alternarPantallaCompleta;
 marcarPantallaCompleta();
 $('btnMascota').onclick = toggleMascota;
+$('btnMontura').onclick = toggleMontura;
 $('btnBolsa').onclick = () => alternarVentana('wBolsa');
 $('btnBuscador').onclick = () => abrirBuscador();
 $('durAviso').onclick = () => { wTab = 'personaje'; abrirVentana('wPj'); };
@@ -3193,6 +3195,11 @@ setTimeout(function(){
     a.imageSmoothingEnabled = false; a.drawImage(RATAS_IMG, sx, sy, w, h, 32 - w * k / 2, 62 - h * k, w * k, h * k); };
   if (ratasListo) pintarPet(); else RATAS_IMG.addEventListener('load', pintarPet, { once:true });
   window.pintarIcoPet = pintarPet;
+  // el jabalí de la montura, con el cuadro de reposo de su hoja
+  ico('btnMontura', '<canvas width="64" height="64"></canvas>');
+  const pintarJab = () => { const c = $('btnMontura').firstChild, a = c.getContext('2d'), [sx, sy, w, h] = MON.cuadros[MON.tipos.jabali.idle[0]], k = Math.min(62 / w, 62 / h);
+    a.imageSmoothingEnabled = false; a.drawImage(MON_IMG, sx, sy, w, h, 32 - w * k / 2, 63 - h * k, w * k, h * k); };
+  if (monListo) pintarJab(); else MON_IMG.addEventListener('load', pintarJab, { once:true });
 }, 0); $('icoLibro').innerHTML = ic3('libro'); $('icoMis').innerHTML = ic3('pergamino');
 const abierta = id => !$(id).classList.contains('oculto');
 function abrirVentana(id){ $(id).classList.remove('oculto'); renderVentana(id); }
@@ -4592,6 +4599,7 @@ function golpeLinea(x1, y1, x2, y2, ancho, dmg){
 function herir(e, dmg, critExtra = 0){
   sfx('golpe', .06);
   if (e.muerto) return;
+  if (e.rugido > 0){ if (Math.random() < .2) texto(e.x, e.y - e.r - 10, 'Inmune', '#9a91c2', 13); return; }
   dmg *= rand(.9, 1.1) * efMod.dmg() * (e.vuln > 0 ? 1.3 : 1);
   const forzado = !FUENTE && P.critSig && critExtra >= 0; if (forzado) P.critSig = false;
   const crit = forzado || Math.random() < D.crit + critExtra;
@@ -4811,10 +4819,20 @@ let reiniciarChat = () => {};
   $('chatMin').onclick = () => { ch.classList.toggle('min'); $('chatMin').textContent = ch.classList.contains('min') ? '+' : '–'; guardarChat(); };
   if (ch.classList.contains('min')) $('chatMin').textContent = '+';
 })();
+// los mensajes se juntan y se añaden una vez por cuadro: medir la caja del chat en mitad del combate obligaba
+// a la página a recalcularse en cada golpe
+let chatCola = [];
 function chat(txt, color = '#e9e4ff'){
-  const c = $('chatLog'), p = document.createElement('p');
+  const p = document.createElement('p'); p.textContent = txt; p.style.color = color;
+  if (!chatCola.length) requestAnimationFrame(volcarChat);
+  chatCola.push(p);
+}
+function volcarChat(){
+  const c = $('chatLog'), f = document.createDocumentFragment();
   const abajo = c.scrollHeight - c.scrollTop - c.clientHeight < 30;
-  p.textContent = txt; p.style.color = color; c.appendChild(p);
+  for (const p of chatCola) f.appendChild(p);
+  chatCola = [];
+  c.appendChild(f);
   while (c.children.length > 120) c.firstChild.remove();
   if (abajo) c.scrollTop = c.scrollHeight;
 }
@@ -4851,7 +4869,8 @@ function update(dt){
   const ml = Math.hypot(mx, my);
   if (ml > 1){ mx /= ml; my /= ml; }
   if (ml > .15){ P.ldx = mx / ml; P.ldy = my / ml; if (E.tipo !== 'mazmorra') P.ang = Math.atan2(my, mx); }
-  const vel = (esInterior() ? D.vel * .8 : D.vel) * efMod.vel();
+  const vel = (esInterior() ? D.vel * .8 : D.vel) * efMod.vel() * (enMontura() ? VEL_MONTURA : 1);
+  if (Math.abs(mx) > .2) P.ladoMont = mx > 0;
   // aceleración y frenado suaves (independiente de los FPS)
   const resp = 1 - Math.exp(-dt * (ml > .05 ? 14 : 18));
   P.vx = (P.vx || 0) + (mx * vel - (P.vx || 0)) * resp;
@@ -4956,7 +4975,8 @@ function updateMazmorra(dt){
   }
 
   timerCampo -= dt;
-  if (timerCampo <= 0){ timerCampo = .25; campo = bfs(E, pcx, pcy); }
+  // el mapa de caminos solo se rehace cuando el gato cambia de casilla (o cada 2 s por si acaso)
+  if (timerCampo <= 0 || !campo || campo.x !== pcx || campo.y !== pcy || campo.E !== E){ timerCampo = 2; campo = bfs(E, pcx, pcy); campo.x = pcx; campo.y = pcy; campo.E = E; }
 
   for (const e of enemigos){
     const U = blancoEnemigo(e, dt);
@@ -5074,15 +5094,76 @@ function updateMazmorra(dt){
     else if (Math.hypot(p.x - P.x, p.y - P.y) < p.r + P.r - 2){ golpearJugador(p.dmg, p.src); if (p.tela){ ponerEfecto('agi_dn', 2.5); texto(P.x, P.y - 90, '¡Atrapado en la telaraña!', '#f2f2f2', 13); } p.vida = 0; }
   }
   proysE = proysE.filter(p => p.vida > 0);
+  if (peligros.length) updatePeligros(dt);
 }
 
+// =====================================================
+//  JEFES CON FASES: al 66% y al 33% de vida rugen, se vuelven más rápidos y estrenan ataques
+//  Los ataques nuevos marcan el suelo antes de golpear (círculos que se llenan): hay que salir a tiempo.
+// =====================================================
+let peligros = [];
+const PATRONES_FASE = [null,
+  ['anillo', 'carga', 'invocar'],
+  ['anillo', 'lluvia', 'carga', 'pisoton', 'invocar', 'lluvia'],
+  ['espiral', 'lluvia', 'pisoton', 'carga', 'charcos', 'espiral', 'invocar']];
+const faseDe = e => e.hp < e.maxHp * .34 ? 3 : e.hp < e.maxHp * .67 ? 2 : 1;
+function cambioFase(e, fase){
+  e.fase = fase; e.rugido = 1.3; e.vel *= 1.15; e.patron = -1; e.cd = 1.6; e.aviso = 0; e.carga = 0;
+  banner(fase === 2 ? `¡${e.nombre} se enfurece!` : `¡${e.nombre} desata todo su poder!`, fase === 2 ? 'Fase 2: vigila el suelo' : 'Fase final');
+  chat(fase === 2 ? `${e.nombre} entra en la fase 2.` : `${e.nombre} entra en su fase final.`, '#ff6b7f');
+  sfx('jefe'); shake = 18; fxAnillo(e.x, e.y, 20, 220, e.color, .6); fxAnillo(e.x, e.y, 10, 160, '#ffffff', .4); chispas(e.x, e.y - 30, e.color, 50, 300);
+  // el rugido aparta a todos de un empujón
+  for (const U of [P, ...GRUPO.filter(g => g.vivo)]){
+    const dx = U.x - e.x, dy = U.y - e.y, d = Math.hypot(dx, dy) || 1;
+    if (d < 200){ U.x += dx / d * (200 - d) * .8; U.y += dy / d * (200 - d) * .8; colisiones(U); }
+  }
+}
+// marca en el suelo que estalla al acabarse el tiempo (o charco que quema mientras dura)
+function marcarSuelo(x, y, r, aviso, dmg, src, op = {}){ peligros.push({ x, y, r, t:aviso, max:aviso, dmg, src, col:op.col || (op.charco ? src.color : '#ff4f5f'), charco:op.charco || 0, tick:0 }); }
+function ataqueEspecial(e, tipo, dx, dy, enf){
+  const U = e.blanco || P;
+  if (tipo === 'anillo'){
+    const n = enf ? 20 : 14, off = rand(0, TAU);
+    for (let i = 0; i < n; i++){ const a = off + i * TAU / n; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 210, vy:Math.sin(a) * 210, r:8, dmg:e.dmg * .7, vida:3.5, color:e.color, src:e }); }
+    shake = Math.max(shake, 5);
+  } else if (tipo === 'carga'){
+    e.aviso = enf ? .45 : .7; e.cdir = Math.atan2(dy, dx);
+  } else if (tipo === 'invocar'){
+    for (let i = 0; i < (enf ? 4 : 3); i++) crearEnemigo(E.R.enemigos[i % E.R.enemigos.length], e.x + rand(-70, 70), e.y + rand(-70, 70), true);
+    chispas(e.x, e.y, e.color, 20, 200);
+  } else if (tipo === 'lluvia'){
+    // círculos que caen sobre ti y a tu alrededor
+    const n = e.fase >= 3 ? 9 : 6;
+    marcarSuelo(U.x, U.y, 64, 1.2, e.dmg * 1.2, e);
+    for (let i = 1; i < n; i++){ const a = rand(0, TAU), r = rand(70, 240); marcarSuelo(U.x + Math.cos(a) * r, U.y + Math.sin(a) * r * .8, 64, 1.1 + i * .06, e.dmg * 1.2, e); }
+    texto(e.x, e.y - 90, '¡Cuidado arriba!', '#ffd76a', 15);
+  } else if (tipo === 'pisoton'){
+    // un gran golpe alrededor del jefe: hay que alejarse
+    e.quieto = 1.1; marcarSuelo(e.x, e.y, 200, 1.1, e.dmg * 1.6, e, { col:'#ff5a3a' });
+    texto(e.x, e.y - 90, '¡Aléjate!', '#ff8a5a', 16);
+  } else if (tipo === 'espiral'){
+    e.espiral = 2.6; e.angEsp = rand(0, TAU); e.tEsp = 0; e.quieto = 2.6;
+  } else if (tipo === 'charcos'){
+    for (let i = 0; i < 3; i++){ const a = rand(0, TAU), r = i ? rand(60, 160) : 0; marcarSuelo(U.x + Math.cos(a) * r, U.y + Math.sin(a) * r * .8, 70, .7, e.dmg * .3, e, { charco:6 }); }
+  }
+}
 function actualizarJefe(e, dx, dy, d, dt){
   const U = e.blanco || P;
   if (!e.aggro && d < 430 && lineaVision(e.x, e.y, P.x, P.y)){
     e.aggro = true; E.jefeVisto = true; $('jefe').classList.remove('oculto'); banner(e.nombre, 'Jefe de la mazmorra'); shake = 10;
   }
   if (!e.aggro) return;
+  const fase = faseDe(e);
+  if (fase > (e.fase || 1)) cambioFase(e, fase);
+  // mientras ruge no se mueve ni recibe daño
+  if (e.rugido > 0){ e.rugido -= dt; if (Math.random() < .4) chispas(e.x, e.y - 30, e.color, 2, 120); colisiones(e); return; }
   const lento = e.lento > 0 ? .6 : 1, enf = e.hp < e.maxHp / 2;
+  e.quieto = (e.quieto || 0) - dt;
+  if (e.espiral > 0){
+    // espiral de proyectiles que gira
+    e.espiral -= dt; e.tEsp -= dt;
+    if (e.tEsp <= 0){ e.tEsp = .09; e.angEsp += .32; for (const k of [0, Math.PI]){ const a = e.angEsp + k; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 200, vy:Math.sin(a) * 200, r:7, dmg:e.dmg * .5, vida:3.2, color:e.color, src:e }); } }
+  }
   if (e.carga > 0){
     e.carga -= dt;
     e.x += Math.cos(e.cdir) * e.vel * 4.4 * dt; e.y += Math.sin(e.cdir) * e.vel * 4.4 * dt;
@@ -5091,25 +5172,55 @@ function actualizarJefe(e, dx, dy, d, dt){
     e.aviso -= dt;
     if (e.aviso <= 0) e.carga = .5;
   } else {
-    const [vx, vy] = direccionHacia(e, U);
-    e.x += vx * e.vel * lento * dt; e.y += vy * e.vel * lento * dt;
-    if (e.cd <= 0){
-      e.patron = (e.patron + 1) % 3;
-      if (e.patron === 0){
-        const n = enf ? 20 : 14, off = rand(0, TAU);
-        for (let i = 0; i < n; i++){ const a = off + i * TAU / n; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 210, vy:Math.sin(a) * 210, r:8, dmg:e.dmg * .7, vida:3.5, color:e.color, src:e }); }
-        shake = Math.max(shake, 5);
-      } else if (e.patron === 1){
-        e.aviso = enf ? .45 : .7; e.cdir = Math.atan2(dy, dx);
-      } else {
-        for (let i = 0; i < (enf ? 4 : 3); i++) crearEnemigo(E.R.enemigos[i % E.R.enemigos.length], e.x + rand(-70, 70), e.y + rand(-70, 70), true);
-        chispas(e.x, e.y, e.color, 20, 200);
-      }
-      e.cd = enf ? 2 : 2.8;
+    if (e.quieto <= 0){ const [vx, vy] = direccionHacia(e, U); e.x += vx * e.vel * lento * dt; e.y += vy * e.vel * lento * dt; }
+    if (e.cd <= 0 && !(e.espiral > 0)){
+      const lista = PATRONES_FASE[e.fase || 1];
+      e.patron = (e.patron + 1) % lista.length;
+      ataqueEspecial(e, lista[e.patron], dx, dy, enf);
+      e.cd = (e.fase || 1) >= 3 ? 1.7 : enf ? 2 : 2.8;
     }
   }
   colisiones(e);
   if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; pegar(U, false, e.dmg, e); }
+}
+// las marcas del suelo: se llenan y estallan, o queman mientras duran
+function updatePeligros(dt){
+  for (const p of peligros){
+    p.t -= dt;
+    if (p.t > 0) continue;
+    const dentro = U => Math.hypot(U.x - p.x, (U.y - p.y) / .8) < p.r + (U.r || 14);
+    if (!p.charco){
+      if (!p.hecho){
+        p.hecho = true;
+        if (dentro(P)) golpearJugador(p.dmg, p.src);
+        for (const g of GRUPO) if (g.vivo && dentro(g)) danarAliado(g, p.dmg * .6, p.src);
+        fxAnillo(p.x, p.y, 8, p.r, p.col, .3); chispas(p.x, p.y, p.col, p.r > 120 ? 40 : 14, p.r > 120 ? 300 : 180); shake = Math.max(shake, p.r > 120 ? 12 : 5);
+      }
+    } else {
+      p.charco -= dt; p.tick -= dt;
+      if (p.tick <= 0){ p.tick = .5; if (dentro(P)){ golpearJugador(p.dmg, p.src); ponerEfecto('agi_dn', 1.2); } }
+    }
+  }
+  peligros = peligros.filter(p => p.t > 0 || (p.charco > 0) );
+}
+function dibujarPeligros(t){
+  for (const p of peligros){
+    const ry = p.r * .8;
+    if (p.t > 0){
+      // aviso: borde rojo y un relleno que crece hasta estallar
+      const k = 1 - p.t / p.max;
+      ctx.globalAlpha = .18; ctx.fillStyle = p.col; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = .35 + .3 * k; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * k, ry * k, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = .9; ctx.strokeStyle = p.col; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t / 50;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    } else if (p.charco > 0){
+      // charco que burbujea
+      ctx.globalAlpha = Math.min(1, p.charco) * .55; ctx.fillStyle = p.col; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = Math.min(1, p.charco) * .8; ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 4; i++){ const a = t / 600 + i * 1.7, r = p.r * .55 * ((i * .37 + t / 1500) % 1); pxCuadro(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r * .8, '#ffffff', 3); }
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 // la interfaz sólo se toca cuando un valor cambia (escribir en la página en cada cuadro es caro)
@@ -5388,17 +5499,21 @@ function dibujarJugador(t){
   } else {
     const r = Math.sin(t / 420); ky = 1 + .025 * r; kx = 1 - .012 * r;
   }
+  // montado: el gato va de lado, sentado (sin pasos) sobre el jabalí, que es el que anda
+  let subida = 0;
+  const montado = enMontura();
+  if (montado && !pose){ dir = 'lado'; derecha = P.ladoMont !== false; f = 0; rot = 0; kx = 1; ky = 1; alza = 0; subida = dibujarMontura(t, mov, derecha, pie); }
   // la vista de lado mira a la izquierda en la hoja: se refleja para ir a la derecha
   // si el gato tiene vista propia hacia la derecha se usa; si no, se refleja
   const usarDe = dir === 'lado' && derecha && GD.de && GD.de.length;
   const flip = dir === 'lado' && derecha && !usarDe;
   let setV = usarDe ? 'de' : dir, fV = f;
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
-  if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
+  if ((!mov || montado) && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
   // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
   let dxA = 0, dyA = 0, kAtk = 0;
   if (GD.px){
-    alza = mov && !pose ? 0 : Math.round(alza);
+    alza = mov && !pose && !montado ? 0 : Math.round(alza);
     if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
     rot = 0; kx = 1; ky = 1;
     // ataque: estocada hacia donde apunta (en píxeles enteros); al recibir un golpe, retrocede y tiembla
@@ -5407,15 +5522,17 @@ function dibujarJugador(t){
   }
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, setV, fV), esc = escG;
   // sombra y aro con el color de la clase
-  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
+  if (!subida){
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
+  }
   if (P.golpe > 0 && !GD.px) ctx.globalAlpha = .65;
   // pixel art: tras el destello blanco, parpadea semitransparente mientras es invulnerable
   if (GD.px && P.inv > 0 && P.golpe <= 0 && Math.floor(t / 60) % 2) ctx.globalAlpha = .45;
   ctx.save();
-  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza) + dyA); }
-  else ctx.translate(P.x, pie + alza);
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza - subida) + dyA); }
+  else ctx.translate(P.x, pie + alza - subida);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
   const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : hojaJugador();
@@ -5427,7 +5544,7 @@ function dibujarJugador(t){
   ctx.globalAlpha = 1;
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
-  const ny = pie - ALTO_GATO_PJ - 10;
+  const ny = pie - ALTO_GATO_PJ - 10 - subida;
   rotulo(PJ.nombre, P.x, ny, '700 14px Rajdhani, sans-serif', '#7fc8ff', 'rgba(0,0,0,.85)', 3);
   const tit = tituloActual();
   if (tit) rotulo(`«${tit}»`, P.x, ny - 15, '600 12px Rajdhani, sans-serif', '#ffd100', 'rgba(0,0,0,.85)', 3);
@@ -5873,7 +5990,7 @@ function updateMascota(dt){
   // en reposo mira a la cámara y, de vez en cuando, hacia un lado
   if (!M.mov && M.quieto > .4) M.dir = (M.quieto > 2 && M.quieto < 6 && Math.sin(M.quieto * 1.7) > .55) ? 'lado' : 'abajo';
   if (d > 55){
-    const v = Math.min(D.vel * 1.15, (d - 40) * 4);
+    const v = Math.min(D.vel * 1.15 * (enMontura() ? VEL_MONTURA : 1), (d - 40) * 4);
     M.x += dx / d * v * dt; M.y += dy / d * v * dt;
     M.mov = v > 25;
     M.paso = (M.paso || 0) + v * dt;
@@ -5945,7 +6062,13 @@ let fondoListo = false;
 FONDO_MENU.onload = () => fondoListo = true;
 FONDO_MENU.src = 'img/fondo-menu.jpg';
 const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let menuFondoT = -1e9, menuFondoTam = '';
 function dibujarMenuFondo(t){
+  // el acercamiento es muy lento: basta con repintarlo 12 veces por segundo. Los paneles con cristal esmerilado de
+  // encima recalculan su desenfoque cada vez que el fondo cambia, y eso era lo que bajaba los FPS del inicio
+  const tam = W + 'x' + H + fondoListo;
+  if (tam === menuFondoTam && t - menuFondoT < 83 && t >= menuFondoT) return;
+  menuFondoT = t; menuFondoTam = tam;
   ctx.fillStyle = '#1a1440'; ctx.fillRect(0, 0, W, H);
   if (!fondoListo) return;
   // ajuste tipo "cover" con un acercamiento lento
@@ -6097,15 +6220,11 @@ function dibujarLucesCiudad(t){
 function dibujarPortalCiudad(p, t){
   const R = RANGOS[p.rango], esc = Math.min(1, p.nace / .8);
   dibujarPortal(p.x, p.y, p.rango, t, esc);
-  ctx.textAlign = 'center';
-  ctx.font = '28px Marcellus, Georgia, serif';
+  // textos ya dibujados (rotulo): el del tiempo cambia una vez por segundo
   const letra = p.mundo ? '☠' : p.semanal ? '♛' : R.l;
-  ctx.fillStyle = '#000'; ctx.fillText(letra, p.x + 1, p.y - 117 * esc + 1);
-  ctx.fillStyle = p.mundo ? '#ff4f6b' : p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
-  ctx.font = '600 13px Rajdhani, sans-serif'; ctx.fillStyle = p.cierra < 30 ? '#ff8a9b' : '#e9e4ff';
-  ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
+  rotulo(letra, p.x, Math.round(p.y - 117 * esc), '28px Marcellus, Georgia, serif', p.mundo ? '#ff4f6b' : p.semanal ? '#ffd100' : R.color, null, 0, true);
   const txt = p.mundo ? `Jefe de mundo: ${jefeMundoNombre()}${jefeMundoHecho() ? ' (derrotado)' : ''}` : p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
-  ctx.strokeText(txt, p.x, p.y + 66); ctx.fillText(txt, p.x, p.y + 66);
+  rotulo(txt, p.x, p.y + 66, '600 13px Rajdhani, sans-serif', p.cierra < 30 ? '#ff8a9b' : '#e9e4ff', 'rgba(0,0,0,.7)', 3);
 }
 
 // paredes interiores: madera con ventanas (posada) y piedra (mercado)
@@ -6641,6 +6760,7 @@ function iniciarAudio(){
   SON.master = SON.ctx.createGain(); SON.master.gain.value = .8; SON.master.connect(SON.ctx.destination);
   SON.mus = SON.ctx.createGain(); SON.mus.gain.value = SON.musica ? .22 : 0; SON.mus.connect(SON.master);
   SON.fx = SON.ctx.createGain(); SON.fx.gain.value = SON.efectos ? .5 : 0; SON.fx.connect(SON.master);
+  bufRuido(SON.ctx);
   setInterval(programarMusica, 100);
 }
 addEventListener('pointerdown', iniciarAudio); addEventListener('keydown', iniciarAudio);
@@ -6651,13 +6771,20 @@ function tono(f, dur, { tipo = 'square', vol = .3, desde = 0, hasta = null, dest
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + ataque); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
   o.connect(g); g.connect(destino || SON.fx); o.start(t); o.stop(t + dur + .02);
 }
-function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
-  const c = SON.ctx, t = c.currentTime + desde, n = Math.ceil(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+// un solo búfer de ruido (2 s) para todos los sonidos: cada uno toca un trozo al azar (antes se creaba uno nuevo en cada paso o golpe y daba tirones)
+let RUIDO_BUF = null;
+function bufRuido(c){
+  if (RUIDO_BUF && RUIDO_BUF.sampleRate === c.sampleRate) return RUIDO_BUF;
+  const n = c.sampleRate * 2, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return RUIDO_BUF = b;
+}
+function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, b = bufRuido(c), largo = Math.min(dur + .02, 1.9);
   const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
   s.buffer = b; f.type = tipoF; f.frequency.value = filtro; f.Q.value = q;
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
-  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t); s.stop(t + dur + .02);
+  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t, Math.random() * (2 - largo), largo);
 }
 const SFX = {
   ataque(){ ruido(.12, { vol:.35, filtro:2600, q:.8 }); tono(520, .08, { tipo:'triangle', vol:.12, hasta:260 }); },
@@ -6673,6 +6800,7 @@ const SFX = {
   comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
   paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
   click(){ tono(1200, .03, { vol:.06 }); },
+  montar(){ tono(140, .18, { tipo:'sawtooth', vol:.14, hasta:90 }); ruido(.15, { vol:.15, filtro:700, q:2, desde:.05 }); tono(330, .08, { tipo:'square', vol:.08, desde:.18, hasta:520 }); },
   // cada clase suena distinto: el guerrero golpea metal, la sombra corta el aire, el mago chisporrotea...
   ataque_guerrero(){ ruido(.16, { vol:.4, filtro:900, q:1.2 }); tono(180, .14, { tipo:'square', vol:.16, hasta:90 }); tono(1400, .05, { tipo:'triangle', vol:.08, desde:.02 }); },
   ataque_sombra(){ ruido(.09, { vol:.32, filtro:4200, q:.6, tipoF:'highpass' }); tono(900, .06, { tipo:'sawtooth', vol:.06, hasta:400 }); },
@@ -6726,6 +6854,8 @@ function programarMusica(){
   if (!SON.musica) return;   // sin música no se programan notas
   const nueva = pistaActual();
   if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
+  // si el juego se atascó (pestaña oculta, carga), no se recuperan de golpe las notas atrasadas: se sigue desde ahora
+  if (SON.sig < SON.ctx.currentTime - .05) SON.sig = SON.ctx.currentTime + .05;
   const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
   const nota = (grado, oct = 0) => { const L = P0.escala.length, o = Math.floor(grado / L); return NOTA(P0.raiz + 12 * (o + oct) + P0.escala[((grado % L) + L) % L]); };
   while (SON.sig < SON.ctx.currentTime + .3){
@@ -7232,30 +7362,45 @@ function dibujarHuellas(){
 
 // noche en la ciudad: se oscurece la pantalla y se recortan círculos de luz en farolas, portales y alrededor del gato
 const NOCHE = { cv:null };
+// la noche va en un lienzo pequeño aparte, encima del juego: el navegador lo estira solo (antes se estiraba a pantalla
+// completa en cada cuadro y se llevaba la mitad del tiempo de dibujo). El minimapa queda fuera, con su hueco.
+const MINI = { ok:false };
+function ocultarNoche(){ const c = NOCHE.el; if (c && c.style.display !== 'none') c.style.display = 'none'; }
 function dibujarNocheCiudad(){
-  if (E.tipo !== 'ciudad') return;
-  const d = oscuridad();
-  if (d < .02) return;
-  if (!NOCHE.cv) NOCHE.cv = document.createElement('canvas');
-  const c = NOCHE.cv, w = Math.ceil(W / 2), h = Math.ceil(H / 2);
+  const d = E.tipo === 'ciudad' ? oscuridad() : 0;
+  if (d < .02){ ocultarNoche(); return; }
+  const c = NOCHE.el || (NOCHE.el = $('nocheCv'));
+  if (c.style.display !== 'block') c.style.display = 'block';
+  const E3 = 3, w = Math.ceil(W / E3), h = Math.ceil(H / E3);
   if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
   const a = c.getContext('2d');
   a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
   a.fillStyle = `rgba(12,16,48,${d})`; a.fillRect(0, 0, w, h);
   a.globalCompositeOperation = 'destination-out';
   const hueco = (x, y, r, k = 1) => {
-    x = (x - cam.x) / 2; y = (y - cam.y) / 2; r /= 2;
+    x = (x - cam.x) / E3; y = (y - cam.y) / E3; r = Math.round(r / E3);
     if (x < -r || y < -r || x > w + r || y > h + r) return;
-    const g = a.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
-    a.fillStyle = g; a.fillRect(x - r, y - r, r * 2, r * 2);
+    a.drawImage(manchaLuz(r, k), x - r, y - r);
   };
   for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
   for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
   hueco(P.x, P.y - 20, 120, .55);
-  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(c, 0, 0, W, H); ctx.restore();
+  // el minimapa y el cartel de la zona no se oscurecen (su sitio lo apunta dibujarMinimapa)
+  if (MINI.ok){
+    a.fillStyle = '#000';
+    a.beginPath(); a.arc(MINI.cx / E3, MINI.cy / E3, (MINI.r + 4) / E3, 0, TAU); a.fill();
+    a.fillRect((MINI.px - MINI.tw / 2 - 2) / E3, (MINI.cy - MINI.r - 26) / E3, (MINI.tw + 4) / E3, 24 / E3);
+  }
 }
 
+const MANCHAS = {};
+function manchaLuz(r, k){
+  const clave = r + '|' + k; if (MANCHAS[clave]) return MANCHAS[clave];
+  const c = document.createElement('canvas'); c.width = c.height = r * 2; const a = c.getContext('2d');
+  const g = a.createRadialGradient(r, r, 0, r, r, r); g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  a.fillStyle = g; a.fillRect(0, 0, r * 2, r * 2);
+  return MANCHAS[clave] = c;
+}
 // clima en partículas de pantalla: lluvia en la ciudad y uno propio en cada tipo de cueva
 const CLIMA_CUEVA = ['esporas', 'arena', 'nieve', 'brasas', 'vacio', 'brasas'];
 function tipoClima(){
@@ -7323,7 +7468,7 @@ function burbuja(x, y, txt, alfa = 1){
 //  DIBUJO PRINCIPAL
 // =====================================================
 function draw(t){
-  if (!enJuego){ dibujarMenuFondo(t); return; }
+  if (!enJuego){ ocultarNoche(); dibujarMenuFondo(t); return; }
   ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
@@ -7361,6 +7506,7 @@ function draw(t){
   }
 
   dibujarEfectos(true);
+  if (peligros.length) dibujarPeligros(t);
 
   // un aro marca a tu objetivo (en el teléfono, también al enemigo al que apuntas solo)
   if (E.tipo === 'mazmorra'){
@@ -7450,6 +7596,39 @@ function draw(t){
 }
 
 // =====================================================
+//  MONTURA: el jabalí (el mismo de los portales, domado y con silla)
+//  Solo en la ciudad: en los portales y dentro de los edificios se va a pie, y al salir se vuelve a montar solo.
+// =====================================================
+const VEL_MONTURA = 1.6;
+const enMontura = () => !!(P && P.montura && E && E.tipo === 'ciudad' && P.hp > 0);
+function toggleMontura(){
+  if (!enJuego || pantallaActual || !P) return;
+  if (E.tipo !== 'ciudad' && !P.montura){ texto(P.x, P.y - 74, 'El jabalí solo se puede montar en la ciudad', '#9a91c2', 14); return; }
+  P.montura = !P.montura;
+  PJ.montado = P.montura;
+  sfx(P.montura ? 'montar' : 'click');
+  chispas(P.x, P.y + 6, '#c8a878', 14, 120);
+  texto(P.x, P.y - 90, P.montura ? 'Montas tu jabalí' : 'Te bajas del jabalí', '#ffd76a', 14);
+  $('btnMontura').setAttribute('aria-pressed', P.montura);
+}
+// dibuja el jabalí con su silla y devuelve cuánto sube el gato para ir sentado encima
+function dibujarMontura(t, mov, derecha, pie){
+  if (!monListo) return 0;
+  const D = MON.tipos.jabali, lista = mov ? D.walk : D.idle;
+  const idx = lista[(mov ? Math.floor(P.paso / 9) : Math.floor(t / 260)) % lista.length];
+  const ref = MON.cuadros[D.walk[0]][3];
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie + 2, 34, 8, 0, 0, TAU); ctx.fill();
+  const alto = pintarMonstruo('jabali', idx, P.x, pie + 4, ref, ref, !derecha, 0, null);
+  // silla roja con borde dorado sobre el lomo
+  const lomo = Math.round(pie + 4 - alto * .62), x = Math.round(P.x) + (derecha ? -6 : 6);
+  ctx.fillStyle = '#1a0c08'; ctx.fillRect(x - 13, lomo - 3, 26, 9);
+  ctx.fillStyle = '#b8242c'; ctx.fillRect(x - 12, lomo - 2, 24, 7);
+  ctx.fillStyle = '#e8b84a'; ctx.fillRect(x - 12, lomo + 4, 24, 1); ctx.fillRect(x - 2, lomo + 5, 4, 6);
+  // el gato sube y baja un poco con el trote
+  return Math.round(alto * .55) + (mov ? (Math.floor(P.paso / 9) % 2) * 2 : 0);
+}
+
+// =====================================================
 //  MONSTRUOS (sprites animados)
 // =====================================================
 const MON = {"cuadros": [[2, 2, 79, 66], [83, 2, 78, 65], [163, 2, 75, 64], [240, 2, 79, 65], [321, 2, 93, 57], [416, 2, 75, 70], [493, 2, 67, 57], [562, 2, 71, 38], [635, 2, 94, 62], [731, 2, 94, 61], [827, 2, 85, 61], [914, 2, 85, 61], [2, 74, 70, 59], [74, 74, 116, 66], [192, 74, 81, 65], [275, 74, 101, 40], [378, 74, 44, 44], [424, 74, 40, 48], [466, 74, 44, 44], [512, 74, 48, 40], [562, 74, 72, 60], [636, 74, 64, 52], [702, 74, 74, 48], [778, 74, 58, 46], [838, 74, 96, 48], [2, 142, 90, 50], [94, 142, 91, 48], [187, 142, 97, 48], [286, 142, 90, 49], [378, 142, 82, 49], [462, 142, 85, 48], [549, 142, 85, 48], [636, 142, 85, 48], [723, 142, 93, 48], [818, 142, 88, 49], [908, 142, 84, 68], [2, 212, 95, 77], [99, 212, 91, 57], [192, 212, 100, 48], [294, 212, 104, 49], [400, 212, 77, 49], [479, 212, 65, 55], [546, 212, 62, 52], [610, 212, 61, 62], [673, 212, 61, 67], [736, 212, 68, 57], [806, 212, 68, 55], [2, 291, 233, 152], [237, 291, 61, 59], [300, 291, 64, 59], [366, 291, 60, 58], [428, 291, 64, 58], [494, 291, 64, 60], [560, 291, 65, 58], [627, 291, 66, 55], [695, 291, 68, 54], [765, 291, 62, 60], [829, 291, 63, 61], [894, 291, 63, 62], [2, 445, 64, 61], [68, 445, 63, 61], [133, 445, 65, 61], [200, 445, 66, 61], [268, 445, 64, 60], [334, 445, 177, 132]], "tipos": {"mantis": {"mira": -1, "walk": [0, 1, 2, 3], "atk": [4, 5], "muere": [6, 7]}, "escorpion": {"mira": -1, "walk": [8, 9, 10, 11], "atk": [12, 13], "muere": [14, 15]}, "slime": {"mira": 0, "walk": [16, 17, 18, 19], "atk": [20, 21], "muere": [22, 23, 24, 25]}, "arana": {"mira": 1, "walk": [26, 27, 28, 29, 30, 31, 32, 33], "atk": [34, 35, 36, 37, 38, 39], "muere": [40, 41, 42, 43, 44, 45, 46]}, "arana_jefe": 47, "jabali": {"mira": 1, "idle": [48, 49, 50, 51], "walk": [56, 57, 58, 59, 60, 61, 62, 63], "atk": [52, 53, 54, 55], "muere": [55]}, "jabali_jefe": 64}};
@@ -7492,6 +7671,13 @@ function dibujarEnemigo(e){
   dibujarAviso(e);
   const pie = e.y + e.r * .8;
   ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.25, e.r * .45, 0, 0, TAU); ctx.fill();
+  // aura de la fase: más grande y roja cuanto más enfadado está el jefe
+  if (e.jefe && e.fase > 1){
+    const pul = 1 + .1 * Math.sin(t / (e.fase > 2 ? 90 : 160));
+    ctx.strokeStyle = e.fase > 2 ? 'rgba(255,60,80,.8)' : 'rgba(255,170,60,.7)'; ctx.lineWidth = e.fase > 2 ? 4 : 3;
+    ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.6 * pul, e.r * .6 * pul, 0, 0, TAU); ctx.stroke();
+    if (e.rugido > 0){ ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 2.2, e.r * .8, 0, 0, TAU); ctx.fill(); }
+  }
   if (e.lento > 0){ ctx.strokeStyle = '#bff0ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.4, e.r * .55, 0, 0, TAU); ctx.stroke(); }
   const cerca = Math.hypot(P.x - e.x, P.y - e.y) < e.r + P.r + 26;
   const lista = e.at ? D.atk : (D.idle && !e.mueve) ? D.idle : D.walk;
@@ -7591,6 +7777,7 @@ function dibujarMinimapa(){
   }
   const fs = CARTEL.fs, tw = CARTEL.tw; ctx.font = `${fs}px Marcellus, Georgia, serif`;
   const pxp = clamp(cx, izq + tw / 2, W - tw / 2 - 8);
+  MINI.cx = cx; MINI.cy = cy; MINI.r = r; MINI.px = pxp; MINI.tw = tw; MINI.ok = true;
   ctx.fillStyle = 'rgba(15,11,28,.85)'; ctx.fillRect(pxp - tw / 2, cy - r - 24, tw, 20);
   ctx.strokeStyle = '#b8933f'; ctx.lineWidth = 1; ctx.strokeRect(pxp - tw / 2 + .5, cy - r - 23.5, tw - 1, 19);
   ctx.fillStyle = colorZona; ctx.fillText(nombre, pxp, cy - r - 9);
@@ -7650,7 +7837,7 @@ function loop(t){
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (enJuego && !pantallaActual) update(dt);
   if (enJuego) updateBuscador(dt);
-  draw(t);
+  if (pantallaActual !== 'pPrologo') draw(t);   // la cinemática tapa toda la pantalla: no hace falta dibujar el mundo detrás
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
   if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
