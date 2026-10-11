@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.13.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.14.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -108,7 +108,15 @@ const CLASES = {
   mago: { nombre:'Mago de las Sombras', color:'#4f9aff', desc:'Canaliza las sombras y la magia oscura. Elegante y letal.',
     base:{ fue:6, agi:9, vit:9, int:16 },
     h1:{ n:'Lanzamiento de sombras', d:'Rayo de sombra que explota al impactar.', cd:.55, ic:'🌑' },
-    h2:{ n:'Bola de sombra', d:'Vórtice que arrastra, daña y ralentiza a los enemigos.', cd:5, coste:35, ic:'🌀' } }
+    h2:{ n:'Bola de sombra', d:'Vórtice que arrastra, daña y ralentiza a los enemigos.', cd:5, coste:35, ic:'🌀' } },
+  sacerdote: { nombre:'Sacerdote de la Luz', color:'#ffe066', desc:'Sana sus heridas y las de su grupo, y castiga con luz sagrada.',
+    base:{ fue:6, agi:8, vit:12, int:14 },
+    h1:{ n:'Castigo', d:'Un rayo de luz sagrada que daña al impactar.', cd:.55, ic:'✝' },
+    h2:{ n:'Luz sanadora', d:'Te cura a ti y a tu grupo un 22% de la vida y daña a los enemigos cercanos.', cd:6, coste:30, ic:'✨' } },
+  arquero: { nombre:'Arquero Errante', color:'#ff9a3d', desc:'Ataca desde lejos con su arco y nunca deja que se le acerquen.',
+    base:{ fue:8, agi:15, vit:10, int:7 },
+    h1:{ n:'Disparo', d:'Una flecha rápida y precisa.', cd:.5, ic:'🏹' },
+    h2:{ n:'Disparo múltiple', d:'Cinco flechas en abanico frente a ti.', cd:4, coste:30, ic:'🎯' } }
 };
 
 const RANGOS = [
@@ -137,6 +145,8 @@ const ENEM = {
 CLASES.guerrero.h1.spr = 'px:espada'; CLASES.guerrero.h2.spr = 'px:onda';
 CLASES.sombra.h1.spr = 'px:daga';     CLASES.sombra.h2.spr = 'px:capa';
 CLASES.mago.h1.spr = 'px:estrella';   CLASES.mago.h2.spr = 'px:espiral';
+CLASES.sacerdote.h1.spr = 'px:cruz';  CLASES.sacerdote.h2.spr = 'px:halo';
+CLASES.arquero.h1.spr = 'px:flecha';  CLASES.arquero.h2.spr = 'px:arco';
 
 // Poderes de las sombras: se aprenden al subir de nivel y van en la barra (Q F R 1 2 3 4)
 const PODERES = {
@@ -170,6 +180,20 @@ const TALENTOS = {
     { id:'flujo',   n:'Flujo',            d:'+20% de regeneración de energía por rango.', ic:'lluvia',f:(D, r) => D.regEn *= 1 + .2 * r },
     { id:'escudo',  n:'Escudo de maná',   d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
     { id:'ritmo',   n:'Tiempo arcano',    d:'-6% de tiempo de recarga por rango.',        ic:'bola',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  sacerdote: [
+    { id:'fe',      n:'Fe inquebrantable',d:'+6% de vida máxima por rango.',              ic:'px:halo',  f:(D, r) => D.maxHp = Math.round(D.maxHp * (1 + .06 * r)) },
+    { id:'luz',     n:'Luz abrasadora',   d:'+7% de daño mágico por rango.',              ic:'px:sol',   f:(D, r) => D.mag *= 1 + .07 * r },
+    { id:'calma',   n:'Calma interior',   d:'+20% de regeneración de energía por rango.', ic:'px:ala',   f:(D, r) => D.regEn *= 1 + .2 * r },
+    { id:'gracia',  n:'Gracia',           d:'+35% de regeneración de vida por rango.',    ic:'px:cruz',  f:(D, r) => D.regHp *= 1 + .35 * r },
+    { id:'ritmo',   n:'Plegaria veloz',   d:'-6% de tiempo de recarga por rango.',        ic:'px:escudo',f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  arquero: [
+    { id:'punteria',n:'Puntería',         d:'+3% de golpe crítico por rango.',            ic:'px:diana', f:(D, r) => D.crit = Math.min(.65, D.crit + .03 * r) },
+    { id:'tension', n:'Cuerda tensa',     d:'+7% de daño físico por rango.',              ic:'px:arco',  f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'viento',  n:'Paso ligero',      d:'+4% de velocidad por rango.',                ic:'px:ala',   f:(D, r) => D.vel = Math.min(340, D.vel * (1 + .04 * r)) },
+    { id:'cuero',   n:'Cuero curtido',    d:'+3% de defensa por rango.',                  ic:'px:escudo',f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Carcaj sin fondo', d:'-6% de tiempo de recarga por rango.',        ic:'px:lluviaf',f:(D, r) => D.cdK *= 1 - .06 * r }
   ]
 };
 const MAX_RANGO_TAL = 3;
@@ -208,7 +232,7 @@ const RANURAS = {
   piernas: { n:'Piernas', ic:'👖', bases:['Pantalones','Grebas','Musleras'] },
   pies:    { n:'Pies',    ic:'👢', bases:['Botas','Sandalias','Escarpes'] },
   anillo:  { n:'Dedo',    ic:'💍', bases:['Anillo','Sello','Sortija'] },
-  arma:    { n:'Arma',    ic:'🗡️', bases:['Espada','Daga','Báculo','Grimorio'] }
+  arma:    { n:'Arma',    ic:'🗡️', bases:['Espada','Daga','Báculo','Grimorio','Arco'] }
 };
 const IZQ = ['cabeza','amuleto','pecho','manos'], DER = ['piernas','pies','anillo','arma'];
 const SUFIJOS = ['del Musgo','de Arena','de Escarcha','de Magma','del Vacío','Carmesí'];
@@ -302,7 +326,13 @@ function iconoDe(o){
   let h = 0; for (const ch of String(o.id)) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return lista[Math.abs(h) % lista.length];
 }
+let ICONO_ARCO = null;
 function icoObj(o){
+  if (o.slot === 'arma' && o.nombre.startsWith('Arco')){
+    if (!ICONO_ARCO){ const p = pixEquipo('Arco', 2), c = document.createElement('canvas'); c.width = c.height = 24; const a = c.getContext('2d');
+      a.translate(12, 12); a.rotate(Math.PI / 4); a.drawImage(p.c, -p.w / 2, -p.h / 2); ICONO_ARCO = c.toDataURL(); }
+    return `<span class="ico-obj" style="background-image:url(${ICONO_ARCO})"></span>`;
+  }
   const i = iconoDe(o);
   if (i === null) return RANURAS[o.slot].ic;
   return `<span class="ico-obj" style="background-image:url(${ICONOS_URL});background-position:${(i / (ICONOS_N - 1) * 100).toFixed(4)}% 0"></span>`;
@@ -353,6 +383,7 @@ const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
+  document.body.classList.toggle('con-son-flot', !enJuego);
   PANTALLAS.forEach(p => $(p).classList.toggle('oculto', p !== id));
   sticks.mov = null; mouse.izq = false; holdAtk = false;
 }
@@ -400,6 +431,7 @@ function migrar(pj){
   pj.kills = pj.kills || 0;
   pj.jefesTotal = pj.jefesTotal || 0;
   pj.tiempo = pj.tiempo || 0;
+  pj.devorar = pj.devorar || { esencias:{}, aprendidas:[], equipada:null };
   if (pj.prologo === undefined) pj.prologo = true;   // el prólogo solo lo viven los gatos recién creados
   if (pj.gato === undefined) pj.gato = 0;
   pj.equipo = pj.equipo || { cabeza:null, amuleto:null, pecho:null, manos:null, piernas:null, pies:null, anillo:null, arma:null };
@@ -587,8 +619,10 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null, tinte 
 }
 
 let claseElegida = 'mago';
+// el arma con la que empieza cada clase (y la de sus emblemas)
+const ARMA_CLASE = { guerrero:'Espada', sombra:'Daga', mago:'Báculo', sacerdote:'Báculo', arquero:'Arco' };
 let gatoPj = 0;
-const ICONO_CLASE = { guerrero:'⚔️', sombra:'🗡️', mago:'🔮' };
+const ICONO_CLASE = { guerrero:'⚔️', sombra:'🗡️', mago:'🔮', sacerdote:'✨', arquero:'🏹' };
 const NOMBRES_AL = ['Kael','Mira','Thorne','Luna','Vex','Nyx','Rayo','Sombra','Bigotes','Zarpa','Eclipse','Ónix','Ceniza','Runa','Michi','Garra'];
 function renderCrear(){
   $('cNombre').value = ''; $('cErr').textContent = ''; rotSel = 0;
@@ -632,6 +666,7 @@ $('btnCrear').onclick = () => {
     stats:{ ...CLASES[claseElegida].base }, puntos:0, oro:3000, monedaCobre:true, curvaDura:true, pociones:3, arma:0 });
   pj.gato = gatoPj; pj.prologo = false;
   pj.equipo.arma = crearObjeto(0, 0, 'arma', 0);
+  { const a = pj.equipo.arma, b = ARMA_CLASE[pj.clase]; a.nombre = b + a.nombre.slice(a.nombre.indexOf(' ')); }
   pj.equipo.pecho = crearObjeto(0, 0, 'pecho', 0);
   c.personajes.push(pj); guardarCuenta(c);
   pjSel = pj.id; rotSel = 0;
@@ -1876,33 +1911,36 @@ const CINE = [
     ['voz', '«Alma detectada... Confirmado: alma de gato.»'],
     ['voz', '«Deseo detectado: "No quiero que todo termine así".»'],
     ['voz', '«Petición aceptada. Iniciando renacimiento en el mundo de Lumeria...»'],
-    ['voz', () => `«Habilidad adquirida: ${CLASES[PJ.clase].h1.n}. Habilidad única adquirida: ${CLASES[PJ.clase].h2.n}.»`],
+    ['voz', () => `«Habilidades adquiridas: ${CLASES[PJ.clase].h1.n} y ${CLASES[PJ.clase].h2.n}.»`],
+    ['voz', '«Habilidad única adquirida: Devorar.»'],
     ['voz', '«Título adquirido: Renacido.»'] ] },
   { escena:'cueva', lineas:[
     ['narr', 'Cuando abriste los ojos, el aire olía a piedra húmeda... y a magia.'] ] }
 ];
 let cine = null;
-function iniciarCinematica(alTerminar){
-  cine = { e:0, l:0, t0:performance.now(), te:performance.now(), fin:alTerminar, flash:0 };
+function iniciarCinematica(alTerminar, lista = CINE){
+  cine = { lista, e:0, l:0, t0:performance.now(), te:performance.now(), fin:alTerminar, flash:0 };
   pantalla('pPrologo');
   lineaCine();
   requestAnimationFrame(bucleCine);
 }
 function lineaCine(){
-  const [quien, t] = CINE[cine.e].lineas[cine.l];
+  const [quien, t] = cine.lista[cine.e].lineas[cine.l];
   cine.txt = window.tr(typeof t === 'function' ? t() : t); cine.t0 = performance.now(); cine.lleno = false;
-  $('prTexto').className = 'pr-texto' + (quien === 'voz' ? ' voz' : '');
+  $('prTexto').className = 'pr-texto' + (quien !== 'narr' ? ' voz' : '');
+  $('prTexto').style.color = { monarca:'#ff7a7a', aldric:'#ffe48a' }[quien] || '';
   $('prTexto').textContent = '';
   // el destello blanco cuando las luces llegan
-  if (CINE[cine.e].escena === 'luces' && cine.l === 1){ cine.flash = 1; sfx('golpe'); }
-  if (CINE[cine.e].escena === 'vacio' && cine.l === 3) sfx('logro');
+  if (cine.lista[cine.e].escena === 'luces' && cine.l === 1){ cine.flash = 1; sfx('golpe'); }
+  if (cine.lista[cine.e].escena === 'vacio' && cine.l === 4) sfx('logro');
+  if (quien === 'monarca' && cine.l === 0) sfx('jefe');
 }
 function avanzarCine(){
   if (!cine) return;
   if (!cine.lleno){ cine.lleno = true; $('prTexto').textContent = cine.txt; return; }
-  if (++cine.l >= CINE[cine.e].lineas.length){
+  if (++cine.l >= cine.lista[cine.e].lineas.length){
     cine.l = 0;
-    if (++cine.e >= CINE.length){ terminarCine(); return; }
+    if (++cine.e >= cine.lista.length){ terminarCine(); return; }
     cine.te = performance.now();
   }
   lineaCine();
@@ -1929,7 +1967,7 @@ function pintarCine(ahora){
   const cv = $('prCan'), r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
   if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)){ cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
   const c = cv.getContext('2d'), w = cv.width, h = cv.height, b = CINE_BB.getContext('2d');
-  const esc = CINE[cine.e].escena, t = (ahora - cine.te) / 1000;
+  const esc = cine.lista[cine.e].escena, t = (ahora - cine.te) / 1000;
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#000'; b.fillRect(0, 0, 320, 180);
   if (esc === 'calle' || esc === 'luces'){
@@ -1985,6 +2023,7 @@ function pintarCine(ahora){
     for (const [x, y] of [[40, 70], [270, 52], [210, 96]]){ b.fillStyle = `rgba(122,232,255,${.5 + .3 * Math.sin(t * 2 + x)})`; b.fillRect(x, y, 4, 10); b.fillRect(x + 4, y + 4, 3, 6); }
     b.fillStyle = `rgba(0,0,0,${1 - a})`; b.fillRect(0, 0, 320, 180);
   }
+  else pintarEscenaHistoria(b, esc, t, ahora);
   c.imageSmoothingEnabled = false;
   // la escena ocupa todo el lienzo (sin deformarse: se recorta lo que sobra)
   const k = Math.max(w / 320, h / 180), ox = (w - 320 * k) / 2, oy = (h - 180 * k) / 2;
@@ -1996,10 +2035,11 @@ function pintarCine(ahora){
     c.drawImage(CINE_BB, ox, oy, 320 * k, 180 * k);
   }
   // el gato renacido (ya con su ropa de cazador), dibujado encima a su tamaño
-  if (gatosListo && esc !== 'calle' && esc !== 'luces'){
+  if (gatosListo && (esc === 'vacio' || esc === 'cueva' || esc === 'alba')){
     const tipo = PJ.gato || 0;
     let f, x, y, voltear = false, alfa = 1, alto = 30;
     if (esc === 'vacio'){ f = cuadroGato(tipo, 'ab', 0); x = 160; y = 100 + Math.sin(t * 1.6) * 3; alfa = .55 + .2 * Math.sin(t * 3); alto = 40; }
+    else if (esc === 'alba'){ f = cuadroGato(tipo, 'ab', 0); x = 140; y = 158; alto = 34; }
     else { f = cuadroGato(tipo, 'ab', 0); x = 160; y = 150; alfa = Math.min(1, t / 2.5); }
     const [sx, sy, fw, fh] = f, s = alto * k / fh, dw = fw * s, dh = fh * s;
     c.save(); c.globalAlpha = alfa;
@@ -2010,8 +2050,81 @@ function pintarCine(ahora){
     c.drawImage(imgGato(tipo), sx, sy, fw, fh, Math.round(-dw / 2), Math.round(-dh), Math.round(dw), Math.round(dh));
     c.restore();
   }
+  if (esc === 'alba' && ratasListo){
+    const tipo = PJ.mascota ? PJ.mascota.tipo : 0, [sx, sy, fw, fh] = RATAS_DIR[tipo].ab[0], s = 16 * k / fh;
+    c.imageSmoothingEnabled = false; c.drawImage(RATAS_IMG, sx, sy, fw, fh, Math.round(ox + 172 * k - fw * s / 2), Math.round(oy + 158 * k - fh * s), Math.round(fw * s), Math.round(fh * s));
+  }
   // destello blanco
   if (cine.flash > 0){ c.fillStyle = `rgba(255,255,255,${Math.min(1, cine.flash)})`; c.fillRect(0, 0, w, h); cine.flash -= .012; }
+}
+
+// escenas de la historia, pintadas a 320x180 como las del prólogo
+function siluetaHeroe(b, x, pie, col, capa, brazo){
+  // un caballero de pie, con capa y la espada en alto (brazo: 0 abajo, 1 arriba)
+  const r = (dx, dy, w, h, c) => { b.fillStyle = c; b.fillRect(x + dx, pie + dy, w, h); };
+  r(-7, -34, 14, 26, capa); r(-9, -12, 4, 6, capa); r(5, -12, 4, 6, capa);
+  r(-4, -8, 3, 8, col); r(1, -8, 3, 8, col);
+  r(-5, -30, 10, 22, col); r(-4, -38, 8, 8, col); r(-4, -36, 8, 2, '#000');
+  if (brazo){ r(5, -44, 3, 16, col); r(6, -70, 2, 26, '#f4f0e0'); r(3, -46, 8, 2, col); }
+  else { r(5, -28, 3, 14, col); r(7, -30, 2, 26, '#f4f0e0'); }
+}
+function pintarEscenaHistoria(b, esc, t, ahora){
+  if (esc === 'recuerdo'){
+    // un recuerdo en sepia: el héroe y su compañero ratón frente a una grieta
+    const g = b.createLinearGradient(0, 0, 0, 180); g.addColorStop(0, '#5a4026'); g.addColorStop(1, '#2a1a0c');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    b.fillStyle = '#3a2814'; for (let i = 0; i < 8; i++){ const x = i * 44, h = 20 + azarFijo(i + 9) * 30; b.fillRect(x, 130 - h, 46, h); }
+    b.fillStyle = '#6a4a2a'; b.fillRect(0, 130, 320, 50);
+    for (let i = 0; i < 50; i++){ b.fillStyle = '#7a5a36'; b.fillRect((azarFijo(i) * 320) | 0, 132 + ((azarFijo(i + 1) * 46) | 0), 6, 2); }
+    // la grieta que cierran
+    const p = .7 + .3 * Math.sin(t * 3);
+    b.fillStyle = `rgba(255,220,150,${.35 * p})`; b.fillRect(214, 40, 30, 90);
+    b.fillStyle = '#1a0c04'; for (let y = 44; y < 128; y += 4) b.fillRect(226 + Math.round(Math.sin(y * .4) * 4), y, 6, 4);
+    b.fillStyle = '#ffe7b0'; for (let y = 46; y < 126; y += 8) b.fillRect(228 + Math.round(Math.sin(y * .4) * 4), y, 2, 3);
+    siluetaHeroe(b, 150, 132, '#c8a060', '#8a3a1a', t > 1.5 ? 1 : 0);
+    // el ratón a sus pies
+    b.fillStyle = '#d8c8a8'; b.fillRect(168, 126, 8, 5); b.fillRect(174, 123, 4, 4); b.fillStyle = '#1a0c04'; b.fillRect(176, 124, 1, 1); b.fillStyle = '#d8c8a8'; b.fillRect(164, 128, 4, 1);
+    // polvo dorado y viñeta del recuerdo
+    for (let i = 0; i < 30; i++){ const x = (azarFijo(i) * 320 + t * 6) % 320, y = (azarFijo(i + 30) * 180 - t * 4 + 360) % 180; b.fillStyle = `rgba(255,230,170,${.25 + .3 * Math.sin(t + i)})`; b.fillRect(x | 0, y | 0, 1, 1); }
+    const v = b.createRadialGradient(160, 90, 60, 160, 90, 200); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.75)');
+    b.fillStyle = v; b.fillRect(0, 0, 320, 180);
+  } else if (esc === 'grieta'){
+    // de noche, sobre Lumeria, el cielo se rasga en rojo
+    const g = b.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, '#12040a'); g.addColorStop(1, '#2a0c1a');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    const p = .6 + .4 * Math.sin(t * 4), ab = Math.min(1, t / 1.6);
+    const rg = b.createRadialGradient(160, 50, 2, 160, 50, 120 * ab); rg.addColorStop(0, `rgba(255,80,90,${.6 * p})`); rg.addColorStop(1, 'rgba(255,40,60,0)');
+    b.fillStyle = rg; b.fillRect(0, 0, 320, 160);
+    b.fillStyle = '#ff4f6b'; for (let x = 160 - 90 * ab; x < 160 + 90 * ab; x += 3){ const y = 50 + Math.sin(x * .19) * 6 + Math.sin(x * .07) * 8, h = 3 + (1 - Math.abs(x - 160) / 90) * 10; b.fillRect(x | 0, (y - h / 2) | 0, 3, h | 0); }
+    b.fillStyle = '#ffe0e0'; for (let x = 160 - 70 * ab; x < 160 + 70 * ab; x += 6){ b.fillRect(x | 0, (50 + Math.sin(x * .19) * 6 + Math.sin(x * .07) * 8) | 0, 2, 1); }
+    // ciudad en silueta
+    for (let i = 0; i < 10; i++){ const x = i * 33, h = 30 + azarFijo(i + 2) * 45; b.fillStyle = '#0a0308'; b.fillRect(x, 140 - h, 31, h); if (i === 4){ b.fillRect(x + 10, 140 - h - 20, 10, 20); b.fillRect(x + 13, 140 - h - 28, 4, 8); }
+      for (let wy = 140 - h + 6; wy < 134; wy += 9) if (azarFijo(i * 13 + wy) > .6){ b.fillStyle = '#ffb060'; b.fillRect(x + 6 + ((azarFijo(wy) * 18) | 0), wy, 3, 4); } }
+    b.fillStyle = '#0a0308'; b.fillRect(0, 140, 320, 40);
+    for (let i = 0; i < 40; i++){ const x = azarFijo(i) * 320, y = (azarFijo(i + 9) * 140 + t * 20 * (1 + azarFijo(i))) % 140; b.fillStyle = `rgba(255,90,110,${.5 + .4 * Math.sin(t * 2 + i)})`; b.fillRect(x | 0, y | 0, 1, 2); }
+  } else if (esc === 'monarca'){
+    // el Monarca del Vacío, derrotado, entre sombras moradas
+    b.fillStyle = '#08040f'; b.fillRect(0, 0, 320, 180);
+    for (let i = 0; i < 80; i++){ const a = azarFijo(i) * TAU + t * .3, r = 30 + azarFijo(i + 5) * 120; b.fillStyle = `rgba(155,107,255,${.2 + .4 * azarFijo(i + 1)})`; b.fillRect((160 + Math.cos(a) * r) | 0, (90 + Math.sin(a) * r * .6) | 0, 2, 2); }
+    const og = b.createRadialGradient(160, 92, 4, 160, 92, 80); og.addColorStop(0, 'rgba(90,40,160,.55)'); og.addColorStop(1, 'rgba(20,8,40,0)'); b.fillStyle = og; b.fillRect(0, 0, 320, 180);
+    // silueta con corona, encorvada; se va deshaciendo
+    const des = Math.min(1, t / 6);
+    b.fillStyle = '#000'; b.fillRect(130, 70, 60, 80); b.fillRect(140, 46, 40, 30); b.fillRect(120, 90, 14, 50); b.fillRect(186, 90, 14, 50);
+    for (const dx of [140, 152, 164, 176]) b.fillRect(dx, 38, 4, 10);
+    b.fillStyle = `rgba(255,60,80,${.7 + .3 * Math.sin(t * 5)})`; b.fillRect(150, 58, 6, 3); b.fillRect(164, 58, 6, 3);
+    for (let i = 0; i < 60 * des; i++){ b.fillStyle = '#1a0c2a'; b.fillRect((130 + azarFijo(i) * 60) | 0, (70 + azarFijo(i + 3) * 80 - t * 6 * azarFijo(i + 7)) | 0, 3, 3); }
+  } else if (esc === 'alba'){
+    // amanece sobre una colina: el espíritu de Aldric se despide
+    const g = b.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, '#2a3a7a'); g.addColorStop(.55, '#e88a5a'); g.addColorStop(1, '#ffd27a');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    const sy = 120 - Math.min(30, t * 6), sg = b.createRadialGradient(240, sy, 2, 240, sy, 60); sg.addColorStop(0, 'rgba(255,250,220,1)'); sg.addColorStop(.25, 'rgba(255,220,140,.7)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
+    b.fillStyle = sg; b.fillRect(160, sy - 60, 160, 120);
+    b.fillStyle = '#3a2a3a'; for (let x = 0; x < 320; x += 2){ const h = 34 + Math.sin(x * .02) * 10 + Math.sin(x * .07) * 3; b.fillRect(x, 160 - h + 20, 2, h); }
+    b.fillStyle = '#2a4a2a'; b.fillRect(0, 158, 320, 22); b.fillStyle = '#3a6a32'; for (let x = 0; x < 320; x += 5) b.fillRect(x, 156 + (azarFijo(x) * 3 | 0), 2, 3);
+    // el espíritu dorado, cada vez más transparente
+    b.globalAlpha = Math.max(0, .85 - t * .06); siluetaHeroe(b, 196, 158, '#ffe48a', '#ffd04a', 0); b.globalAlpha = 1;
+    for (let i = 0; i < 24; i++){ const y = (158 - ((t * 18 + azarFijo(i) * 80) % 90)) | 0; b.fillStyle = `rgba(255,240,180,${.6 * azarFijo(i + 2)})`; b.fillRect((186 + azarFijo(i + 4) * 22) | 0, y, 1, 2); }
+  }
 }
 
 // gato callejero de lado (mirando a la derecha), unos 18x12 píxeles; paso = cuadro de la caminata
@@ -2097,6 +2210,8 @@ function actualizarPrologo(dt){
     p.paso = 4;
     dialogo([
       ['eco', '¡Ja! Nada mal para un gato recién nacido.'],
+      ['eco', 'Por cierto: renaciste con una habilidad única, Devorar. Cuando un monstruo deje su esencia morada, pásale por encima.'],
+      ['eco', 'Si devoras bastantes esencias del mismo monstruo, aprenderás su habilidad. Se usa con la Z.'],
       ['eco', 'Sigue hacia el fondo de la cueva. Estoy ahí. No me voy a ir a ninguna parte... literalmente.']
     ]);
   } else if (p.paso === 4 && P.x > 25.6 * T){
@@ -2205,7 +2320,8 @@ function verHistoria(){
   iniciarCinematica(() => {
     dialogo([
       ['narr', 'Así renaciste en Lumeria: en una mazmorra, junto a un ratón sellado que se convirtió en tu mejor amigo.'],
-      ['narr', 'Ahora eres cazador. Cierra portales, sube de rango y descubre por qué tu alma cruzó entre dos mundos.']
+      ...resumenHistoria(),
+      ['narr', (PJ.historia && PJ.historia.cap >= HISTORIA.length) ? 'El misterio está resuelto, pero los portales siguen abriéndose. Tu leyenda continúa.' : 'Ahora eres cazador. Cierra portales, sube de rango y descubre por qué tu alma cruzó entre dos mundos.']
     ]);
   });
 }
@@ -2213,6 +2329,187 @@ function saltarPrologo(){
   if (!prologo) return;
   const cerrar = () => { prologo = { paso:7 }; terminarPrologo(); };
   if (PJ.mascota) cerrar(); else pedirNombreRaton(cerrar);
+}
+
+// =====================================================
+//  HISTORIA: un capítulo por rango (E → S) y el misterio del ratón
+//  Cada capítulo se abre en la ciudad al llegar a su rango: el ratón cuenta lo que recuerda,
+//  hay un objetivo (un jefe o cazar monstruos) y al volver se revela una parte del misterio.
+// =====================================================
+const nombreRaton = () => PJ.mascota ? PJ.mascota.nombre : 'el ratón';
+const HISTORIA = [
+  { rango:0, titulo:'Capítulo 2: La marca del limo', obj:{ tipo:'jefe', rango:0, n:1, txt:'Derrota al Rey Limo (portal de rango E)' },
+    inicio:[
+      ['raton', () => `¡Eh, ${PJ.nombre}! Ya eres cazador. Antes de nada, tengo que confesarte algo... más o menos.`],
+      ['raton', 'Lo del queso era mentira. Bueno, me lo comí, pero no me encerraron por eso.'],
+      ['gato', '¿Entonces por qué te encerraron?'],
+      ['raton', 'No lo recuerdo bien. Trescientos años en un cristal te dejan la cabeza como un queso con agujeros.'],
+      ['raton', 'Pero cuando vi a esos limos en la gruta sentí algo raro. Llévame hasta el Rey Limo, el jefe de los portales de rango E.']
+    ],
+    fin:[
+      ['raton', '¡Mira su corona! Tiene grabada una espada cruzada con una llave.'],
+      ['raton', 'Esa marca... la he visto antes. En una armadura que brillaba como el sol.'],
+      ['gato', '¿De quién era?'],
+      ['raton', 'De un humano. Me llamaba «compañero». Su nombre era... Al... Aldric.'],
+      ['narr', 'Misterio del ratón: el héroe que lo selló se llamaba Aldric.']
+    ], resumen:'El ratón recordó el nombre del héroe que lo selló: Aldric.' },
+  { rango:1, titulo:'Capítulo 3: Arena y recuerdos', obj:{ tipo:'mata', mon:'escorpion', rango:1, n:15, txt:'Caza escorpiones en portales de rango D' },
+    inicio:[
+      ['raton', 'Desde que vi esa marca no paro de soñar con arena. Con un desierto debajo de la tierra.'],
+      ['raton', 'La Caverna de Arena de los portales de rango D... Allí pasó algo. Lo noto en los bigotes.'],
+      ['raton', 'Los escorpiones de esa caverna guardan algo de aquellos días. Si cazamos unos cuantos, quizá recuerde.']
+    ],
+    cine:[
+      { escena:'recuerdo', lineas:[
+        ['narr', 'Hace trescientos años, el mundo no tenía cazadores. Solo tenía a uno.'],
+        ['narr', 'Aldric, el Primer Cazador, cerraba las grietas con su espada... y con la ayuda de un pequeño ratón.'],
+        ['aldric', '«Compañero, tú y yo vamos a cerrar todas las grietas de Lumeria. Te lo prometo.»'] ] }
+    ],
+    fin:[
+      ['raton', 'Lo recuerdo. Yo no era su mascota: era su compañero. Recorrimos juntos todo Lumeria.'],
+      ['gato', 'Entonces, ¿por qué te encerró en un cristal?'],
+      ['raton', 'Eso todavía no lo sé. Pero él nunca me habría hecho daño. Nunca.'],
+      ['narr', 'Misterio del ratón: fue el compañero de Aldric, el Primer Cazador.']
+    ], resumen:'Fue el compañero de viaje de Aldric, el Primer Cazador.' },
+  { rango:2, titulo:'Capítulo 4: La llave', obj:{ tipo:'jefe', rango:2, n:1, txt:'Derrota a la Mantis de Escarcha (portal de rango C)' },
+    inicio:[
+      ['raton', 'La Gruta Helada... hace frío solo de pensarlo.'],
+      ['raton', 'Anoche soñé que la Mantis de Escarcha me buscaba. Decía: «Devuélvenos la llave».'],
+      ['gato', '¿Qué llave?'],
+      ['raton', 'No lo sé. Vamos a preguntárselo. Con educación... y con tus garras.']
+    ],
+    fin:[
+      ['narr', 'Al caer, la Mantis de Escarcha susurró: «La Llave del Vacío... está... dentro del roedor...»'],
+      ['raton', '¿Dentro de mí? ¿La Llave del Vacío?'],
+      ['raton', 'Ahora lo entiendo. Aldric no me encerró para castigarme. Me escondió.'],
+      ['raton', 'La llave que abre y cierra todas las grietas está dentro de mí. Por eso brillaba el cristal.'],
+      ['gato', 'Pues si alguien viene a por ella, tendrá que pasar por encima de mí.'],
+      ['narr', 'Misterio del ratón: guarda en su interior la Llave del Vacío, que abre y cierra todas las grietas.']
+    ], resumen:'Dentro del ratón está la Llave del Vacío, que abre y cierra todas las grietas.' },
+  { rango:3, titulo:'Capítulo 5: Fuego bajo la piel', obj:{ tipo:'jefe', rango:3, n:1, txt:'Derrota a la Araña de Magma (portal de rango B)' },
+    inicio:[
+      ['raton', () => `Algo me quema por dentro, ${PJ.nombre}. La llave está despertando.`],
+      ['raton', 'En el Cráter de Magma hay una araña que teje con fuego. La llave tiembla cada vez que pienso en ella.'],
+      ['gato', 'Entonces vamos a quitarle las ganas de tejer.']
+    ],
+    cine:[
+      { escena:'grieta', lineas:[
+        ['narr', 'Al morir la Araña de Magma, el cielo de Lumeria se abrió en una grieta roja.'],
+        ['monarca', '«Por fin te encuentro, Llave. Trescientos años escondida en una piedra...»'],
+        ['monarca', '«Iré a por ti, ratoncito. Y esta vez no habrá ningún héroe para salvarte.»'] ] }
+    ],
+    fin:[
+      ['raton', '¡Esa voz! Es el que nos perseguía: el Monarca del Vacío.'],
+      ['raton', 'Aldric me selló en aquella cueva porque era el único sitio que el Monarca no podía ver.'],
+      ['raton', () => `Y tú, ${PJ.nombre}, rompiste el cristal. Ahora puede sentirme.`],
+      ['gato', 'Entonces lo derrotaremos antes de que te encuentre.'],
+      ['raton', '¡Mira mis bigotes! Brillan. La llave me deja sentir los portales: te avisaré cuando haya peligro.'],
+      ['narr', 'Misterio del ratón: estaba en esa cueva porque era el único lugar escondido del Monarca del Vacío.']
+    ], resumen:'Aldric lo escondió en la cueva porque era el único lugar que el Monarca del Vacío no podía ver.' },
+  { rango:4, titulo:'Capítulo 6: El Monarca del Vacío', obj:{ tipo:'jefe', rango:4, n:1, txt:'Derrota al Monarca del Vacío (portal de rango A)' },
+    inicio:[
+      ['raton', 'Es la hora. El Abismo del Vacío, los portales de rango A.'],
+      ['raton', 'Si el Monarca cae, nunca más podrá buscarme.'],
+      ['gato', 'Vamos juntos. Como tú y Aldric.'],
+      ['raton', 'No. Mejor que Aldric y yo. Él al final me dejó solo... Tú no lo harás, ¿verdad?'],
+      ['gato', 'Nunca.']
+    ],
+    cine:[
+      { escena:'monarca', lineas:[
+        ['monarca', '«Ja... ja... ¿Crees que yo era el peor monstruo de este mundo?»'],
+        ['monarca', '«Pregúntale al ratón qué fue de su querido Aldric.»'],
+        ['monarca', '«Lo encontrarás en la Grieta Roja. Ya no recordará tu nombre...»'] ] }
+    ],
+    fin:[
+      ['raton', '¿Aldric... en la Grieta Roja?'],
+      ['raton', 'Después de sellarme, cerró la Primera Grieta desde dentro. Se quedó al otro lado para salvar el mundo.'],
+      ['raton', 'Creí que había muerto. Pero si sigue ahí... trescientos años en el Vacío...'],
+      ['gato', 'Entonces iremos a buscarlo.'],
+      ['narr', 'Misterio del ratón: Aldric se sacrificó cerrando la Primera Grieta desde dentro.']
+    ], resumen:'Aldric se sacrificó cerrando la Primera Grieta desde dentro.' },
+  { rango:5, titulo:'Capítulo 7: El último deseo', obj:{ tipo:'jefe', rango:5, n:1, txt:'Derrota al Monarca Carmesí (grieta de rango S)' },
+    inicio:[
+      ['raton', 'El Monarca Carmesí... Dicen que lleva una armadura que brilla como el sol, pero roja como la sangre.'],
+      ['raton', () => `Tengo miedo, ${PJ.nombre}. No de él. De que sea quien yo creo que es.`],
+      ['gato', 'Sea quien sea, no estarás solo.']
+    ],
+    cine:[
+      { escena:'alba', lineas:[
+        ['narr', 'La armadura carmesí se agrietó... y por las grietas salió una luz dorada.'],
+        ['aldric', '«...¿Compañero? ¿Eres tú?»'],
+        ['aldric', '«Te dejé dormido en un cristal. Perdóname. Era la única forma de esconder la llave.»'],
+        ['aldric', '«Antes de cerrar la grieta pedí un último deseo al Mundo: que un alma valiente te encontrara... y te quisiera tanto como yo.»'],
+        ['aldric', '«Gracias, gato de otro mundo. Cuida de él.»'] ] }
+    ],
+    fin:[
+      ['raton', 'Así que por eso renaciste aquí... Él te llamó. Tu deseo y el suyo se encontraron.'],
+      ['raton', 'Ya no hay sello, ni Monarca. Solo un gato y un ratón.'],
+      ['gato', 'Mejores amigos.'],
+      ['raton', 'Mejores amigos. Para siempre... o por lo menos hasta la hora de comer.'],
+      ['narr', 'Fin del primer arco. Lumeria sigue llena de portales: tu leyenda continúa.']
+    ], resumen:'El Monarca Carmesí era Aldric. Su último deseo trajo tu alma a este mundo para que encontraras a su compañero.' }
+];
+const historiaDe = () => (PJ.historia = PJ.historia || { cap:0, prog:0, activo:false, listo:false });
+const capActual = () => HISTORIA[historiaDe().cap];
+let tHistoria = 0;
+// en la ciudad (no en portales ni en ventanas): abrir el capítulo que toca o cerrar el terminado
+function actualizarHistoria(dt){
+  if (!PJ || !PJ.prologo || prologo || cine || pantallaActual || !E || E.tipo === 'mazmorra' || E.tutorial){ tHistoria = 0; return; }
+  const h = historiaDe(), C = HISTORIA[h.cap];
+  if (!C) return;
+  if (!h.activo && rangoCazador() < C.rango) return;
+  if ((tHistoria += dt) < 2.5) return;
+  tHistoria = 0;
+  if (!h.activo) empezarCapitulo();
+  else if (h.listo) terminarCapitulo();
+}
+function empezarCapitulo(){
+  const h = historiaDe(), C = HISTORIA[h.cap];
+  sfx('logro'); banner(C.titulo, 'Un nuevo capítulo de la historia');
+  dialogo(C.inicio, () => {
+    h.activo = true; h.prog = 0; h.listo = false;
+    chat(`Historia: ${C.titulo}. Objetivo: ${C.obj.txt}.`, '#ff9ad8');
+    firmaSeg = ''; guardar();
+  });
+}
+function terminarCapitulo(){
+  const h = historiaDe(), C = HISTORIA[h.cap], R = RANGOS[C.rango];
+  const cerrar = () => dialogo(C.fin, () => {
+    h.cap++; h.activo = false; h.listo = false; h.prog = 0;
+    const oro = Math.round(150 * R.escala) * 100, xp = Math.round(260 * R.escala);
+    PJ.oro += oro; PJ.pociones += 2;
+    sfx('logro'); banner('Capítulo completado', C.titulo);
+    chat(`Capítulo completado: ${C.titulo}. Recibes ${dineroTxt(oro)} y 2 pociones.`, '#ff9ad8');
+    ganarXP(xp, true); firmaSeg = ''; revisarLogros(); guardar();
+  });
+  if (C.cine) iniciarCinematica(cerrar, C.cine); else cerrar();
+}
+// lo que cuenta para el objetivo del capítulo
+function avisarHistoria(tipo, e){
+  if (!PJ || !PJ.historia || !PJ.historia.activo || PJ.historia.listo || !E || E.tutorial) return;
+  const h = PJ.historia, C = HISTORIA[h.cap]; if (!C) return;
+  const o = C.obj;
+  if (o.tipo !== tipo || (E.rango || 0) < o.rango) return;
+  if (tipo === 'mata' && sprDe(e) !== o.mon) return;
+  h.prog++;
+  if (h.prog >= o.n){
+    h.listo = true;
+    sfx('logro'); banner('Objetivo de la historia cumplido', `Vuelve a la ciudad: ${nombreRaton()} quiere contarte algo`);
+    chat(`Historia: objetivo cumplido (${o.txt}). Vuelve a la ciudad.`, '#ff9ad8');
+  }
+  firmaSeg = '';
+}
+// la línea de la historia en el seguimiento de misiones
+function filaHistoria(){
+  const h = PJ.historia, C = h && HISTORIA[h.cap];
+  if (!C || !h.activo) return '';
+  return `<div class="seg-m seg-hist ${h.listo ? 'ok' : ''}"><span class="seg-t"><span>📜</span> <span>${C.titulo}</span></span>` +
+    (h.listo ? '<span class="seg-o ok">Vuelve a la ciudad</span>' : `<span class="seg-o">- <span>${C.obj.txt}</span>${C.obj.n > 1 ? `: ${h.prog}/${C.obj.n}` : ''}</span>`) + '</div>';
+}
+// lo que ya sabes del misterio (en «Ver la historia» del menú de pausa)
+function resumenHistoria(){
+  const h = PJ.historia || { cap:0 };
+  return HISTORIA.slice(0, h.cap).map(C => ['narr', () => `${window.tr(C.titulo.split(':')[1].trim())}: ${window.tr(C.resumen)}`]);
 }
 
 // ---------- hermandades ----------
@@ -2578,6 +2875,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
+  avisarHistoria('jefe');
   PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD(); premioJefeMundo();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
@@ -2738,6 +3036,7 @@ addEventListener('keydown', e => {
   }
   if (pantallaActual) return;
   if (e.code === 'KeyH') beberPocion();
+  if (e.code === 'KeyZ') usarDevorada();
   if (e.code === 'KeyE' && interCerca) interCerca.accion();
   if (e.code === 'KeyG') toggleMascota();
   if (e.code === 'Tab'){ e.preventDefault(); siguienteObjetivo(); }
@@ -2813,6 +3112,24 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && enJ
 
 function pausar(){ $('notaGuardado').textContent = ''; $('btnSaltarPrologo').classList.toggle('oculto', !prologo); pantalla('pPausa'); }
 $('btnHistoria').onclick = () => verHistoria();
+// modo app: se puede instalar en el teléfono o el ordenador y jugar sin internet
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+let avisoInstalar = null;
+const yaInstalado = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); avisoInstalar = e;
+  for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).classList.remove('oculto');
+});
+addEventListener('appinstalled', () => { avisoInstalar = null; for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).classList.add('oculto'); });
+for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).onclick = async () => {
+  if (!avisoInstalar) return;
+  avisoInstalar.prompt();
+  try { await avisoInstalar.userChoice; } catch (e) {}
+  avisoInstalar = null;
+  for (const b of ['btnInstalar', 'btnInstalarPausa']) $(b).classList.add('oculto');
+};
+// en iPhone no hay aviso de instalación: se explica cómo hacerlo a mano
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !yaInstalado()) $('notaInstalarIos').classList.remove('oculto');
 // idioma: en el inicio de sesión y en la pausa (se guarda y la página se recarga en el idioma elegido)
 document.querySelectorAll('[data-idioma]').forEach(b => {
   b.setAttribute('aria-pressed', b.dataset.idioma === window.IDIOMA);
@@ -3061,6 +3378,7 @@ function renderLibro(){
   for (const [id, pw] of Object.entries(PODERES)) if (pw.clase === PJ.clase && !pw.barra) h += filaPoder(id, pw);
 
   h += '<p class="wl-nota">Arrastra un poder a tu barra de acción, o tócalo para elegir su tecla.</p>';
+  h += libroDevorar();
   // talentos de la clase
   const libres = puntosTalento(PJ) - talentosGastados(PJ);
   h += `<div class="wl-sec">Talentos <small class="wl-pts">${libres} ${libres === 1 ? 'punto libre' : 'puntos libres'}</small></div>`;
@@ -3073,6 +3391,7 @@ function renderLibro(){
   h += `<p class="wl-nota">Ganas un punto de talento cada 2 niveles. ${talentosGastados(PJ) ? '<button class="wl-reini" id="btnReiniTal">Reiniciar talentos</button>' : ''}</p></div>`;
   const cu = $('wLibroCuerpo'); cu.innerHTML = h;
   cu.querySelectorAll('[data-tal]').forEach(b => b.onclick = e => { e.stopPropagation(); subirTalento(b.dataset.tal); });
+  cu.querySelectorAll('[data-dev]').forEach(b => b.onclick = e => { e.stopPropagation(); equiparDevorada(b.dataset.dev); });
   if ($('btnReiniTal')) $('btnReiniTal').onclick = reiniciarTalentos;
   cu.querySelectorAll('canvas[data-icono]').forEach(cv => pintarIcono(cv, cv.dataset.icono));
   cu.querySelectorAll('[data-arrastra]').forEach(cv => cv.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', cv.dataset.arrastra); e.dataTransfer.effectAllowed = 'copy'; }));
@@ -3299,6 +3618,10 @@ function pintarIcono(c, spr){
     return;
   }
   if (!spr) return;
+  if (spr.startsWith('pxd:')){
+    const ic = iconoPx(spr.slice(4), PALETA_DEVORAR), k = Math.floor(s * .9 / 16);
+    a.imageSmoothingEnabled = false; a.drawImage(ic, (s - 16 * k) / 2, (s - 16 * k) / 2, 16 * k, 16 * k); return;
+  }
   if (spr.startsWith('px:')){
     const ic = iconoPx(spr.slice(3), PALETA_CLASE[PJ ? PJ.clase : 'mago']), k = Math.floor(s * .9 / 16);
     a.imageSmoothingEnabled = false; a.drawImage(ic, (s - 16 * k) / 2, (s - 16 * k) / 2, 16 * k, 16 * k); return;
@@ -3331,6 +3654,8 @@ function construirBarra(){
   });
   sep();
   crear('poc', 'H', 'pocion', 'Poción de vida', beberPocion, { tipo:'poc' });
+  // la habilidad devorada (Z)
+  { const dv = devorarDe(), H = HAB_MONSTRUO[dv.equipada]; crear('dev', 'Z', H ? 'pxd:' + H.ic : 'pxd:devorar', H ? H.n : 'Devorar', usarDevorada, { tipo:'dev' }); }
   prepararSoltarBarra();
 }
 function actualizarBarra(){
@@ -3340,6 +3665,7 @@ function actualizarBarra(){
     if (b.tipo === 'h1') cd = clamp(P.cd1 / c.h1.cd, 0, 1);
     else if (b.tipo === 'h2') cd = P.en < costeDe(c.h2) ? 1 : clamp(P.cd2 / c.h2.cd, 0, 1);
     else if (b.tipo === 'poc'){ cd = clamp(P.cdPoc, 0, 1); num = PJ.pociones; }
+    else if (b.tipo === 'dev'){ const n = devorarDe().equipada; if (!n) bloq = '—'; else { cd = clamp((P.cdDev || 0) / HAB_MONSTRUO[n].cd, 0, 1); seg = P.cdDev || 0; } }
     else {
       const id = PJ.barra[b.tecla], pw = PODERES[id];
       if (pw && PJ.nivel < pw.nivel) bloq = 'Nv ' + pw.nivel;
@@ -3447,10 +3773,11 @@ function objetivoTactil(max = 360){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < Math.max(max, 420)) return P.objetivo;
   return enemigoCercano(P.x, P.y, max);
 }
+const A_DISTANCIA = ['mago', 'sacerdote', 'arquero'];
 // ataque automático (teléfono): golpea solo cuando hay un monstruo a tu alcance
 function autoAtaque(){
   if (!esTactil || !AJ_TEL.auto || E.tipo !== 'mazmorra' || P.cd1 > 0) return false;
-  return !!objetivoTactil(PJ.clase === 'mago' ? 330 : 105);
+  return !!objetivoTactil(A_DISTANCIA.includes(PJ.clase) ? 330 : 105);
 }
 function apuntar(){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < 620){ P.ang = Math.atan2(P.objetivo.y - P.y, P.objetivo.x - P.x); return; }
@@ -3486,12 +3813,12 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK * (estados.rapido ? .5 : 1); sfx(sfxClase('ataque'), .08);
   } else {
     if (P.cd2 > 0 || P.gcd > 0) return;
     const coste2 = costeDe(c.h2);
     if (P.en < coste2){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd * D.cdK; P.en -= coste2; P.gcd = GCD; vibrar(15); sfx('poder');
+    P.cd2 = c.h2.cd * D.cdK; P.en -= coste2; P.gcd = GCD; vibrar(15); sfx(sfxClase('poder'));
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -3541,7 +3868,7 @@ function usarPoder(id){
   if ((P.cdP[id] || 0) > 0 || P.gcd > 0) return;
   if (pw.clase && pw.clase !== PJ.clase) return;
   if (P.en < costeDe(pw)){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= costeDe(pw); P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('poder');
+  P.en -= costeDe(pw); P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx(sfxClase('poder'));
   apuntar();
   PODER_FN[id]();
 }
@@ -3600,7 +3927,9 @@ const PODER_FN = {
 const RECURSO = {
   guerrero: { n:'Ira',     sin:'Sin ira',     col:'linear-gradient(#e2443c,#8a1410)', factor:.5 },
   sombra:   { n:'Energía', sin:'Sin energía', col:'linear-gradient(#ffe25a,#b89410)', factor:.7 },
-  mago:     { n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 }
+  mago:     { n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 },
+  sacerdote:{ n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 },
+  arquero:  { n:'Enfoque', sin:'Sin enfoque', col:'linear-gradient(#ffb35a,#b85a10)', factor:.7 }
 };
 const recurso = () => RECURSO[PJ.clase] || RECURSO.mago;
 // lo que cuesta un poder compartido o una habilidad de clase en el recurso de tu clase
@@ -3609,6 +3938,8 @@ const recursoLleno = () => PJ.clase === 'guerrero' ? 0 : D.maxEn;
 function ajustarRecurso(D){
   if (PJ.clase === 'guerrero'){ D.maxEn = 100; D.regEn = 0; }
   else if (PJ.clase === 'sombra'){ D.maxEn = 100; D.regEn = 14 + D.s.agi * .08; }
+  // el arquero tensa el arco con la agilidad: también le suma daño
+  else if (PJ.clase === 'arquero'){ D.maxEn = 100; D.regEn = 12 + D.s.agi * .08; D.fis += D.s.agi * .7; }
 }
 function ganarIra(n){ if (PJ.clase === 'guerrero' && P) P.en = Math.min(D.maxEn, P.en + n); }
 function updateRecurso(dt){
@@ -3651,7 +3982,8 @@ Object.assign(PODERES, {
   evocacion:{ clase:'mago', n:'Evocación',                d:'Recuperas la mitad de tu maná al instante.', nivel:8, cd:60, coste:0, ic:'lluvia' },
   bloque:   { clase:'mago', n:'Bloque de hielo',          d:'Inmune a todo daño durante 4 s.', nivel:10, cd:90, coste:0, ic:'pilar' }
 });
-const BARRA_CLASE = { guerrero:['heroico','grito','provocar','torbellino'], sombra:['siniestro','eviscerar','picadillo','patada'], mago:['escarcha','nova','arcana','evocacion'] };
+const BARRA_CLASE = { guerrero:['heroico','grito','provocar','torbellino'], sombra:['siniestro','eviscerar','picadillo','patada'], mago:['escarcha','nova','arcana','evocacion'],
+  sacerdote:['sanar','dolor','fortaleza','alarido'], arquero:['certero','conmocion','marcacaza','rafaga'] };
 TECLAS.push('5', '6', '7', '8');
 Object.assign(CODIGO_TECLA, { Digit5:'5', Digit6:'6', Digit7:'7', Digit8:'8' });
 
@@ -3726,12 +4058,27 @@ const GLIFOS = {
   reloj:   ['................','...aaaaaaaaaa...','...abbbbbbbba...','....accccccа....','....abddddba....','.....abddba.....','......abba......','......abba......','.....abccba.....','....abcddcba....','....acddddca....','...abbbbbbbba...','...aaaaaaaaaa...','................','................','................'],
   puno:    ['................','................','....aaaaaa......','...abbbbbba.....','..abcbcbcbba....','..abcbcbcbbaa...','..abbbbbbbbba...','..abcccbbbbba...','..abbbbbbbbba...','...abbbbbbba....','....abbbbba.....','....abbbbba.....','....aaaaaaa.....','................','................','................']
 };
-const COLOR_FX = { guerrero:['#e2443c', '#ff9a8a', '#ffffff'], sombra:['#5ad84a', '#c8ff8a', '#ffffff'], mago:['#4f9aff', '#c8f0ff', '#ffffff'] };
+// glifos del sacerdote y del arquero
+Object.assign(GLIFOS, {
+  cruz: ['................', '......aaaa......', '......abca......', '......abca......', '......abca......', '.aaaaaabcaaaaaa.', '.abbbbbddbbbbba.', '.acccccddccccca.', '.aaaaaabcaaaaaa.', '......abca......', '......abca......', '......abca......', '......abca......', '......abca......', '......aaaa......', '................'],
+  sol: ['.......d........', '................', '.......d........', '...daaaaaaaad...', '...aabbbbbbaa...', '...abbccccbba...', '...abccccccba...', '...abccccccba...', 'd.dabccccccba.d.', '...abccccccba...', '...abbccccbba...', '...aabbbbbbaa...', '...daaaaaaaad...', '................', '........d.......', '................'],
+  halo: ['....aaaaaaaa....', '.aaaaddddddaaaa.', 'aadddaaaaaadddaa', 'adddaa....aaddda', 'aadddaaaaaadddaa', '.aaaaddddddaaaa.', '....aaaaaaaa....', '.....aabbaa.....', '....aabccbaa....', '....abbcbbba....', '...aabbbbbbaa...', '...abbbbbbbba...', '..aabbbbbbbbaa..', '..abbbbbbbbbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..'],
+  ala: ['................', '........aaaaaaa.', '......aaabcbbca.', '....aaabbcbbcca.', '...aacbbcbbcbca.', '..aacbbcbbcbbca.', '.aacbbcbbcbbcca.', '.acbbcbbcbbccaa.', '.abbcbbcbbccaa..', '.abcbbcbbccaa...', '.aabbcbbccaa....', '..aacbbccaa.....', '...aabccaa......', '....aaaaa.......', '................', '................'],
+  arco: ['...aaa..........', '...acaa.........', '...acbaaa.......', '...acaabaa......', '...acaabbaa.....', '...acaaabbaa....', 'aaaaca.aabbaaaa.', 'acaacaaaabbaadaa', 'adddddddddddddda', 'acaacaaaabbaadaa', 'aaaacaaabbaaaaa.', '...acaabbaa.....', '...acaabaa......', '...acbaaa.......', '...acaa.........', '...aaa..........'],
+  flecha: ['................', '..........aaaaa.', '..........accca.', '..........aacca.', '.........aabaca.', '........aabaaaa.', '.......aabaa....', '......aabaa.....', '.....aabaa......', '....aabaa.......', '...aabaa........', 'aaaabaa.........', 'addbaa..........', 'adbda...........', 'aadda...........', '.aaaa...........'],
+  trampa: ['................', '................', 'aaaaaaaaaaaaaaaa', 'abbbbbbbbbbbbbba', 'abcacacacacacaba', 'abacacacacacacba', 'abaaaaaaaaaaaaba', 'aba...adda...aba', 'abaaaaaddaaaaaba', 'abacacacacacacba', 'aacacacacacacaaa', 'abbbbbbbbbbbbbba', 'abbbbbbbbbbbbbba', 'aaaaaaaaaaaaaaaa', '................', '................'],
+  diana: ['................', '....aaaaaaaa....', '...aaccccccaa...', '..aaccbbbbccaa..', '.aaccbbbbbbccaa.', '.accbbccccbbcca.', '.acbbccddccbbca.', '.acbbcddddcbbca.', '.acbbcddddcbbca.', '.acbbccddccbbca.', '.accbbccccbbcca.', '.aaccbbbbbbccaa.', '..aaccbbbbccaa..', '...aaccccccaa...', '....aaaaaaaa....', '................'],
+  serpiente: ['................', '................', '................', '........aaaaaaa.', '.......aabbaadaa', '.......abcbbabba', '......aacccbbaba', '.aaa..abcaacbaaa', '.abaaaacaaaabaa.', '.acbaabca..acba.', '.aabaacaa..aaba.', '..acbbca....aca.', '..aaccaa....aaa.', '...aaaa.........', '................', '................'],
+  lluviaf: ['.aaaaa....adbda.', '.adbda....aabaa.', '.aabaa.....aba..', '..aba.aaaaaaba..', '..aba.adbdaaba..', '..aba.aabaaaba..', '..aba..abaaabaa.', '.aabaa.abaacbca.', '.acbca.abaacbca.', '.acbca.abaaacaa.', '.aacaaaabaaaaa..', '..aaa.acbca.....', '......acbca.....', '......aacaa.....', 'aaaaaaaaaaaaaaaa', 'adddddddddddddda']
+});
+const COLOR_FX = { guerrero:['#e2443c', '#ff9a8a', '#ffffff'], sombra:['#5ad84a', '#c8ff8a', '#ffffff'], mago:['#4f9aff', '#c8f0ff', '#ffffff'], sacerdote:['#ffe066', '#fff2b0', '#ffffff'], arquero:['#ff9a3d', '#ffd9a0', '#ffffff'] };
 const colFx = (i = 0) => (COLOR_FX[PJ.clase] || COLOR_FX.mago)[i];
 const PALETA_CLASE = {
   guerrero:{ a:'#2a0606', b:'#d8283c', c:'#ff9a8a', d:'#c0c8d8' },
   sombra:  { a:'#100a1e', b:'#5aa83a', c:'#c8ff8a', d:'#b98bff' },
-  mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' }
+  mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' },
+  sacerdote:{ a:'#2a1e04', b:'#e8b830', c:'#fff2b0', d:'#ffffff' },
+  arquero: { a:'#2a1404', b:'#b8682a', c:'#ffd9a0', d:'#7ad86b' }
 };
 const ICONOS_PX = {};
 function iconoPx(glifo, pal){
@@ -3742,6 +4089,236 @@ function iconoPx(glifo, pal){
   g.forEach((fila, y) => [...fila].forEach((ch, x) => { const col = pal[ch === 'а' ? 'a' : ch]; if (col){ a.fillStyle = col; a.fillRect(x, y, 1, 1); } }));
   return ICONOS_PX[clave] = c;
 }
+
+// =====================================================
+//  DEVORAR: la habilidad única del gato renacido
+//  Los monstruos derrotados a veces dejan su esencia. Al pisarla, el gato la devora;
+//  con suficientes esencias de un mismo monstruo aprende su habilidad (se usa con Z).
+// =====================================================
+const PALETA_DEVORAR = { a:'#1a0828', b:'#8a3ad8', c:'#e0b0ff', d:'#ff5ad0' };
+Object.assign(GLIFOS, {
+  devorar: ['................','....aaaaaaaa....','..aabbbbbbbbaa..','.abbbbbbbbbbbba.','.abcbcbcbcbcbba.','.ab.c.c.c.c.cba.','.ab..........ba.','.ab...dddd...ba.','.ab..dddddd..ba.','.ab...dddd...ba.','.ab..........ba.','.ab.c.c.c.c.cba.','.abcbcbcbcbcbba.','.abbbbbbbbbbbba.','..aabbbbbbbbaa..','....aaaaaaaa....'],
+  salto:   ['................','.......aa.......','......abba......','.....abccba.....','.......bb.......','.......bb.......','................','.....aaaaaa.....','...aabbbbbbaa...','..abbcbbbbcbba..','..abbbbbbbbbba..','.abbbbbbbbbbbba.','.abbbbddbbbbbba.','..abbbbbbbbbba..','...aaaaaaaaaa...','................'],
+  tajo:    ['................','.a............a.','.aba........aba.','..abba....abba..','...abca..acba...','....abcaacba....','.....abccba.....','......acca......','......acca......','.....abccba.....','....abcaacba....','...abca..acba...','..abba....abba..','.aba........aba.','.a............a.','................'],
+  aguijon: ['................','..........aaa...','.........abcba..','........abcca...','........abca....','.........aba....','..........aba...','...........aba..','...aaa.....aba..','..abbbaa..aba...','.abbbbbbaaba....','.abddbbbbba.....','..abbbbbba......','...aaaaaa.......','................','................'],
+  red:     ['c......c......c.','.c.....c.....c..','..c...ccc...c...','...c.c.c.c.c....','....cc.c.cc.....','..ccccccccccc...','....cc.c.cc.....','...c.c.c.c.c....','..c...ccc...c...','.c.....c.....c..','c......c......c.','.......c........','......ada.......','.....adddа......','......ada.......','................'],
+  embestida:['................','.........aaaa...','.......aabbbba..','......abbbbbbba.','.....abbbbbbdba.','..c..abbbbbbbba.','.c...abbbbbbcca.','c....abbbbbccca.','.c...abbbbbbbba.','..c..abbbbbbba..','.....abbabbaa...','......aa.aa.....','................','.cccc...........','...cccc.........','................']
+});
+// lo que aprende de cada monstruo: esencias necesarias, recarga y efecto
+const HAB_MONSTRUO = {
+  slime:     { n:'Salto viscoso',    ic:'salto',     nec:6, cd:10, d:'Saltas hasta tu objetivo y aplastas a todos a tu alrededor; quedan ralentizados.' },
+  mantis:    { n:'Doble tajo',       ic:'tajo',      nec:6, cd:6,  d:'Dos tajos rapidísimos en abanico frente a ti.' },
+  escorpion: { n:'Aguijón venenoso', ic:'aguijon',   nec:5, cd:9,  d:'Un aguijonazo en línea que envenena a los enemigos durante 6 s.' },
+  arana:     { n:'Red pegajosa',     ic:'red',       nec:5, cd:12, d:'Lanzas una red: los enemigos de la zona quedan atrapados y muy lentos.' },
+  jabali:    { n:'Embestida',        ic:'embestida', nec:5, cd:10, d:'Embistes en línea recta y arrollas a todos los enemigos a tu paso.' }
+};
+const NOMBRE_MON = { slime:'Limo', mantis:'Mantis', escorpion:'Escorpión', arana:'Araña', jabali:'Jabalí' };
+const devorarDe = () => (PJ.devorar = PJ.devorar || { esencias:{}, aprendidas:[], equipada:null });
+
+// al morir, a veces deja su esencia (los jefes siempre, y vale por 3)
+function soltarEsencia(e){
+  const n = sprDe(e);
+  if (!HAB_MONSTRUO[n] || (!e.jefe && Math.random() > .32)) return;
+  botin.push({ t:'esencia', n, x:e.x + rand(-10, 10), y:e.y + rand(-10, 10), vale:e.jefe ? 3 : 1, t0:performance.now() });
+}
+function devorarEsencia(o){
+  const dv = devorarDe(), H = HAB_MONSTRUO[o.n];
+  dv.esencias[o.n] = (dv.esencias[o.n] || 0) + o.vale;
+  sfx('devorar', .15); chispas(P.x, P.y - 20, '#b05cff', 22, 220); fxAnillo(P.x, P.y, 10, 60, '#d080ff', .35);
+  const n = Math.min(dv.esencias[o.n], H.nec);
+  if (!dv.aprendidas.includes(o.n)){
+    texto(P.x, P.y - 80, `Devoras: ${NOMBRE_MON[o.n]} ${n}/${H.nec}`, '#d080ff', 14);
+    if (dv.esencias[o.n] >= H.nec){
+      dv.aprendidas.push(o.n);
+      if (!dv.equipada) dv.equipada = o.n;
+      sfx('logro'); banner('Habilidad devorada', `${H.n} (tecla Z)`);
+      chat(`Has analizado la esencia del ${NOMBRE_MON[o.n].toLowerCase()}: aprendes «${H.n}».`, '#d080ff');
+      if (PJ.mascota) chat(`${PJ.mascota.nombre}: «¡Ja! Eso es Devorar. Cuanto más comas, más fuerte serás.»`, '#ff9ad8');
+      construirBarra(); renderLibro();
+    }
+  } else texto(P.x, P.y - 80, `Esencia de ${NOMBRE_MON[o.n]}`, '#d080ff', 13);
+  guardar();
+}
+function dibujarEsencia(o, t){
+  const b = 1 + .15 * Math.sin(t / 180 + o.x), y = o.y - 6 + Math.sin(t / 300 + o.x) * 3;
+  const g = ctx.createRadialGradient(o.x, y, 1, o.x, y, 20 * b);
+  g.addColorStop(0, 'rgba(255,220,255,.95)'); g.addColorStop(.35, 'rgba(176,92,255,.7)'); g.addColorStop(1, 'rgba(90,20,140,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x, y, 20 * b, 0, TAU); ctx.fill();
+  for (let k = 0; k < 3; k++){ const a = t / 400 + k * 2.1; ctx.fillStyle = '#e0b0ff'; ctx.fillRect(Math.round(o.x + Math.cos(a) * 12), Math.round(y + Math.sin(a) * 7), 2, 2); }
+}
+// usar la habilidad devorada que está en la Z
+function usarDevorada(){
+  if (!enJuego || pantallaActual) return;
+  const dv = devorarDe(), n = dv.equipada;
+  if (!n){ texto(P.x, P.y - 74, 'Aún no has devorado ninguna habilidad', '#9a91c2', 14); return; }
+  if (E.tipo !== 'mazmorra'){ texto(P.x, P.y - 74, 'Los poderes solo funcionan dentro de los portales', '#9a91c2', 14); return; }
+  if ((P.cdDev || 0) > 0 || P.gcd > 0) return;
+  P.cdDev = HAB_MONSTRUO[n].cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('devorar', .1);
+  apuntar();
+  HAB_DEVORADA[n]();
+}
+const HAB_DEVORADA = {
+  slime(){
+    const p = puntoMira(240), x0 = P.x, y0 = P.y, a = Math.atan2(p.y - P.y, p.x - P.x), dist = Math.min(240, Math.hypot(p.x - P.x, p.y - P.y));
+    let paso = 0; while (paso < dist && !solidoEn(P.x + Math.cos(a) * 12, P.y + Math.sin(a) * 12)){ P.x += Math.cos(a) * 6; P.y += Math.sin(a) * 6; paso += 6; }
+    colisiones(P); P.inv = Math.max(P.inv, .3); pose('atk', .3);
+    fxEstela(x0, y0, P.x, P.y, '#6fd36b', .35); fxAnillo(P.x, P.y, 20, 110, '#6fd36b', .4); chispas(P.x, P.y, '#6fd36b', 24, 240); shake = 9;
+    golpeCirculo(P.x, P.y, 100, D.poder * 1.7, { lento:2.5 });
+  },
+  mantis(){
+    pose('atk', DUR_ATK); golpeArco(115, 1.9, D.poder * 1.15); fxArco(P.x, P.y, P.ang, 70, 1.9, '#e8e0a0', .2);
+    setTimeout(() => { if (!enJuego || E.tipo !== 'mazmorra') return; golpeArco(115, 1.9, D.poder * 1.15); fxArco(P.x, P.y, P.ang + .3, 78, 1.9, '#c9a050', .2); sfx('ataque_sombra'); }, 180);
+  },
+  escorpion(){
+    pose('atk', DUR_ATK); const ux = Math.cos(P.ang), uy = Math.sin(P.ang);
+    fxEstela(P.x, P.y - 10, P.x + ux * 170, P.y - 10 + uy * 170, '#ff6a3d', .3);
+    for (const e of enemigos){ const px = e.x - P.x, py = e.y - P.y, largo = px * ux + py * uy, lado = Math.abs(px * uy - py * ux);
+      if (largo > -10 && largo < 170 + e.r && lado < 30 + e.r){ herir(e, D.poder * 1.1); if (!e.muerto) e.dot = { dps:D.poder * .35, t:6, tick:1, col:'#5aff5a' }; } }
+  },
+  arana(){
+    pose('cast', .35); const p = puntoMira(300);
+    zonas.push({ x:p.x, y:p.y, r:95, ticks:4, cada:.5, t:.1, dmg:D.poder * .3, lento:3, col:'#e8e8f0' });
+    fxPx.push({ t:'zona', x:p.x, y:p.y, r:95, col:'#e8e8f0', vida:2.1, max:2.1 }); fxEstela(P.x, P.y - 10, p.x, p.y, '#e8e8f0', .3);
+  },
+  jabali(){
+    const a = P.ang, x0 = P.x, y0 = P.y; let paso = 0; const tocados = new Set();
+    while (paso < 230 && !solidoEn(P.x + Math.cos(a) * 14, P.y + Math.sin(a) * 14)){
+      P.x += Math.cos(a) * 6; P.y += Math.sin(a) * 6; paso += 6;
+      for (const e of enemigos){ if (!tocados.has(e) && Math.hypot(e.x - P.x, e.y - P.y) < e.r + P.r + 10){ tocados.add(e); herir(e, D.poder * 1.4); if (!e.jefe && !e.muerto){ e.x += Math.cos(a) * 40; e.y += Math.sin(a) * 40; colisiones(e); e.aturdido = 1; } } }
+    }
+    colisiones(P); P.inv = Math.max(P.inv, .35); fxEstela(x0, y0, P.x, P.y, '#c08a52', .45); shake = 8; pose('atk', .3);
+  }
+};
+// en el libro de poderes: lo devorado y lo que falta
+function libroDevorar(){
+  const dv = devorarDe();
+  let h = '<div class="wl-sec">Devorar · habilidad única</div>';
+  for (const [n, H] of Object.entries(HAB_MONSTRUO)){
+    const sabe = dv.aprendidas.includes(n), tiene = Math.min(dv.esencias[n] || 0, H.nec), eq = dv.equipada === n;
+    h += `<div class="wl-h ${sabe ? '' : 'bloq'}" title="${H.d}"><canvas data-icono="pxd:${H.ic}" width="80" height="80"></canvas>
+      <div><b>${sabe ? H.n : '???'}</b><small>${sabe ? `${NOMBRE_MON[n]} · ${H.cd} s${eq ? ' · tecla Z' : ''}` : `${NOMBRE_MON[n]}: ${tiene}/${H.nec} esencias`}</small></div>
+      ${sabe ? `<button class="wl-mas wl-eq" data-dev="${n}" ${eq ? 'disabled' : ''}>${eq ? 'Z' : 'Usar'}</button>` : ''}</div>`;
+  }
+  return h + '<p class="wl-nota">Los monstruos derrotados a veces dejan su esencia: pásale por encima para devorarla. La habilidad elegida se usa con Z.</p>';
+}
+function equiparDevorada(n){ devorarDe().equipada = n; construirBarra(); renderLibro(); guardar(); }
+
+// =====================================================
+//  CLASES NUEVAS: SACERDOTE Y ARQUERO
+// =====================================================
+// curar al jugador y a su grupo (el sacerdote sana a todos los que tiene cerca)
+function curar(frac, radio = 260){
+  const c = Math.round(D.maxHp * frac);
+  if (P.hp < D.maxHp){ P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x + rand(-6, 6), P.y - 76, '+' + c, '#7dffa8', 15); }
+  for (const g of GRUPO) if (g.vivo && g.hp < g.maxHp && Math.hypot(g.x - P.x, g.y - P.y) < radio){ const n = Math.round(g.maxHp * frac); g.hp = Math.min(g.maxHp, g.hp + n); texto(g.x, g.y - 60, '+' + n, '#7dffa8', 13); }
+  pintarGrupo && GRUPO.length && pintarGrupo();
+}
+function quitarMalos(){ let n = 0; for (const id in estados) if (EFECTOS[id] && EFECTOS[id].malo){ delete estados[id]; n++; } if (n) pintarBuffs(true); return n; }
+function sinObjetivo(reintegro = 0){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.en += reintegro; }
+// una flecha (o un rayo de luz) desde el gato hacia donde apunta
+function disparar(tipo, a, dmg, op = {}){
+  const v = op.vel || (tipo === 'flecha' ? 720 : 520);
+  const p = { px:tipo, x:P.x + Math.cos(a) * 20, y:P.y + Math.sin(a) * 20, vx:Math.cos(a) * v, vy:Math.sin(a) * v, r:op.r || 7, alt:28,
+    dmg, vida:op.vida || .75, color:op.color || (tipo === 'flecha' ? '#ffd9a0' : '#ffe066'), aoe:op.aoe || 16, lento:op.lento };
+  if (op.perfora){ p.perfora = true; p.hits = new Set(); }
+  proys.push(p);
+  return p;
+}
+Object.assign(HAB, {
+  sacerdote1(){ pose('atk', DUR_ATK); disparar('luz', P.ang, D.mag * 1.05, { aoe:36, vida:1.1 }); fxAnillo(P.x + Math.cos(P.ang) * 18, P.y + Math.sin(P.ang) * 10, 12, 4, '#ffe066', .2); },
+  sacerdote2(){
+    pose('cast', .45); curar(.22);
+    golpeCirculo(P.x, P.y, 115, D.mag * 1.2);
+    fxAnillo(P.x, P.y, 10, 115, '#ffe066', .45); chispas(P.x, P.y - 20, '#fff2b0', 26, 200);
+  },
+  arquero1(){ pose('atk', DUR_ATK * .8); disparar('flecha', P.ang + rand(-.03, .03), D.fis * .95); },
+  arquero2(){ pose('atk', DUR_ATK); for (let i = -2; i <= 2; i++) disparar('flecha', P.ang + i * .16, D.fis * .85); chispas(P.x + Math.cos(P.ang) * 20, P.y - 20, '#ff9a3d', 10, 120); }
+});
+Object.assign(PODERES, {
+  // sacerdote
+  sanar:     { clase:'sacerdote', n:'Sanar',                 d:'Te curas a ti y a tu grupo un 18% de la vida.', nivel:1, cd:0, coste:20, ic:'gota' },
+  dolor:     { clase:'sacerdote', n:'Palabra de dolor',      d:'Tu objetivo pierde vida durante 10 s.', nivel:3, cd:0, coste:10, ic:'calavera' },
+  fortaleza: { clase:'sacerdote', n:'Fortaleza',             d:'Recibes un 30% menos de daño durante 30 s.', nivel:5, cd:30, coste:15, ic:'escudo' },
+  alarido:   { clase:'sacerdote', n:'Alarido psíquico',      d:'Los enemigos cercanos huyen aterrados 3 s.', nivel:8, cd:25, coste:20, ic:'onda' },
+  purificar: { clase:'sacerdote', n:'Purificar',             d:'Te quitas venenos y maldiciones y recuperas un 8% de vida.', nivel:10, cd:8, coste:10, ic:'estrella' },
+  // arquero
+  certero:   { clase:'arquero', n:'Disparo certero',         d:'Una flecha muy poderosa y veloz.', nivel:1, cd:0, coste:30, ic:'diana' },
+  conmocion: { clase:'arquero', n:'Disparo de conmoción',    d:'Una flecha que daña y ralentiza 4 s.', nivel:3, cd:8, coste:15, ic:'trueno' },
+  marcacaza: { clase:'arquero', n:'Marca del cazador',       d:'Tu objetivo recibe un 30% más de daño durante 15 s.', nivel:5, cd:20, coste:10, ic:'ojo' },
+  rafaga:    { clase:'arquero', n:'Ráfaga',                  d:'Disparas tres flechas seguidas a tu objetivo.', nivel:8, cd:10, coste:30, ic:'abanico' },
+  fingir:    { clase:'arquero', n:'Fingir muerte',           d:'Te haces el muerto: los enemigos te pierden la pista.', nivel:10, cd:30, coste:0, ic:'calavera' }
+});
+Object.assign(PODER_FN, {
+  sanar(){ pose('cast', .4); curar(.18); fxAnillo(P.x, P.y, 30, 6, '#7dffa8', .35); chispas(P.x, P.y - 30, '#bfffd0', 14, 120); },
+  dolor(){ const e = blanco(360); if (!e) return sinObjetivo(10); pose('cast', .3); golpeUnico(e, D.mag * .3); e.dot = { dps:D.mag * .45, t:10, tick:1, col:'#b98bff' }; fxEstela(P.x, P.y - 10, e.x, e.y - 10, '#b98bff', .3); },
+  fortaleza(){ ponerEfecto('def_up', 30); fxAnillo(P.x, P.y, 10, 60, '#ffe066', .4); },
+  alarido(){ pose('cast', .4); fxAnillo(P.x, P.y, 10, 140, '#b98bff', .45); for (const e of enemigos) if (!e.jefe && Math.hypot(e.x - P.x, e.y - P.y) < 140 + e.r){ e.aturdido = 3; texto(e.x, e.y - 60, 'Aterrado', '#d8b0ff', 13); } },
+  purificar(){ const n = quitarMalos(); curar(.08); texto(P.x, P.y - 90, n ? 'Purificado' : 'Nada que purificar', '#fff2b0', 13); chispas(P.x, P.y - 20, '#ffffff', 16, 140); },
+  certero(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.fis * 2.1, { vel:860, color:'#ffe066' }); },
+  conmocion(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.fis * 1.1, { lento:4, aoe:28, color:'#9fd8ff' }); },
+  marcacaza(){ const e = blanco(420); if (!e) return sinObjetivo(10); e.vuln = 15; texto(e.x, e.y - 64, '¡Marcado!', '#ff9a3d', 14); fxAnillo(e.x, e.y, 40, 8, '#ff9a3d', .5); },
+  rafaga(){
+    pose('atk', DUR_ATK);
+    for (let i = 0; i < 3; i++) setTimeout(() => { if (!enJuego || E.tipo !== 'mazmorra') return; apuntar(); disparar('flecha', P.ang, D.fis * 1.05); sfx('ataque_arquero', .05); }, i * 140);
+  },
+  fingir(){ P.inv = Math.max(P.inv, 1); pose('oculto', .8); reducirAmenaza(.1); for (const e of enemigos) if (!e.jefe && e.objetivo === P) e.aggro = false; texto(P.x, P.y - 80, 'Fingiendo muerte…', '#c0c8d8', 13); }
+});
+Object.assign(PODER_FN, {
+  escudoluz(){ P.escudo = Math.round(D.maxHp * .25); P.tEscudo = 15; fxAnillo(P.x, P.y, 10, 40, '#ffe066', .4); texto(P.x, P.y - 80, 'Escudo de luz', '#ffe066', 13); },
+  fuegosagrado(){
+    const e = blanco(360); if (!e) return sinObjetivo(20);
+    pose('cast', .35); P.ang = Math.atan2(e.y - P.y, e.x - P.x); herir(e, D.mag * 1.7);
+    if (!e.muerto) e.dot = { dps:D.mag * .35, t:6, tick:1, col:'#ffb347' };
+    fxPx.push({ t:'haz', x:e.x, y:e.y, col:'#ffb347', ancho:18, vida:.45, max:.45 }); chispas(e.x, e.y - 20, '#ffb347', 18, 180);
+  },
+  renovar(){
+    pose('cast', .3); fxAnillo(P.x, P.y, 10, 50, '#7dffa8', .4);
+    fxPx.push({ t:'renovar', vida:12, max:12, tick:1, paso:(f, dt) => { f.tick -= dt; if (f.tick <= 0){ f.tick = 1; curar(.03); } } });
+  },
+  novasagrada(){ pose('cast', .4); golpeCirculo(P.x, P.y, 140, D.mag * 1.6); curar(.1); fxAnillo(P.x, P.y, 10, 140, '#fff2b0', .45); chispas(P.x, P.y, '#ffe066', 40, 280); shake = 6; },
+  pozoluz(){
+    pose('cast', .6); const p = puntoMira(320);
+    zonas.push({ x:p.x, y:p.y, r:100, ticks:8, cada:.38, t:.15, dmg:D.mag * .65, col:'#ffe066' });
+    fxPx.push({ t:'haz', x:p.x, y:p.y, col:'#ffe066', ancho:70, vida:3.1, max:3.1 });
+  },
+  oracion(){ pose('invocar', .8); quitarMalos(); curar(1, 400); banner('Oración', 'La luz te restaura por completo'); fxAnillo(P.x, P.y, 10, 120, '#ffffff', .6); chispas(P.x, P.y - 30, '#fff2b0', 50, 260); },
+  juicio(){
+    pose('cast', .6); let n = 0;
+    for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - P.x, e.y - P.y) < 340 + e.r && n < 10){
+      const blancoE = e, k = n++;
+      fxPx.push({ t:'haz', x:e.x, y:e.y, col:'#ffe066', ancho:34, vida:.7 + k * .08, max:.7 + k * .08, paso:(f) => {
+        if (f.vida <= .05 && !f.hecho){ f.hecho = true; if (!blancoE.muerto) herir(blancoE, D.mag * 3.2); chispas(f.x, f.y, '#fff2b0', 24, 240); shake = Math.max(shake, 8); } } });
+    }
+    if (!n) texto(P.x, P.y - 74, 'No hay enemigos cerca', '#9a91c2', 14);
+    else banner('¡Juicio final!', 'La luz castiga a tus enemigos');
+  },
+  flechaarcana(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.poder * 1.8, { perfora:true, vel:820, vida:.8, r:12, color:'#b98bff' }); fxAnillo(P.x, P.y, 10, 30, '#b98bff', .25); },
+  trampahielo(){
+    pose('cast', .3); const p = puntoMira(260);
+    for (const e of enemigos) if (Math.hypot(e.x - p.x, e.y - p.y) < 90 + e.r){ e.raiz = e.jefe ? 1 : 3; herir(e, D.poder * .6); }
+    zonas.push({ x:p.x, y:p.y, r:90, ticks:5, cada:.5, t:.5, dmg:D.poder * .2, lento:3, col:'#9fd8ff' });
+    fxPx.push({ t:'zona', x:p.x, y:p.y, r:90, col:'#9fd8ff', vida:2.5, max:2.5 }); fxEstela(P.x, P.y - 10, p.x, p.y, '#9fd8ff', .3);
+  },
+  retirada(){
+    const x0 = P.x, y0 = P.y, a = P.ang + Math.PI; let paso = 0;
+    for (const e of enemigos) if (!e.jefe && Math.hypot(e.x - P.x, e.y - P.y) < 90 + e.r) e.aturdido = 1;
+    golpeCirculo(P.x, P.y, 80, D.poder * .5);
+    while (paso < 200 && !solidoEn(P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 16)){ P.x += Math.cos(a) * 8; P.y += Math.sin(a) * 8; paso += 8; }
+    colisiones(P); P.inv = Math.max(P.inv, .35); fxEstela(x0, y0, P.x, P.y, '#ffd9a0', .35); pose('oculto', .12);
+  },
+  volea(){
+    pose('cast', .5); const p = puntoMira(330);
+    zonas.push({ x:p.x, y:p.y, r:115, ticks:7, cada:.3, t:.25, dmg:D.poder * .75, col:'#ff9a3d' });
+    fxPx.push({ t:'flechas', x:p.x, y:p.y, r:115, col:'#ffd9a0', vida:2.3, max:2.3 });
+  },
+  picadura(){ const e = blanco(380); if (!e) return sinObjetivo(15); pose('atk', DUR_ATK); P.ang = Math.atan2(e.y - P.y, e.x - P.x); disparar('flecha', P.ang, D.fis * .6, { color:'#5aff5a' }); e.dot = { dps:D.fis * .5, t:10, tick:1, col:'#5aff5a' }; },
+  rapido(){ ponerEfecto('rapido', 10); chispas(P.x, P.y - 20, '#ffe066', 20, 160); },
+  tormentaf(){
+    pose('cast', .6); const p = puntoMira(340);
+    zonas.push({ x:p.x, y:p.y, r:170, ticks:12, cada:.25, t:.2, dmg:D.poder * .8, col:'#ff5a1e' });
+    fxPx.push({ t:'flechas', x:p.x, y:p.y, r:170, col:'#ff9a3d', vida:3.2, max:3.2 }); banner('¡Tormenta de flechas!', '');
+  }
+});
 
 // los 7 poderes de la barra (Q F R 1 2 3 4), distintos para cada clase; los poderes de sombra compartidos quedan fuera
 const PODERES_CLASE = {
@@ -3771,11 +4348,30 @@ const PODERES_CLASE = {
     ['elemental',  'Elemental de agua',  'Invocas un elemental que lanza descargas de escarcha durante 20 s.', 12, 30, 35, 'elemental', '#3a8ad8'],
     ['barrera',    'Barrera de hielo',   'Un escudo absorbe daño igual al 30% de tu vida durante 30 s.', 16, 30, 30, 'burbuja', '#c8f0ff'],
     ['meteoro',    'Meteoro',            'Un meteoro cae sobre la zona y arrasa todo.', 20, 45, 60, 'meteoro', '#ff5a1e']
+  ],
+  sacerdote:[
+    ['escudoluz',  'Palabra de poder: escudo','Un escudo de luz absorbe daño igual al 25% de tu vida durante 15 s.', 2, 12, 20, 'escudo', '#ffe066'],
+    ['fuegosagrado','Fuego sagrado',      'Llamas sagradas queman a tu objetivo durante 6 s.', 4, 6, 20, 'llama', '#ffb347'],
+    ['renovar',    'Renovar',            'Recuperas vida poco a poco durante 12 s (tú y tu grupo).', 6, 10, 15, 'ala', '#7dffa8'],
+    ['novasagrada','Nova sagrada',       'Estallido de luz que daña a los enemigos cercanos y te cura.', 9, 8, 30, 'sol', '#fff2b0'],
+    ['pozoluz',    'Pozo de luz',        'Una columna de luz cae sobre la zona y quema a todos durante 3 s.', 12, 14, 35, 'cruz', '#ffe066'],
+    ['oracion',    'Oración',            'Recuperas toda tu vida y quitas todos los efectos malos.', 16, 60, 40, 'halo', '#ffffff'],
+    ['juicio',     'Juicio final',       'Haces caer pilares de luz sobre todos los enemigos cercanos.', 20, 50, 60, 'sol', '#ffe066']
+  ],
+  arquero:[
+    ['flechaarcana','Disparo arcano',     'Una flecha mágica que atraviesa a todos los enemigos en línea.', 2, 6, 20, 'flecha', '#b98bff'],
+    ['trampahielo','Trampa de hielo',    'Lanzas una trampa: congela a los enemigos de la zona y los ralentiza.', 4, 15, 15, 'trampa', '#9fd8ff'],
+    ['retirada',   'Retirada',           'Saltas hacia atrás y aturdes 1 s a los enemigos de los que te alejas.', 6, 12, 10, 'ala', '#ffd9a0'],
+    ['volea',      'Volea',              'Una lluvia de flechas cae sobre la zona.', 9, 10, 35, 'lluviaf', '#ff9a3d'],
+    ['picadura',   'Picadura de serpiente','Envenenas a tu objetivo: pierde vida durante 10 s.', 12, 5, 15, 'serpiente', '#5aff5a'],
+    ['rapido',     'Disparo rápido',     'Durante 10 s disparas el doble de rápido.', 16, 40, 0, 'reloj', '#ffe066'],
+    ['tormentaf',  'Tormenta de flechas','Una tormenta de flechas arrasa una zona enorme.', 20, 45, 50, 'lluviaf', '#ff5a1e']
   ]
 };
 // glifos de las 5 habilidades de clase (teclas 5 a 8)
 const GLIFO_HAB = { heroico:'espada', grito:'trueno', provocar:'puno', torbellino:'espiral', ejecutar:'hacha', siniestro:'daga', eviscerar:'daga', picadillo:'reloj', patada:'puno', esfumarse:'capa',
-  escarcha:'copo', nova:'copo', arcana:'estrella', evocacion:'reloj', bloque:'burbuja' };
+  escarcha:'copo', nova:'copo', arcana:'estrella', evocacion:'reloj', bloque:'burbuja',
+  sanar:'gota', dolor:'calavera', fortaleza:'escudo', alarido:'onda', purificar:'estrella', certero:'diana', conmocion:'trueno', marcacaza:'ojo', rafaga:'abanico', fingir:'calavera' };
 for (const [clase, lista] of Object.entries(PODERES_CLASE)) for (const [id, n, d, nivel, cd, coste, glifo, col] of lista)
   PODERES[id] = { clase, n, d, nivel, cd, coste, ic:'px:' + glifo, col, barra:true };
 for (const [id, g] of Object.entries(GLIFO_HAB)) if (PODERES[id]) PODERES[id].ic = 'px:' + g;
@@ -3825,6 +4421,18 @@ function dibujarFxPx(t){
       // ventisca: copos que caen dentro de un círculo
       ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .55, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
       for (let i = 0; i < 22; i++){ const a = rand(0, TAU), d = Math.sqrt(Math.random()) * f.r; pxCuadro(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d * .55 - rand(0, 60), Math.random() < .5 ? '#ffffff' : f.col); }
+    } else if (f.t === 'haz'){
+      // columna de luz que baja del cielo
+      const w = f.ancho * (.6 + .4 * Math.sin(k * Math.PI));
+      ctx.globalAlpha = Math.min(1, f.vida / f.max * 2) * .35; ctx.fillStyle = f.col; ctx.fillRect(Math.round(f.x - w / 2), f.y - 420, Math.round(w), 420);
+      ctx.globalAlpha = Math.min(1, f.vida / f.max * 2);
+      for (let i = 0; i < 14; i++) pxCuadro(f.x + rand(-w / 2, w / 2), f.y - rand(0, 400), Math.random() < .5 ? '#ffffff' : f.col, 4);
+      ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, w * .9 + 8, (w * .9 + 8) * .4, 0, 0, TAU); ctx.stroke();
+    } else if (f.t === 'flechas'){
+      // lluvia de flechas: caen en diagonal dentro del círculo
+      ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .55, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      for (let i = 0; i < 16; i++){ const a = rand(0, TAU), d = Math.sqrt(Math.random()) * f.r, x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * .55 - rand(0, 90);
+        for (let j = 0; j < 4; j++) pxCuadro(x - j * 3, y - j * 6, j ? '#8a5a2b' : '#ffffff', 3); pxCuadro(x - 12, y - 24, f.col, 3); }
     } else if (f.t === 'estandarte'){
       ctx.globalAlpha = 1; const x = Math.round(f.x), y = Math.round(f.y);
       ctx.drawImage(iconoPx('estandarte', PALETA_CLASE.guerrero), x - 24, y - 60, 48, 48);
@@ -3847,8 +4455,15 @@ function dibujarVortice(p, t, esc){
 }
 // proyectiles en pixel art (bola de fuego, escarcha, cuchillos)
 function dibujarProyPx(p, t){
-  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], arcano:['#4f9aff', '#c8f0ff', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
+  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], arcano:['#4f9aff', '#c8f0ff', '#ffffff'], luz:['#e8b830', '#ffe066', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
   const y = p.y - (p.alt || 0);
+  if (p.px === 'flecha'){
+    const c = Math.cos(a), s = Math.sin(a);
+    for (let i = 0; i < 7; i++) pxCuadro(p.x - c * i * 4, y - s * i * 4, i === 0 ? '#ffffff' : i < 6 ? '#8a5a2b' : p.color, i === 0 ? 4 : 3);
+    pxCuadro(p.x - c * 26 - s * 4, y - s * 26 + c * 4, p.color, 3); pxCuadro(p.x - c * 26 + s * 4, y - s * 26 - c * 4, p.color, 3);
+    if (p.perfora) for (let i = 0; i < 3; i++) pxCuadro(p.x - c * rand(0, 30) + rand(-5, 5), y - s * rand(0, 30) + rand(-5, 5), p.color, 3);
+    return;
+  }
   if (p.px === 'cuchillo'){ for (let i = 0; i < 4; i++) pxCuadro(p.x - Math.cos(a) * i * 4, y - Math.sin(a) * i * 4, i ? cols[0] : cols[1], 3); return; }
   for (let i = 0; i < 8; i++) pxCuadro(p.x - Math.cos(a) * i * 5 + rand(-3, 3), y - Math.sin(a) * i * 5 + rand(-3, 3), cols[Math.min(2, i / 3 | 0)], i < 2 ? 5 : 3);
   for (let i = 0; i < 5; i++) pxCuadro(p.x + rand(-6, 6), y + rand(-6, 6), cols[i % 3], 4);
@@ -3958,6 +4573,8 @@ function matar(e){
   e.muerto = true; PJ.kills++; sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   botinEvento(e);
+  soltarEsencia(e);
+  avisarHistoria('mata', e);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
   ganarXP(e.xp);
@@ -4033,7 +4650,8 @@ const EFECTOS = {
   com_atk: { n:'Bien alimentado',    d:'+10% de daño',               ic:'b_atk_up' },
   com_def: { n:'Bien alimentado',    d:'Recibes 10% menos daño',     ic:'b_def_up' },
   com_vel: { n:'Bien alimentado',    d:'+10% de velocidad y +30% de energía recuperada', ic:'b_agi_up' },
-  evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' }
+  evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' },
+  rapido:  { n:'Disparo rápido',     d:'Disparas el doble de rápido',  ic:'b_agi_up' }
 };
 // qué debuff deja cada monstruo al golpearte (y con qué probabilidad)
 const DEBUFF_MONSTRUO = { slime:['agi_dn', 3, .35], mantis:['atk_dn', 5, .3], escorpion:['def_dn', 5, .3], arana:['veneno', 4, .45], jabali:['agi_dn', 2, .3] };
@@ -4184,7 +4802,7 @@ function centrarCam(inmediato, dt = 0){
 
 function update(dt){
   PJ.tiempo += dt;
-  actualizarPrologo(dt);
+  actualizarPrologo(dt); actualizarHistoria(dt);
   // movimiento
   let mx = 0, my = 0;
   if (keys.KeyW || keys.ArrowUp) my--;
@@ -4226,7 +4844,7 @@ function update(dt){
   if (P.escudo > 0){ P.tEscudo -= dt; if (P.tEscudo <= 0) P.escudo = 0; }
   if (estados.tormenta && E.tipo === 'mazmorra'){ P.tTorm = (P.tTorm || 0) - dt; if (P.tTorm <= 0){ P.tTorm = .5; golpeCirculo(P.x, P.y, 64, D.fis * .5); } }
   updateEfectos(dt);
-  P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.inv -= dt; P.golpe -= dt; P.gcd = Math.max(0, (P.gcd || 0) - dt);
+  P.cd1 -= dt; P.cd2 -= dt; P.cdPoc -= dt; P.cdDev = (P.cdDev || 0) - dt; P.inv -= dt; P.golpe -= dt; P.gcd = Math.max(0, (P.gcd || 0) - dt);
   if (P.objetivo && !objetivoValido()) P.objetivo = null;
 
   // portales de la ciudad (avanzan siempre)
@@ -4266,11 +4884,12 @@ function update(dt){
       }
       else if (o.t === 'oro'){ const c = Math.round((o.c || 1) * (1 + bonoHerm() + bonoOroMascota())); PJ.oro += c; contar('oro', c); sfx('moneda', .05); texto(P.x + 14, P.y - 60, '+' + dineroTxt(c).replace(/ de /g, ' '), '#f2c46d', 13); chat(`Despojas ${dineroTxt(c)}.`, '#f2c46d'); }
       else if (o.t === 'cons'){ darApilable(o.k); if (o.k.startsWith('p_')) contar('partes'); const A = APILABLES[o.k]; texto(P.x, P.y - 78, A.n, RAREZAS[A.r].c, 14); chat(`Recibes botín: [${A.n}]`, RAREZAS[A.r].c); }
+      else if (o.t === 'esencia') devorarEsencia(o);
       else { PJ.pociones++; texto(P.x, P.y - 74, '+1 poción', '#7dffa8', 15); chat('Recibes botín: [Poción de vida]', '#7dffa8'); }
       o.tomado = true;
     }
   }
-  botin = botin.filter(o => !o.tomado);
+  { const ahora = performance.now(); botin = botin.filter(o => !o.tomado && !(o.t === 'esencia' && ahora - o.t0 > 25000)); }   // las esencias se desvanecen a los 25 s
 
   for (const p of particulas){ p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; p.vida -= dt; }
   particulas = particulas.filter(p => p.vida > 0);
@@ -4568,6 +5187,7 @@ const EQ_PIX = {
   Espada:   { agarre:15, filas:['...o...','..oWo..','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','ooGRGoo','oGGGGGo','.oogoo.','..oHo..','..oHo..','..oGo..','...o...'] },
   Daga:     { agarre:8,  filas:['..o..','.oWo.','.oWSo','.oWSo','.oWSo','oGRGo','.oHo.','.oHo.','.oGo.','..o..'] },
   Báculo:   { agarre:14, filas:['..ooo..','.oRRWo.','oRRRRWo','oRRRRRo','orRRRro','.orrro.','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','...o...'] },
+  Arco:     { agarre:9,  filas:['.oo.....','.WoRo...','.W.oBo..','.W.oBo..','.W..oBo.','.W..oBo.','.W...oBo','.W...oBo','.W...oHo','.W...oHo','.W...oHo','.W...oBo','.W...oBo','.W..oBo.','.W..oBo.','.W.oBo..','.W.oBo..','.WoRo...','.oo.....'] },
   Grimorio: { agarre:4,  filas:['ooooooooo','oRRRRRRRo','oRRGGGRRo','oRRGrGRRo','oRRGGGRRo','oRRRRRRRo','oPPPPPPPo','ooooooooo'] },
   Yelmo:    { filas:['......oooooo......','....ooSSSSSSoo....','...oSWWWWWWWSSo...','..oSWWWWWWWWWSSo..','.oSWWWWWWWWWWWSSo.','.oSSSSSSSSSSSSSSo.','oGGGGGGGRRGGGGGGGo','oooooooooooooooooo'] },
   Diadema:  { filas:['o.....o.....o','Go...oRo...oG','oGo.oGGGo.oGo','oGGGGGGGGGGGo','oGRGGGRGGGRGo','ooooooooooooo'] },
@@ -5671,9 +6291,10 @@ function actualizarSeguimiento(){
   if (!PJ || !enJuego){ if (firmaSeg){ firmaSeg = ''; $('seguimiento').innerHTML = ''; } return; }
   const ids = activas().filter(id => PJ.misiones[id].sigue !== false);
   const filas = ids.map(id => { const e = estadoMision(id); return [id, MISIONES[id].titulo, e.prog, e.meta, e.lista, MISIONES[id].objetivo(e.meta)]; });
-  const f = JSON.stringify(filas) + PJ.segOculto; if (f === firmaSeg) return; firmaSeg = f;
+  const fh = filaHistoria();
+  const f = JSON.stringify(filas) + PJ.segOculto + fh; if (f === firmaSeg) return; firmaSeg = f;
   const plegado = PJ.segOculto;
-  $('seguimiento').innerHTML = filas.length ? `<b class="seg-cab"><span>Misiones (${filas.length})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : filas.map(([id, t, p, m, ok, obj]) =>
+  $('seguimiento').innerHTML = (filas.length || fh) ? `<b class="seg-cab"><span>Misiones (${filas.length + (fh ? 1 : 0)})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : fh + filas.map(([id, t, p, m, ok, obj]) =>
     `<div class="seg-m ${ok ? 'ok' : ''}" data-segmis="${id}"><span class="seg-t">${t}</span><span class="seg-o">- ${obj.replace(/^(Trae|Elimina|Despeja) \d+ /, '')}: ${p}/${m}</span>${ok ? '<span class="seg-o ok">Listo para entregar</span>' : ''}</div>`).join('')) : '';
   const tg = $('segTog'); if (tg) tg.onclick = () => { PJ.segOculto = !PJ.segOculto; firmaSeg = ''; guardar(); actualizarSeguimiento(); };
   $('seguimiento').querySelectorAll('[data-segmis]').forEach(d => d.onclick = () => { misSel = d.dataset.segmis; abrirVentana('wMis'); });
@@ -5849,6 +6470,8 @@ const LOGROS = [
   { id:'t1',      n:'Cazatitanes',            d:'Derrota a un titán semanal.',        titulo:'Cazatitanes',           ok:p => (p.semanalesTotal || 0) >= 1 },
   { id:'h1',      n:'Trasnochador',           d:'Juega una hora con este personaje.', titulo:'el Trasnochador',       ok:p => p.tiempo >= 3600 },
   { id:'tal',     n:'Erudito',                d:'Reparte 5 puntos de talento.',       titulo:'el Erudito',            ok:p => talentosGastados(p) >= 5 },
+  { id:'hllave',  n:'Guardián de la llave',   d:'Descubre el secreto del ratón (capítulo 4).', titulo:'Guardián de la Llave', ok:p => ((p.historia || {}).cap || 0) >= 3 },
+  { id:'hfin',    n:'El último deseo',        d:'Termina el primer arco de la historia.', titulo:'Amigo de Aldric',      ok:p => ((p.historia || {}).cap || 0) >= HISTORIA.length },
   { id:'moda',    n:'A la moda',              d:'Tiñe tu ropa en el mercado.',        titulo:'el Elegante',           ok:p => (p.tintes || []).length > 0 }
 ];
 function revisarLogros(){
@@ -6014,8 +6637,22 @@ const SFX = {
   logro(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.2, desde:i * .1 })); },
   comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
   paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
-  click(){ tono(1200, .03, { vol:.06 }); }
+  click(){ tono(1200, .03, { vol:.06 }); },
+  // cada clase suena distinto: el guerrero golpea metal, la sombra corta el aire, el mago chisporrotea...
+  ataque_guerrero(){ ruido(.16, { vol:.4, filtro:900, q:1.2 }); tono(180, .14, { tipo:'square', vol:.16, hasta:90 }); tono(1400, .05, { tipo:'triangle', vol:.08, desde:.02 }); },
+  ataque_sombra(){ ruido(.09, { vol:.32, filtro:4200, q:.6, tipoF:'highpass' }); tono(900, .06, { tipo:'sawtooth', vol:.06, hasta:400 }); },
+  ataque_mago(){ tono(660, .12, { tipo:'sine', vol:.14, hasta:1320 }); tono(990, .1, { tipo:'triangle', vol:.08, desde:.03, hasta:1980 }); ruido(.08, { vol:.1, filtro:6000, tipoF:'highpass' }); },
+  ataque_sacerdote(){ [1047, 1319].forEach((f, i) => tono(f, .22, { tipo:'sine', vol:.1, desde:i * .04 })); },
+  ataque_arquero(){ tono(220, .07, { tipo:'triangle', vol:.18, hasta:140 }); ruido(.12, { vol:.18, filtro:2400, q:3, desde:.02 }); },
+  poder_guerrero(){ tono(90, .4, { tipo:'sawtooth', vol:.2, hasta:45 }); ruido(.45, { vol:.3, filtro:400, tipoF:'lowpass' }); },
+  poder_sombra(){ ruido(.3, { vol:.22, filtro:1600, q:4 }); tono(440, .28, { tipo:'sawtooth', vol:.08, hasta:110 }); },
+  poder_mago(){ [523, 784, 1047].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.1, desde:i * .05 })); ruido(.35, { vol:.12, filtro:3000, q:2 }); },
+  poder_sacerdote(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .5, { tipo:'sine', vol:.09, desde:i * .06, ataque:.04 })); },
+  poder_arquero(){ for (let k = 0; k < 3; k++){ tono(240 - k * 20, .07, { tipo:'triangle', vol:.14, desde:k * .07, hasta:150 }); ruido(.1, { vol:.14, filtro:2600, q:3, desde:k * .07 + .02 }); } },
+  devorar(){ tono(120, .5, { tipo:'sawtooth', vol:.16, hasta:40 }); ruido(.5, { vol:.18, filtro:700, q:3 }); [392, 523, 659].forEach((f, i) => tono(f, .25, { tipo:'triangle', vol:.12, desde:.35 + i * .08 })); }
 };
+// el sonido de ataque o de poder propio de la clase (si no tiene, el de siempre)
+const sfxClase = base => PJ && SFX[`${base}_${PJ.clase}`] ? `${base}_${PJ.clase}` : base;
 // reproduce un efecto (con un mínimo de tiempo entre repeticiones del mismo)
 function sfx(n, minimo = .03){
   if (!SON.ctx || !SON.efectos || SON.ctx.state !== 'running') return;
@@ -6034,10 +6671,16 @@ const PISTAS = {
   mazmorra: { bpm:100, raiz:50, escala:[0, 1, 3, 5, 7, 8, 10], mel:[0, -1, 2, 1, 0, -1, 4, 3, 2, -1, 1, 0, -1, 0, 1, 2], bajo:[0, 0, 0, 0, 5, 5, 4, 4], onda:'square' },
   titan:    { bpm:138, raiz:50, escala:[0, 1, 3, 5, 6, 8, 10], mel:[0, 0, 4, 3, 0, 0, 5, 4, 0, 0, 6, 5, 4, 3, 2, 1], bajo:[0, 0, 0, 0, 1, 1, 0, 0], onda:'sawtooth' },
   casino:   { bpm:126, raiz:58, escala:[0, 2, 4, 7, 9, 10],  mel:[0, 2, 4, 3, 5, -1, 4, 2, 0, 2, 4, 5, 3, 2, 1, -1], bajo:[0, 4, 3, 4, 0, 4, 3, 2], onda:'triangle' },
+  // prólogo: la calle bajo la lluvia, la Voz del Mundo y la gruta donde renace (también para las escenas de historia)
+  lluvia:   { bpm:66,  raiz:57, escala:[0, 2, 3, 5, 7, 8, 10], mel:[4, -1, 3, -1, 2, -1, 0, -1, 2, -1, 3, 2, 0, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'sine', pad:[[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]], lluvia:true },
+  eter:     { bpm:56,  raiz:62, escala:[0, 2, 4, 7, 9],      mel:[4, -1, -1, 6, -1, -1, 5, -1, 3, -1, -1, 2, -1, -1, -1, -1], bajo:[0, 0, 0, 0, 3, 3, 3, 3], onda:'sine', pad:[[0, 2, 4], [3, 5, 7]] },
+  gruta:    { bpm:80,  raiz:52, escala:[0, 1, 3, 5, 7, 8, 11], mel:[0, -1, 2, -1, 3, 2, -1, -1, 4, -1, 3, -1, 2, 1, -1, -1], bajo:[0, 0, 0, 0, 5, 5, 6, 6], onda:'triangle', pad:[[0, 2, 4], [5, 7, 9]], gota:true },
   menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
 };
 function pistaActual(){
-  if (!enJuego || cine) return 'menu';
+  if (cine){ const esc = cine.lista[cine.e].escena; return esc === 'calle' || esc === 'luces' ? 'lluvia' : esc === 'vacio' || esc === 'recuerdo' || esc === 'alba' ? 'eter' : 'gruta'; }
+  if (!enJuego) return 'menu';
+  if (E.tutorial || pantallaActual === 'pDialogo' && E.tipo !== 'casino') return 'gruta';
   if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
   if (E.tipo === 'ciudad') return oscuridad() > .3 ? 'noche' : 'ciudad';
   if (E.tipo === 'casino') return 'casino';
@@ -6045,7 +6688,7 @@ function pistaActual(){
 }
 function programarMusica(){
   if (!SON.ctx || SON.ctx.state !== 'running') return;
-  SON.mus.gain.setTargetAtTime(SON.musica ? .22 : 0, SON.ctx.currentTime, .3);
+  if (!SON.musica) return;   // sin música no se programan notas
   const nueva = pistaActual();
   if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
   const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
@@ -6054,6 +6697,10 @@ function programarMusica(){
     const i = SON.paso, desde = SON.sig - SON.ctx.currentTime, m = P0.mel[i % P0.mel.length];
     if (m >= 0) tono(nota(m, 1), corchea * .9, { tipo:P0.onda, vol:.16, desde, destino:SON.mus, ataque:.01 });
     if (i % 2 === 0) tono(nota(P0.bajo[(i >> 1) % P0.bajo.length], -1), corchea * 1.8, { tipo:'triangle', vol:.3, desde, destino:SON.mus, ataque:.01 });
+    // acordes largos de fondo, lluvia y gotas que caen en la cueva
+    if (P0.pad && i % 8 === 0) for (const g of P0.pad[(i >> 3) % P0.pad.length]) tono(nota(g), corchea * 8, { tipo:'sine', vol:.06, desde, destino:SON.mus, ataque:corchea * 2 });
+    if (P0.lluvia) ruido(corchea, { vol:.035, filtro:5500, tipoF:'highpass', desde, destino:SON.mus });
+    if (P0.gota && i % 5 === 3 && Math.random() < .6) tono(1400 + Math.random() * 700, .12, { tipo:'sine', vol:.07, desde, destino:SON.mus, hasta:900 });
     if (SON.pista === 'mazmorra' || SON.pista === 'titan' || SON.pista === 'ciudad'){
       if (i % 4 === 0) tono(90, .12, { tipo:'sine', vol:.35, hasta:45, desde, destino:SON.mus });
       if (i % 4 === 2) ruido(.05, { vol:.12, filtro:6000, tipoF:'highpass', desde, destino:SON.mus });
@@ -6062,11 +6709,21 @@ function programarMusica(){
   }
 }
 function botonesSonido(){
-  $('btnMusica').textContent = `Música: ${SON.musica ? 'Sí' : 'No'}`;
-  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Sí' : 'No'}`;
-  if (SON.fx) SON.fx.gain.value = SON.efectos ? .5 : 0;
+  $('btnMusica').textContent = `Música: ${SON.musica ? 'Activada' : 'Desactivada'}`;
+  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Activados' : 'Desactivados'}`;
+  const f = $('btnSonFlot'); f.textContent = SON.musica ? '♪' : '✕♪'; f.setAttribute('aria-pressed', SON.musica);
+  f.title = SON.musica ? 'Quitar la música' : 'Poner la música';
+  // el cambio se oye al momento (antes se apagaba poco a poco y las notas ya programadas seguían sonando)
+  if (SON.ctx){
+    const t = SON.ctx.currentTime;
+    SON.mus.gain.cancelScheduledValues(t); SON.mus.gain.setValueAtTime(SON.musica ? .22 : 0, t);
+    SON.fx.gain.value = SON.efectos ? .5 : 0;
+    if (SON.musica){ SON.pista = null; }   // vuelve a empezar la pista desde el principio
+  }
 }
-$('btnMusica').onclick = () => { SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+const alternarMusica = () => { iniciarAudio(); SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+$('btnMusica').onclick = alternarMusica;
+$('btnSonFlot').onclick = alternarMusica;
 $('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); botonesSonido(); };
 botonesSonido();
 
@@ -6334,11 +6991,11 @@ function darEmblemas(n, motivo){
   texto(P.x, P.y - 96, `+${n} emblema${n > 1 ? 's' : ''}`, '#b98bff', 14);
   if (motivo) chat(`Recibes ${n} emblema${n > 1 ? 's' : ''} (${motivo}).`, '#b98bff');
 }
-const STAT_CLASE = { guerrero:['fue','vit'], sombra:['agi','fue'], mago:['int','vit'] };
+const STAT_CLASE = { guerrero:['fue','vit'], sombra:['agi','fue'], mago:['int','vit'], sacerdote:['int','vit'], arquero:['agi','fue'] };
 const PRECIO_EMB = { cabeza:30, amuleto:20, pecho:35, manos:20, piernas:30, pies:20, anillo:15, arma:45 };
 function objetoEmblema(slot, rango){
   const nivel = UMBRAL_RANGO[rango] + 10, pres = (3 + nivel * .7) * RAREZAS[3].m * 1.15, [a, b] = STAT_CLASE[PJ.clase];
-  const base = { arma:{ guerrero:'Espada', sombra:'Daga', mago:'Báculo' }[PJ.clase] }[slot] || RANURAS[slot].bases[0];
+  const base = { arma:ARMA_CLASE[PJ.clase] }[slot] || RANURAS[slot].bases[0];
   const o = { id:'emb-' + slot + '-' + rango + '-' + Date.now().toString(36) + (uidObj++), slot, nombre:`${base} del Triunfo`, rareza:3, nivel,
     stats:{ [a]:Math.round(pres * .6), [b]:Math.round(pres * .4) } };
   if (slot === 'arma') o.dmg = Math.round(pres * 1.25);
@@ -6661,6 +7318,7 @@ function draw(t){
       ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(o.x, o.y + 10, 11, 4, 0, 0, TAU); ctx.fill();
       dibujarIc3('cofre', o.x, o.y - 2, 26);
     }
+    else if (o.t === 'esencia') dibujarEsencia(o, t);
     else {
       ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(o.x, o.y + 9, 9, 3, 0, 0, TAU); ctx.fill();
       dibujarIc3(o.t === 'cons' ? o.k : 'pocion', o.x, o.y - 1, 22);

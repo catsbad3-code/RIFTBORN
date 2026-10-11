@@ -9,12 +9,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Riftborn">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="img/icono.png">
+<link rel="apple-touch-icon" href="img/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="img/icono.png">
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.13.0">
+<link rel="stylesheet" href="css/style.css?v=1.14.0">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -74,6 +76,8 @@
 </div>
 
 <!-- ============ Acceso ============ -->
+<button type="button" class="son-flotante" id="btnSonFlot" aria-pressed="true" title="Música">♪</button>
+
 <div id="pAuth" class="overlay portada wow-login">
   <div class="wl-idioma" translate="no" role="group" aria-label="Idioma / Language">
     <span>Idioma · Language</span>
@@ -92,7 +96,7 @@
   <div class="wl-izq">
     <button class="wbtn" id="tabReg" type="button">Crear cuenta</button>
     <button class="wbtn" id="tabEntrar" type="button">Ya tengo cuenta</button>
-    <small class="wl-version">Versión 1.13.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
+    <small class="wl-version">Versión 1.14.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
   </div>
   <div class="wl-der">
     <button class="wbtn" type="button" data-ir="pAyuda">Cómo jugar</button>
@@ -108,7 +112,9 @@
   <div class="menu">
     <button class="btn principal" data-ir="pPersonajes">Jugar</button>
     <button class="btn" data-ir="pAyuda">Cómo jugar</button>
+    <button class="btn oculto" id="btnInstalar">Instalar el juego</button>
   </div>
+  <p class="nota oculto" id="notaInstalarIos">En iPhone: toca Compartir y luego «Añadir a pantalla de inicio» para instalarlo.</p>
 </div>
 
 <div id="pAyuda" class="overlay portada oculto">
@@ -126,6 +132,7 @@
       <dt>G</dt><dd>Invocar o guardar a tu mascota</dd>
       <dt>Tab</dt><dd>Elegir el siguiente enemigo como objetivo (o haz clic en él)</dd>
       <dt>5 6 7 8</dt><dd>Habilidades de tu clase</dd>
+      <dt>Z</dt><dd>Usar la habilidad que devoraste a un monstruo</dd>
       <dt>I</dt><dd>Buscador de mazmorras</dd>
       <dt>V</dt><dd>Mostrar u ocultar las barras de vida de los enemigos</dd>
       <dt>Esc</dt><dd>Menú de pausa</dd>
@@ -141,14 +148,17 @@
       <li><b>Mascota:</b> cada rata ayuda a su manera y sube de nivel contigo. Dale galletas de queso del mercado cuando tenga hambre.</li>
       <li><b>Tintes:</b> en el mercado puedes cambiar el color de la ropa de tu gato.</li>
       <li><b>La ciudad cambia:</b> un día dura 10 minutos; de noche se encienden las farolas y a veces llueve.</li>
-      <li><b>Clases:</b> el guerrero usa ira (se gana peleando), el cazador de sombras energía y puntos de combo, y el mago maná. Cada clase tiene sus propios poderes en Q, F, R y 1 a 4 (Carga, Hender, Bola de fuego, Ventisca, Veneno letal, Tormenta de cuchillas…) y 5 técnicas más en las teclas 5 a 8.</li>
+      <li><b>Clases:</b> el guerrero usa ira (se gana peleando), el cazador de sombras energía y puntos de combo, el mago y el sacerdote maná, y el arquero enfoque. El sacerdote cura a su grupo y castiga con luz; el arquero ataca de lejos con su arco. Cada clase tiene sus propios poderes en Q, F, R y 1 a 4 (Carga, Bola de fuego, Renovar, Volea, Tormenta de cuchillas…) y 5 técnicas más en las teclas 5 a 8.</li>
+      <li><b>Historia:</b> al subir de rango (E, D, C, B, A y S) se abre un capítulo nuevo en la ciudad. Tu amigo el ratón irá recordando quién lo encerró en el cristal y por qué.</li>
+      <li><b>Devorar:</b> los monstruos a veces dejan su esencia morada. Pásale por encima para devorarla; con suficientes esencias de un monstruo aprendes su habilidad y la usas con la Z.</li>
+      <li><b>Modo app:</b> con el botón «Instalar el juego» del menú lo tienes como una aplicación, y funciona sin internet.</li>
       <li><b>Grupo:</b> con el buscador de mazmorras (I) entras con un tanque y una sanadora. Los enemigos atacan a quien más amenaza les genera.</li>
       <li><b>Emblemas:</b> los dan los jefes. Cámbialos por equipo épico con Vance, en la Asociación de Cazadores.</li>
       <li><b>Casino:</b> entre la posada y el mercado. Tiene tres tragaperras (de 3, 5 y 7 líneas, con comodín, bonus y giros gratis) y una ruleta europea donde pones fichas en el paño, y a Adolfo, el chef, que vende platos que te dejan Bien alimentado.</li>
       <li><b>Durabilidad:</b> tu equipo se gasta al pelear y al morir. Repáralo en la forja.</li>
       <li><b>Jefe de mundo:</b> los primeros 20 minutos de cada hora se abre una grieta roja en la ciudad.</li>
       <li><b>Festivales:</b> según la época del año hay adornos, objetos especiales y un puesto en la plaza.</li>
-      <li><b>Sonido:</b> la música y los efectos se apagan desde la pausa (Esc).</li>
+      <li><b>Sonido:</b> la música se quita con el botón ♪ del menú o desde la pausa (Esc), donde también se apagan los efectos.</li>
     </ul>
   </div>
   <button class="btn" id="btnAyudaVolver">Volver</button>
@@ -223,6 +233,7 @@
     <button class="btn" id="btnVerPerfil">Perfil</button>
     <button class="btn" id="btnGuardar">Guardar partida</button>
     <button class="btn" id="btnHistoria">Ver la historia</button>
+    <button class="btn oculto" id="btnInstalarPausa">Instalar el juego</button>
     <button class="btn" id="btnIdioma" translate="no">Idioma · Language: Español</button>
     <button class="btn oculto" id="btnSaltarPrologo">Saltar el prólogo</button>
     <button class="btn" id="btnMusica">Música: Sí</button>
@@ -347,9 +358,9 @@
   <button class="btn principal" id="btnRevivir">Despertar en la posada</button>
 </div>
 
-<script src="js/en.js?v=1.13.0"></script>
-<script src="js/idioma.js?v=1.13.0"></script>
-<script src="auth/auth.js?v=1.13.0"></script>
-<script src="js/game.js?v=1.13.0"></script>
+<script src="js/en.js?v=1.14.0"></script>
+<script src="js/idioma.js?v=1.14.0"></script>
+<script src="auth/auth.js?v=1.14.0"></script>
+<script src="js/game.js?v=1.14.0"></script>
 </body>
 </html>
