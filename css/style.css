@@ -983,3 +983,4 @@ body.con-son-flot:not(.jugando) .son-flotante{display:block}
 /* el chat no se mete debajo de la barra: más estrecho en pantallas medianas y encima de ella en las pequeñas */
 @media (max-width:1500px){ body:not(.tactil) #chat{width:min(380px,calc(50vw - 325px))} }
 @media (max-width:1240px){ body:not(.tactil) #chat{width:min(340px,40vw);bottom:calc(84px + env(safe-area-inset-bottom,0px));height:140px} }
+.seg-hist .seg-t{color:#ff9ad8}

@@ -1918,27 +1918,29 @@ const CINE = [
     ['narr', 'Cuando abriste los ojos, el aire olía a piedra húmeda... y a magia.'] ] }
 ];
 let cine = null;
-function iniciarCinematica(alTerminar){
-  cine = { e:0, l:0, t0:performance.now(), te:performance.now(), fin:alTerminar, flash:0 };
+function iniciarCinematica(alTerminar, lista = CINE){
+  cine = { lista, e:0, l:0, t0:performance.now(), te:performance.now(), fin:alTerminar, flash:0 };
   pantalla('pPrologo');
   lineaCine();
   requestAnimationFrame(bucleCine);
 }
 function lineaCine(){
-  const [quien, t] = CINE[cine.e].lineas[cine.l];
+  const [quien, t] = cine.lista[cine.e].lineas[cine.l];
   cine.txt = window.tr(typeof t === 'function' ? t() : t); cine.t0 = performance.now(); cine.lleno = false;
-  $('prTexto').className = 'pr-texto' + (quien === 'voz' ? ' voz' : '');
+  $('prTexto').className = 'pr-texto' + (quien !== 'narr' ? ' voz' : '');
+  $('prTexto').style.color = { monarca:'#ff7a7a', aldric:'#ffe48a' }[quien] || '';
   $('prTexto').textContent = '';
   // el destello blanco cuando las luces llegan
-  if (CINE[cine.e].escena === 'luces' && cine.l === 1){ cine.flash = 1; sfx('golpe'); }
-  if (CINE[cine.e].escena === 'vacio' && cine.l === 4) sfx('logro');
+  if (cine.lista[cine.e].escena === 'luces' && cine.l === 1){ cine.flash = 1; sfx('golpe'); }
+  if (cine.lista[cine.e].escena === 'vacio' && cine.l === 4) sfx('logro');
+  if (quien === 'monarca' && cine.l === 0) sfx('jefe');
 }
 function avanzarCine(){
   if (!cine) return;
   if (!cine.lleno){ cine.lleno = true; $('prTexto').textContent = cine.txt; return; }
-  if (++cine.l >= CINE[cine.e].lineas.length){
+  if (++cine.l >= cine.lista[cine.e].lineas.length){
     cine.l = 0;
-    if (++cine.e >= CINE.length){ terminarCine(); return; }
+    if (++cine.e >= cine.lista.length){ terminarCine(); return; }
     cine.te = performance.now();
   }
   lineaCine();
@@ -1965,7 +1967,7 @@ function pintarCine(ahora){
   const cv = $('prCan'), r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
   if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)){ cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
   const c = cv.getContext('2d'), w = cv.width, h = cv.height, b = CINE_BB.getContext('2d');
-  const esc = CINE[cine.e].escena, t = (ahora - cine.te) / 1000;
+  const esc = cine.lista[cine.e].escena, t = (ahora - cine.te) / 1000;
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#000'; b.fillRect(0, 0, 320, 180);
   if (esc === 'calle' || esc === 'luces'){
@@ -2021,6 +2023,7 @@ function pintarCine(ahora){
     for (const [x, y] of [[40, 70], [270, 52], [210, 96]]){ b.fillStyle = `rgba(122,232,255,${.5 + .3 * Math.sin(t * 2 + x)})`; b.fillRect(x, y, 4, 10); b.fillRect(x + 4, y + 4, 3, 6); }
     b.fillStyle = `rgba(0,0,0,${1 - a})`; b.fillRect(0, 0, 320, 180);
   }
+  else pintarEscenaHistoria(b, esc, t, ahora);
   c.imageSmoothingEnabled = false;
   // la escena ocupa todo el lienzo (sin deformarse: se recorta lo que sobra)
   const k = Math.max(w / 320, h / 180), ox = (w - 320 * k) / 2, oy = (h - 180 * k) / 2;
@@ -2032,10 +2035,11 @@ function pintarCine(ahora){
     c.drawImage(CINE_BB, ox, oy, 320 * k, 180 * k);
   }
   // el gato renacido (ya con su ropa de cazador), dibujado encima a su tamaño
-  if (gatosListo && esc !== 'calle' && esc !== 'luces'){
+  if (gatosListo && (esc === 'vacio' || esc === 'cueva' || esc === 'alba')){
     const tipo = PJ.gato || 0;
     let f, x, y, voltear = false, alfa = 1, alto = 30;
     if (esc === 'vacio'){ f = cuadroGato(tipo, 'ab', 0); x = 160; y = 100 + Math.sin(t * 1.6) * 3; alfa = .55 + .2 * Math.sin(t * 3); alto = 40; }
+    else if (esc === 'alba'){ f = cuadroGato(tipo, 'ab', 0); x = 140; y = 158; alto = 34; }
     else { f = cuadroGato(tipo, 'ab', 0); x = 160; y = 150; alfa = Math.min(1, t / 2.5); }
     const [sx, sy, fw, fh] = f, s = alto * k / fh, dw = fw * s, dh = fh * s;
     c.save(); c.globalAlpha = alfa;
@@ -2046,8 +2050,81 @@ function pintarCine(ahora){
     c.drawImage(imgGato(tipo), sx, sy, fw, fh, Math.round(-dw / 2), Math.round(-dh), Math.round(dw), Math.round(dh));
     c.restore();
   }
+  if (esc === 'alba' && ratasListo){
+    const tipo = PJ.mascota ? PJ.mascota.tipo : 0, [sx, sy, fw, fh] = RATAS_DIR[tipo].ab[0], s = 16 * k / fh;
+    c.imageSmoothingEnabled = false; c.drawImage(RATAS_IMG, sx, sy, fw, fh, Math.round(ox + 172 * k - fw * s / 2), Math.round(oy + 158 * k - fh * s), Math.round(fw * s), Math.round(fh * s));
+  }
   // destello blanco
   if (cine.flash > 0){ c.fillStyle = `rgba(255,255,255,${Math.min(1, cine.flash)})`; c.fillRect(0, 0, w, h); cine.flash -= .012; }
+}
+
+// escenas de la historia, pintadas a 320x180 como las del prólogo
+function siluetaHeroe(b, x, pie, col, capa, brazo){
+  // un caballero de pie, con capa y la espada en alto (brazo: 0 abajo, 1 arriba)
+  const r = (dx, dy, w, h, c) => { b.fillStyle = c; b.fillRect(x + dx, pie + dy, w, h); };
+  r(-7, -34, 14, 26, capa); r(-9, -12, 4, 6, capa); r(5, -12, 4, 6, capa);
+  r(-4, -8, 3, 8, col); r(1, -8, 3, 8, col);
+  r(-5, -30, 10, 22, col); r(-4, -38, 8, 8, col); r(-4, -36, 8, 2, '#000');
+  if (brazo){ r(5, -44, 3, 16, col); r(6, -70, 2, 26, '#f4f0e0'); r(3, -46, 8, 2, col); }
+  else { r(5, -28, 3, 14, col); r(7, -30, 2, 26, '#f4f0e0'); }
+}
+function pintarEscenaHistoria(b, esc, t, ahora){
+  if (esc === 'recuerdo'){
+    // un recuerdo en sepia: el héroe y su compañero ratón frente a una grieta
+    const g = b.createLinearGradient(0, 0, 0, 180); g.addColorStop(0, '#5a4026'); g.addColorStop(1, '#2a1a0c');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    b.fillStyle = '#3a2814'; for (let i = 0; i < 8; i++){ const x = i * 44, h = 20 + azarFijo(i + 9) * 30; b.fillRect(x, 130 - h, 46, h); }
+    b.fillStyle = '#6a4a2a'; b.fillRect(0, 130, 320, 50);
+    for (let i = 0; i < 50; i++){ b.fillStyle = '#7a5a36'; b.fillRect((azarFijo(i) * 320) | 0, 132 + ((azarFijo(i + 1) * 46) | 0), 6, 2); }
+    // la grieta que cierran
+    const p = .7 + .3 * Math.sin(t * 3);
+    b.fillStyle = `rgba(255,220,150,${.35 * p})`; b.fillRect(214, 40, 30, 90);
+    b.fillStyle = '#1a0c04'; for (let y = 44; y < 128; y += 4) b.fillRect(226 + Math.round(Math.sin(y * .4) * 4), y, 6, 4);
+    b.fillStyle = '#ffe7b0'; for (let y = 46; y < 126; y += 8) b.fillRect(228 + Math.round(Math.sin(y * .4) * 4), y, 2, 3);
+    siluetaHeroe(b, 150, 132, '#c8a060', '#8a3a1a', t > 1.5 ? 1 : 0);
+    // el ratón a sus pies
+    b.fillStyle = '#d8c8a8'; b.fillRect(168, 126, 8, 5); b.fillRect(174, 123, 4, 4); b.fillStyle = '#1a0c04'; b.fillRect(176, 124, 1, 1); b.fillStyle = '#d8c8a8'; b.fillRect(164, 128, 4, 1);
+    // polvo dorado y viñeta del recuerdo
+    for (let i = 0; i < 30; i++){ const x = (azarFijo(i) * 320 + t * 6) % 320, y = (azarFijo(i + 30) * 180 - t * 4 + 360) % 180; b.fillStyle = `rgba(255,230,170,${.25 + .3 * Math.sin(t + i)})`; b.fillRect(x | 0, y | 0, 1, 1); }
+    const v = b.createRadialGradient(160, 90, 60, 160, 90, 200); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.75)');
+    b.fillStyle = v; b.fillRect(0, 0, 320, 180);
+  } else if (esc === 'grieta'){
+    // de noche, sobre Lumeria, el cielo se rasga en rojo
+    const g = b.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, '#12040a'); g.addColorStop(1, '#2a0c1a');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    const p = .6 + .4 * Math.sin(t * 4), ab = Math.min(1, t / 1.6);
+    const rg = b.createRadialGradient(160, 50, 2, 160, 50, 120 * ab); rg.addColorStop(0, `rgba(255,80,90,${.6 * p})`); rg.addColorStop(1, 'rgba(255,40,60,0)');
+    b.fillStyle = rg; b.fillRect(0, 0, 320, 160);
+    b.fillStyle = '#ff4f6b'; for (let x = 160 - 90 * ab; x < 160 + 90 * ab; x += 3){ const y = 50 + Math.sin(x * .19) * 6 + Math.sin(x * .07) * 8, h = 3 + (1 - Math.abs(x - 160) / 90) * 10; b.fillRect(x | 0, (y - h / 2) | 0, 3, h | 0); }
+    b.fillStyle = '#ffe0e0'; for (let x = 160 - 70 * ab; x < 160 + 70 * ab; x += 6){ b.fillRect(x | 0, (50 + Math.sin(x * .19) * 6 + Math.sin(x * .07) * 8) | 0, 2, 1); }
+    // ciudad en silueta
+    for (let i = 0; i < 10; i++){ const x = i * 33, h = 30 + azarFijo(i + 2) * 45; b.fillStyle = '#0a0308'; b.fillRect(x, 140 - h, 31, h); if (i === 4){ b.fillRect(x + 10, 140 - h - 20, 10, 20); b.fillRect(x + 13, 140 - h - 28, 4, 8); }
+      for (let wy = 140 - h + 6; wy < 134; wy += 9) if (azarFijo(i * 13 + wy) > .6){ b.fillStyle = '#ffb060'; b.fillRect(x + 6 + ((azarFijo(wy) * 18) | 0), wy, 3, 4); } }
+    b.fillStyle = '#0a0308'; b.fillRect(0, 140, 320, 40);
+    for (let i = 0; i < 40; i++){ const x = azarFijo(i) * 320, y = (azarFijo(i + 9) * 140 + t * 20 * (1 + azarFijo(i))) % 140; b.fillStyle = `rgba(255,90,110,${.5 + .4 * Math.sin(t * 2 + i)})`; b.fillRect(x | 0, y | 0, 1, 2); }
+  } else if (esc === 'monarca'){
+    // el Monarca del Vacío, derrotado, entre sombras moradas
+    b.fillStyle = '#08040f'; b.fillRect(0, 0, 320, 180);
+    for (let i = 0; i < 80; i++){ const a = azarFijo(i) * TAU + t * .3, r = 30 + azarFijo(i + 5) * 120; b.fillStyle = `rgba(155,107,255,${.2 + .4 * azarFijo(i + 1)})`; b.fillRect((160 + Math.cos(a) * r) | 0, (90 + Math.sin(a) * r * .6) | 0, 2, 2); }
+    const og = b.createRadialGradient(160, 92, 4, 160, 92, 80); og.addColorStop(0, 'rgba(90,40,160,.55)'); og.addColorStop(1, 'rgba(20,8,40,0)'); b.fillStyle = og; b.fillRect(0, 0, 320, 180);
+    // silueta con corona, encorvada; se va deshaciendo
+    const des = Math.min(1, t / 6);
+    b.fillStyle = '#000'; b.fillRect(130, 70, 60, 80); b.fillRect(140, 46, 40, 30); b.fillRect(120, 90, 14, 50); b.fillRect(186, 90, 14, 50);
+    for (const dx of [140, 152, 164, 176]) b.fillRect(dx, 38, 4, 10);
+    b.fillStyle = `rgba(255,60,80,${.7 + .3 * Math.sin(t * 5)})`; b.fillRect(150, 58, 6, 3); b.fillRect(164, 58, 6, 3);
+    for (let i = 0; i < 60 * des; i++){ b.fillStyle = '#1a0c2a'; b.fillRect((130 + azarFijo(i) * 60) | 0, (70 + azarFijo(i + 3) * 80 - t * 6 * azarFijo(i + 7)) | 0, 3, 3); }
+  } else if (esc === 'alba'){
+    // amanece sobre una colina: el espíritu de Aldric se despide
+    const g = b.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, '#2a3a7a'); g.addColorStop(.55, '#e88a5a'); g.addColorStop(1, '#ffd27a');
+    b.fillStyle = g; b.fillRect(0, 0, 320, 180);
+    const sy = 120 - Math.min(30, t * 6), sg = b.createRadialGradient(240, sy, 2, 240, sy, 60); sg.addColorStop(0, 'rgba(255,250,220,1)'); sg.addColorStop(.25, 'rgba(255,220,140,.7)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
+    b.fillStyle = sg; b.fillRect(160, sy - 60, 160, 120);
+    b.fillStyle = '#3a2a3a'; for (let x = 0; x < 320; x += 2){ const h = 34 + Math.sin(x * .02) * 10 + Math.sin(x * .07) * 3; b.fillRect(x, 160 - h + 20, 2, h); }
+    b.fillStyle = '#2a4a2a'; b.fillRect(0, 158, 320, 22); b.fillStyle = '#3a6a32'; for (let x = 0; x < 320; x += 5) b.fillRect(x, 156 + (azarFijo(x) * 3 | 0), 2, 3);
+    // el espíritu dorado, cada vez más transparente
+    b.globalAlpha = Math.max(0, .85 - t * .06); siluetaHeroe(b, 196, 158, '#ffe48a', '#ffd04a', 0); b.globalAlpha = 1;
+    for (let i = 0; i < 24; i++){ const y = (158 - ((t * 18 + azarFijo(i) * 80) % 90)) | 0; b.fillStyle = `rgba(255,240,180,${.6 * azarFijo(i + 2)})`; b.fillRect((186 + azarFijo(i + 4) * 22) | 0, y, 1, 2); }
+  }
 }
 
 // gato callejero de lado (mirando a la derecha), unos 18x12 píxeles; paso = cuadro de la caminata
@@ -2243,7 +2320,8 @@ function verHistoria(){
   iniciarCinematica(() => {
     dialogo([
       ['narr', 'Así renaciste en Lumeria: en una mazmorra, junto a un ratón sellado que se convirtió en tu mejor amigo.'],
-      ['narr', 'Ahora eres cazador. Cierra portales, sube de rango y descubre por qué tu alma cruzó entre dos mundos.']
+      ...resumenHistoria(),
+      ['narr', (PJ.historia && PJ.historia.cap >= HISTORIA.length) ? 'El misterio está resuelto, pero los portales siguen abriéndose. Tu leyenda continúa.' : 'Ahora eres cazador. Cierra portales, sube de rango y descubre por qué tu alma cruzó entre dos mundos.']
     ]);
   });
 }
@@ -2251,6 +2329,187 @@ function saltarPrologo(){
   if (!prologo) return;
   const cerrar = () => { prologo = { paso:7 }; terminarPrologo(); };
   if (PJ.mascota) cerrar(); else pedirNombreRaton(cerrar);
+}
+
+// =====================================================
+//  HISTORIA: un capítulo por rango (E → S) y el misterio del ratón
+//  Cada capítulo se abre en la ciudad al llegar a su rango: el ratón cuenta lo que recuerda,
+//  hay un objetivo (un jefe o cazar monstruos) y al volver se revela una parte del misterio.
+// =====================================================
+const nombreRaton = () => PJ.mascota ? PJ.mascota.nombre : 'el ratón';
+const HISTORIA = [
+  { rango:0, titulo:'Capítulo 2: La marca del limo', obj:{ tipo:'jefe', rango:0, n:1, txt:'Derrota al Rey Limo (portal de rango E)' },
+    inicio:[
+      ['raton', () => `¡Eh, ${PJ.nombre}! Ya eres cazador. Antes de nada, tengo que confesarte algo... más o menos.`],
+      ['raton', 'Lo del queso era mentira. Bueno, me lo comí, pero no me encerraron por eso.'],
+      ['gato', '¿Entonces por qué te encerraron?'],
+      ['raton', 'No lo recuerdo bien. Trescientos años en un cristal te dejan la cabeza como un queso con agujeros.'],
+      ['raton', 'Pero cuando vi a esos limos en la gruta sentí algo raro. Llévame hasta el Rey Limo, el jefe de los portales de rango E.']
+    ],
+    fin:[
+      ['raton', '¡Mira su corona! Tiene grabada una espada cruzada con una llave.'],
+      ['raton', 'Esa marca... la he visto antes. En una armadura que brillaba como el sol.'],
+      ['gato', '¿De quién era?'],
+      ['raton', 'De un humano. Me llamaba «compañero». Su nombre era... Al... Aldric.'],
+      ['narr', 'Misterio del ratón: el héroe que lo selló se llamaba Aldric.']
+    ], resumen:'El ratón recordó el nombre del héroe que lo selló: Aldric.' },
+  { rango:1, titulo:'Capítulo 3: Arena y recuerdos', obj:{ tipo:'mata', mon:'escorpion', rango:1, n:15, txt:'Caza escorpiones en portales de rango D' },
+    inicio:[
+      ['raton', 'Desde que vi esa marca no paro de soñar con arena. Con un desierto debajo de la tierra.'],
+      ['raton', 'La Caverna de Arena de los portales de rango D... Allí pasó algo. Lo noto en los bigotes.'],
+      ['raton', 'Los escorpiones de esa caverna guardan algo de aquellos días. Si cazamos unos cuantos, quizá recuerde.']
+    ],
+    cine:[
+      { escena:'recuerdo', lineas:[
+        ['narr', 'Hace trescientos años, el mundo no tenía cazadores. Solo tenía a uno.'],
+        ['narr', 'Aldric, el Primer Cazador, cerraba las grietas con su espada... y con la ayuda de un pequeño ratón.'],
+        ['aldric', '«Compañero, tú y yo vamos a cerrar todas las grietas de Lumeria. Te lo prometo.»'] ] }
+    ],
+    fin:[
+      ['raton', 'Lo recuerdo. Yo no era su mascota: era su compañero. Recorrimos juntos todo Lumeria.'],
+      ['gato', 'Entonces, ¿por qué te encerró en un cristal?'],
+      ['raton', 'Eso todavía no lo sé. Pero él nunca me habría hecho daño. Nunca.'],
+      ['narr', 'Misterio del ratón: fue el compañero de Aldric, el Primer Cazador.']
+    ], resumen:'Fue el compañero de viaje de Aldric, el Primer Cazador.' },
+  { rango:2, titulo:'Capítulo 4: La llave', obj:{ tipo:'jefe', rango:2, n:1, txt:'Derrota a la Mantis de Escarcha (portal de rango C)' },
+    inicio:[
+      ['raton', 'La Gruta Helada... hace frío solo de pensarlo.'],
+      ['raton', 'Anoche soñé que la Mantis de Escarcha me buscaba. Decía: «Devuélvenos la llave».'],
+      ['gato', '¿Qué llave?'],
+      ['raton', 'No lo sé. Vamos a preguntárselo. Con educación... y con tus garras.']
+    ],
+    fin:[
+      ['narr', 'Al caer, la Mantis de Escarcha susurró: «La Llave del Vacío... está... dentro del roedor...»'],
+      ['raton', '¿Dentro de mí? ¿La Llave del Vacío?'],
+      ['raton', 'Ahora lo entiendo. Aldric no me encerró para castigarme. Me escondió.'],
+      ['raton', 'La llave que abre y cierra todas las grietas está dentro de mí. Por eso brillaba el cristal.'],
+      ['gato', 'Pues si alguien viene a por ella, tendrá que pasar por encima de mí.'],
+      ['narr', 'Misterio del ratón: guarda en su interior la Llave del Vacío, que abre y cierra todas las grietas.']
+    ], resumen:'Dentro del ratón está la Llave del Vacío, que abre y cierra todas las grietas.' },
+  { rango:3, titulo:'Capítulo 5: Fuego bajo la piel', obj:{ tipo:'jefe', rango:3, n:1, txt:'Derrota a la Araña de Magma (portal de rango B)' },
+    inicio:[
+      ['raton', () => `Algo me quema por dentro, ${PJ.nombre}. La llave está despertando.`],
+      ['raton', 'En el Cráter de Magma hay una araña que teje con fuego. La llave tiembla cada vez que pienso en ella.'],
+      ['gato', 'Entonces vamos a quitarle las ganas de tejer.']
+    ],
+    cine:[
+      { escena:'grieta', lineas:[
+        ['narr', 'Al morir la Araña de Magma, el cielo de Lumeria se abrió en una grieta roja.'],
+        ['monarca', '«Por fin te encuentro, Llave. Trescientos años escondida en una piedra...»'],
+        ['monarca', '«Iré a por ti, ratoncito. Y esta vez no habrá ningún héroe para salvarte.»'] ] }
+    ],
+    fin:[
+      ['raton', '¡Esa voz! Es el que nos perseguía: el Monarca del Vacío.'],
+      ['raton', 'Aldric me selló en aquella cueva porque era el único sitio que el Monarca no podía ver.'],
+      ['raton', () => `Y tú, ${PJ.nombre}, rompiste el cristal. Ahora puede sentirme.`],
+      ['gato', 'Entonces lo derrotaremos antes de que te encuentre.'],
+      ['raton', '¡Mira mis bigotes! Brillan. La llave me deja sentir los portales: te avisaré cuando haya peligro.'],
+      ['narr', 'Misterio del ratón: estaba en esa cueva porque era el único lugar escondido del Monarca del Vacío.']
+    ], resumen:'Aldric lo escondió en la cueva porque era el único lugar que el Monarca del Vacío no podía ver.' },
+  { rango:4, titulo:'Capítulo 6: El Monarca del Vacío', obj:{ tipo:'jefe', rango:4, n:1, txt:'Derrota al Monarca del Vacío (portal de rango A)' },
+    inicio:[
+      ['raton', 'Es la hora. El Abismo del Vacío, los portales de rango A.'],
+      ['raton', 'Si el Monarca cae, nunca más podrá buscarme.'],
+      ['gato', 'Vamos juntos. Como tú y Aldric.'],
+      ['raton', 'No. Mejor que Aldric y yo. Él al final me dejó solo... Tú no lo harás, ¿verdad?'],
+      ['gato', 'Nunca.']
+    ],
+    cine:[
+      { escena:'monarca', lineas:[
+        ['monarca', '«Ja... ja... ¿Crees que yo era el peor monstruo de este mundo?»'],
+        ['monarca', '«Pregúntale al ratón qué fue de su querido Aldric.»'],
+        ['monarca', '«Lo encontrarás en la Grieta Roja. Ya no recordará tu nombre...»'] ] }
+    ],
+    fin:[
+      ['raton', '¿Aldric... en la Grieta Roja?'],
+      ['raton', 'Después de sellarme, cerró la Primera Grieta desde dentro. Se quedó al otro lado para salvar el mundo.'],
+      ['raton', 'Creí que había muerto. Pero si sigue ahí... trescientos años en el Vacío...'],
+      ['gato', 'Entonces iremos a buscarlo.'],
+      ['narr', 'Misterio del ratón: Aldric se sacrificó cerrando la Primera Grieta desde dentro.']
+    ], resumen:'Aldric se sacrificó cerrando la Primera Grieta desde dentro.' },
+  { rango:5, titulo:'Capítulo 7: El último deseo', obj:{ tipo:'jefe', rango:5, n:1, txt:'Derrota al Monarca Carmesí (grieta de rango S)' },
+    inicio:[
+      ['raton', 'El Monarca Carmesí... Dicen que lleva una armadura que brilla como el sol, pero roja como la sangre.'],
+      ['raton', () => `Tengo miedo, ${PJ.nombre}. No de él. De que sea quien yo creo que es.`],
+      ['gato', 'Sea quien sea, no estarás solo.']
+    ],
+    cine:[
+      { escena:'alba', lineas:[
+        ['narr', 'La armadura carmesí se agrietó... y por las grietas salió una luz dorada.'],
+        ['aldric', '«...¿Compañero? ¿Eres tú?»'],
+        ['aldric', '«Te dejé dormido en un cristal. Perdóname. Era la única forma de esconder la llave.»'],
+        ['aldric', '«Antes de cerrar la grieta pedí un último deseo al Mundo: que un alma valiente te encontrara... y te quisiera tanto como yo.»'],
+        ['aldric', '«Gracias, gato de otro mundo. Cuida de él.»'] ] }
+    ],
+    fin:[
+      ['raton', 'Así que por eso renaciste aquí... Él te llamó. Tu deseo y el suyo se encontraron.'],
+      ['raton', 'Ya no hay sello, ni Monarca. Solo un gato y un ratón.'],
+      ['gato', 'Mejores amigos.'],
+      ['raton', 'Mejores amigos. Para siempre... o por lo menos hasta la hora de comer.'],
+      ['narr', 'Fin del primer arco. Lumeria sigue llena de portales: tu leyenda continúa.']
+    ], resumen:'El Monarca Carmesí era Aldric. Su último deseo trajo tu alma a este mundo para que encontraras a su compañero.' }
+];
+const historiaDe = () => (PJ.historia = PJ.historia || { cap:0, prog:0, activo:false, listo:false });
+const capActual = () => HISTORIA[historiaDe().cap];
+let tHistoria = 0;
+// en la ciudad (no en portales ni en ventanas): abrir el capítulo que toca o cerrar el terminado
+function actualizarHistoria(dt){
+  if (!PJ || !PJ.prologo || prologo || cine || pantallaActual || !E || E.tipo === 'mazmorra' || E.tutorial){ tHistoria = 0; return; }
+  const h = historiaDe(), C = HISTORIA[h.cap];
+  if (!C) return;
+  if (!h.activo && rangoCazador() < C.rango) return;
+  if ((tHistoria += dt) < 2.5) return;
+  tHistoria = 0;
+  if (!h.activo) empezarCapitulo();
+  else if (h.listo) terminarCapitulo();
+}
+function empezarCapitulo(){
+  const h = historiaDe(), C = HISTORIA[h.cap];
+  sfx('logro'); banner(C.titulo, 'Un nuevo capítulo de la historia');
+  dialogo(C.inicio, () => {
+    h.activo = true; h.prog = 0; h.listo = false;
+    chat(`Historia: ${C.titulo}. Objetivo: ${C.obj.txt}.`, '#ff9ad8');
+    firmaSeg = ''; guardar();
+  });
+}
+function terminarCapitulo(){
+  const h = historiaDe(), C = HISTORIA[h.cap], R = RANGOS[C.rango];
+  const cerrar = () => dialogo(C.fin, () => {
+    h.cap++; h.activo = false; h.listo = false; h.prog = 0;
+    const oro = Math.round(150 * R.escala) * 100, xp = Math.round(260 * R.escala);
+    PJ.oro += oro; PJ.pociones += 2;
+    sfx('logro'); banner('Capítulo completado', C.titulo);
+    chat(`Capítulo completado: ${C.titulo}. Recibes ${dineroTxt(oro)} y 2 pociones.`, '#ff9ad8');
+    ganarXP(xp, true); firmaSeg = ''; revisarLogros(); guardar();
+  });
+  if (C.cine) iniciarCinematica(cerrar, C.cine); else cerrar();
+}
+// lo que cuenta para el objetivo del capítulo
+function avisarHistoria(tipo, e){
+  if (!PJ || !PJ.historia || !PJ.historia.activo || PJ.historia.listo || !E || E.tutorial) return;
+  const h = PJ.historia, C = HISTORIA[h.cap]; if (!C) return;
+  const o = C.obj;
+  if (o.tipo !== tipo || (E.rango || 0) < o.rango) return;
+  if (tipo === 'mata' && sprDe(e) !== o.mon) return;
+  h.prog++;
+  if (h.prog >= o.n){
+    h.listo = true;
+    sfx('logro'); banner('Objetivo de la historia cumplido', `Vuelve a la ciudad: ${nombreRaton()} quiere contarte algo`);
+    chat(`Historia: objetivo cumplido (${o.txt}). Vuelve a la ciudad.`, '#ff9ad8');
+  }
+  firmaSeg = '';
+}
+// la línea de la historia en el seguimiento de misiones
+function filaHistoria(){
+  const h = PJ.historia, C = h && HISTORIA[h.cap];
+  if (!C || !h.activo) return '';
+  return `<div class="seg-m seg-hist ${h.listo ? 'ok' : ''}"><span class="seg-t">📜 ${C.titulo}</span>` +
+    (h.listo ? '<span class="seg-o ok">Vuelve a la ciudad</span>' : `<span class="seg-o">- ${C.obj.txt}${C.obj.n > 1 ? `: ${h.prog}/${C.obj.n}` : ''}</span>`) + '</div>';
+}
+// lo que ya sabes del misterio (en «Ver la historia» del menú de pausa)
+function resumenHistoria(){
+  const h = PJ.historia || { cap:0 };
+  return HISTORIA.slice(0, h.cap).map(C => ['narr', `${C.titulo.split(':')[1].trim()}: ${C.resumen}`]);
 }
 
 // ---------- hermandades ----------
@@ -2616,6 +2875,7 @@ function salirMazmorra(despejada){
 function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
+  avisarHistoria('jefe');
   PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD(); premioJefeMundo();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
@@ -4314,6 +4574,7 @@ function matar(e){
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   botinEvento(e);
   soltarEsencia(e);
+  avisarHistoria('mata', e);
   { const n = sprDe(e); if (n && !(e.jefe && (n === 'arana' || n === 'jabali'))){ const D = MON.tipos[n]; cadaveres.push({ n, x:e.x, pie:e.y + e.r * .8, alto:altoDe(e), ref:MON.cuadros[D.walk[0]][3], flip:D.mira !== 0 && (e.face || 1) !== D.mira, t0:performance.now() }); } }
   chispas(e.x, e.y, e.color, e.jefe ? 70 : 14, e.jefe ? 340 : 200);
   ganarXP(e.xp);
@@ -4541,7 +4802,7 @@ function centrarCam(inmediato, dt = 0){
 
 function update(dt){
   PJ.tiempo += dt;
-  actualizarPrologo(dt);
+  actualizarPrologo(dt); actualizarHistoria(dt);
   // movimiento
   let mx = 0, my = 0;
   if (keys.KeyW || keys.ArrowUp) my--;
@@ -6030,9 +6291,10 @@ function actualizarSeguimiento(){
   if (!PJ || !enJuego){ if (firmaSeg){ firmaSeg = ''; $('seguimiento').innerHTML = ''; } return; }
   const ids = activas().filter(id => PJ.misiones[id].sigue !== false);
   const filas = ids.map(id => { const e = estadoMision(id); return [id, MISIONES[id].titulo, e.prog, e.meta, e.lista, MISIONES[id].objetivo(e.meta)]; });
-  const f = JSON.stringify(filas) + PJ.segOculto; if (f === firmaSeg) return; firmaSeg = f;
+  const fh = filaHistoria();
+  const f = JSON.stringify(filas) + PJ.segOculto + fh; if (f === firmaSeg) return; firmaSeg = f;
   const plegado = PJ.segOculto;
-  $('seguimiento').innerHTML = filas.length ? `<b class="seg-cab"><span>Misiones (${filas.length})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : filas.map(([id, t, p, m, ok, obj]) =>
+  $('seguimiento').innerHTML = (filas.length || fh) ? `<b class="seg-cab"><span>Misiones (${filas.length + (fh ? 1 : 0)})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : fh + filas.map(([id, t, p, m, ok, obj]) =>
     `<div class="seg-m ${ok ? 'ok' : ''}" data-segmis="${id}"><span class="seg-t">${t}</span><span class="seg-o">- ${obj.replace(/^(Trae|Elimina|Despeja) \d+ /, '')}: ${p}/${m}</span>${ok ? '<span class="seg-o ok">Listo para entregar</span>' : ''}</div>`).join('')) : '';
   const tg = $('segTog'); if (tg) tg.onclick = () => { PJ.segOculto = !PJ.segOculto; firmaSeg = ''; guardar(); actualizarSeguimiento(); };
   $('seguimiento').querySelectorAll('[data-segmis]').forEach(d => d.onclick = () => { misSel = d.dataset.segmis; abrirVentana('wMis'); });
@@ -6208,6 +6470,8 @@ const LOGROS = [
   { id:'t1',      n:'Cazatitanes',            d:'Derrota a un titán semanal.',        titulo:'Cazatitanes',           ok:p => (p.semanalesTotal || 0) >= 1 },
   { id:'h1',      n:'Trasnochador',           d:'Juega una hora con este personaje.', titulo:'el Trasnochador',       ok:p => p.tiempo >= 3600 },
   { id:'tal',     n:'Erudito',                d:'Reparte 5 puntos de talento.',       titulo:'el Erudito',            ok:p => talentosGastados(p) >= 5 },
+  { id:'hllave',  n:'Guardián de la llave',   d:'Descubre el secreto del ratón (capítulo 4).', titulo:'Guardián de la Llave', ok:p => ((p.historia || {}).cap || 0) >= 3 },
+  { id:'hfin',    n:'El último deseo',        d:'Termina el primer arco de la historia.', titulo:'Amigo de Aldric',      ok:p => ((p.historia || {}).cap || 0) >= HISTORIA.length },
   { id:'moda',    n:'A la moda',              d:'Tiñe tu ropa en el mercado.',        titulo:'el Elegante',           ok:p => (p.tintes || []).length > 0 }
 ];
 function revisarLogros(){
@@ -6414,7 +6678,7 @@ const PISTAS = {
   menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
 };
 function pistaActual(){
-  if (cine){ const esc = CINE[cine.e].escena; return esc === 'calle' || esc === 'luces' ? 'lluvia' : esc === 'vacio' ? 'eter' : 'gruta'; }
+  if (cine){ const esc = cine.lista[cine.e].escena; return esc === 'calle' || esc === 'luces' ? 'lluvia' : esc === 'vacio' || esc === 'recuerdo' || esc === 'alba' ? 'eter' : 'gruta'; }
   if (!enJuego) return 'menu';
   if (E.tutorial || pantallaActual === 'pDialogo' && E.tipo !== 'casino') return 'gruta';
   if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
