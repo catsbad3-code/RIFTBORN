@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.14.1'; // también en index.html (estilos y scripts)
+const VERSION = '1.15.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -378,12 +378,12 @@ function dineroTxt(c){
 // =====================================================
 //  NAVEGACIÓN
 // =====================================================
-const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas', 'pEvento', 'pCasino', 'pDialogo', 'pPrologo'];
+const PANTALLAS = ['pAuth','pMenu','pAyuda','pPersonajes','pCrear','pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMuerte','pMision', 'pBuscador', 'pListo', 'pEmblemas', 'pEvento', 'pCasino', 'pDialogo', 'pPrologo', 'pVideos'];
 const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota','pMision','pBuscador','pEmblemas','pEvento','pCasino'];
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
-  document.body.classList.toggle('con-son-flot', !enJuego);
+  document.body.classList.toggle('con-son-flot', !enJuego && id !== 'pPrologo');   // en las cinemáticas taparía «Saltar»
   PANTALLAS.forEach(p => $(p).classList.toggle('oculto', p !== id));
   sticks.mov = null; mouse.izq = false; holdAtk = false;
 }
@@ -1965,11 +1965,14 @@ function bucleCine(){
   pintarCine(ahora);
   requestAnimationFrame(bucleCine);
 }
-function pintarCine(ahora){
-  const cv = $('prCan'), r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
-  if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)){ cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+// cv y cn: también pinta las miniaturas de la sala de vídeos (un lienzo pequeño y una escena fija)
+function pintarCine(ahora, cv = $('prCan'), cn = cine){
+  if (cv.id === 'prCan'){
+    const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)){ cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+  }
   const c = cv.getContext('2d'), w = cv.width, h = cv.height, b = CINE_BB.getContext('2d');
-  const esc = cine.lista[cine.e].escena, t = (ahora - cine.te) / 1000;
+  const esc = cn.lista[cn.e].escena, t = (ahora - cn.te) / 1000;
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#000'; b.fillRect(0, 0, 320, 180);
   if (esc === 'calle' || esc === 'luces'){
@@ -2057,7 +2060,7 @@ function pintarCine(ahora){
     c.imageSmoothingEnabled = false; c.drawImage(RATAS_IMG, sx, sy, fw, fh, Math.round(ox + 172 * k - fw * s / 2), Math.round(oy + 158 * k - fh * s), Math.round(fw * s), Math.round(fh * s));
   }
   // destello blanco
-  if (cine.flash > 0){ c.fillStyle = `rgba(255,255,255,${Math.min(1, cine.flash)})`; c.fillRect(0, 0, w, h); cine.flash -= .012; }
+  if (cn.flash > 0){ c.fillStyle = `rgba(255,255,255,${Math.min(1, cn.flash)})`; c.fillRect(0, 0, w, h); cn.flash -= .012; }
 }
 
 // escenas de la historia, pintadas a 320x180 como las del prólogo
@@ -2513,6 +2516,36 @@ function resumenHistoria(){
   const h = PJ.historia || { cap:0 };
   return HISTORIA.slice(0, h.cap).map(C => ['narr', () => `${window.tr(C.titulo.split(':')[1].trim())}: ${window.tr(C.resumen)}`]);
 }
+
+// ---------- sala de vídeos: todas las cinemáticas, desde fuera del juego ----------
+// fuera del juego no hay personaje: se ven con un gato de muestra (o con el tuyo, si ya elegiste uno)
+const VIDEOS = () => [
+  { t:'Prólogo: Renacido', d:'El gato muere en nuestro mundo y renace en Lumeria.', lista:CINE },
+  ...HISTORIA.filter(C => C.cine).map(C => ({ t:C.titulo, d:C.resumen, lista:C.cine }))
+];
+let videosVolver = 'pAuth', pjVideo = null;
+function abrirVideos(){
+  if (pantallaActual && pantallaActual !== 'pVideos' && pantallaActual !== 'pPrologo') videosVolver = pantallaActual;
+  const lista = VIDEOS(), ahora = performance.now();
+  $('vidLista').innerHTML = lista.map((v, i) => `<button class="vid" type="button" data-vid="${i}"><span class="vid-mini"><canvas width="320" height="180"></canvas><span class="vid-play">▶</span></span><b>${v.t}</b><small>${v.d}</small></button>`).join('');
+  pantalla('pVideos');
+  conPjVideo(() => $('vidLista').querySelectorAll('canvas').forEach((cv, i) => pintarCine(ahora, cv, { lista:[lista[i].lista[0]], e:0, te:ahora - 3000, flash:0 })));
+  $('vidLista').querySelectorAll('[data-vid]').forEach(b => b.onclick = () => verVideo(lista[+b.dataset.vid].lista));
+}
+// presta un personaje de muestra mientras dura la cinemática
+function conPjVideo(fn){
+  const propio = PJ;
+  if (!propio) PJ = { nombre:'Gato', gato:0, clase:'mago', mascota:null };
+  try { fn(); } finally { if (!propio) PJ = null; }
+}
+function verVideo(lista){
+  pjVideo = PJ ? null : { nombre:'Gato', gato:0, clase:'mago', mascota:null };
+  if (pjVideo) PJ = pjVideo;
+  iniciarCinematica(() => { if (pjVideo && PJ === pjVideo) PJ = null; pjVideo = null; abrirVideos(); }, lista);
+}
+$('btnVidVolver').onclick = () => ir(videosVolver);
+$('btnVidTodo').onclick = () => verVideo(VIDEOS().flatMap(v => v.lista));
+document.querySelectorAll('[data-videos]').forEach(b => b.addEventListener('click', abrirVideos));
 
 // ---------- hermandades ----------
 const PRECIO_HERMANDAD = 5000; // 50 de plata

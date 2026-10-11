@@ -16,7 +16,7 @@
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.14.1">
+<link rel="stylesheet" href="css/style.css?v=1.15.0">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -96,10 +96,11 @@
   <div class="wl-izq">
     <button class="wbtn" id="tabReg" type="button">Crear cuenta</button>
     <button class="wbtn" id="tabEntrar" type="button">Ya tengo cuenta</button>
-    <small class="wl-version">Versión 1.14.1 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
+    <small class="wl-version">Versión 1.15.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
   </div>
   <div class="wl-der">
     <button class="wbtn" type="button" data-ir="pAyuda">Cómo jugar</button>
+    <button class="wbtn" type="button" data-videos>🎬 Vídeos</button>
     <button class="wbtn" type="button" id="btnCreditos">Créditos</button>
   </div>
   <p class="wl-copy">Riftborn © 2026. Un juego de cazadores, portales y gatos.</p>
@@ -112,6 +113,7 @@
   <div class="menu">
     <button class="btn principal" data-ir="pPersonajes">Jugar</button>
     <button class="btn" data-ir="pAyuda">Cómo jugar</button>
+    <button class="btn" data-videos>🎬 Vídeos</button>
     <button class="btn oculto" id="btnInstalar">Instalar el juego</button>
   </div>
   <p class="nota oculto" id="notaInstalarIos">En iPhone: toca Compartir y luego «Añadir a pantalla de inicio» para instalarlo.</p>
@@ -176,7 +178,7 @@
     <button class="wbtn" id="btnNuevoPj">Crear personaje</button>
   </div>
   <button class="wbtn enorme" id="btnEntrarMundo">Entrar al mundo</button>
-  <div class="ws-izq"><button class="wbtn" data-ir="pAyuda">Cómo jugar</button></div>
+  <div class="ws-izq"><button class="wbtn" data-ir="pAyuda">Cómo jugar</button><button class="wbtn" data-videos>🎬 Vídeos</button></div>
   <div class="ws-der">
     <button class="wbtn" id="btnBorrarPj">Borrar personaje</button>
     <button class="wbtn" id="btnLogout">Atrás</button>
@@ -312,6 +314,13 @@
   </div>
 </div>
 
+<div id="pVideos" class="overlay portada oculto">
+  <h2>Vídeos</h2>
+  <p class="tenue vid-sub">Todas las cinemáticas de la historia. Toca una para verla.</p>
+  <div class="vid-lista" id="vidLista"></div>
+  <div class="vid-acc"><button class="btn principal" id="btnVidTodo">Ver todo seguido</button><button class="btn" id="btnVidVolver">Volver</button></div>
+</div>
+
 <div id="pPrologo" class="overlay oculto">
   <canvas id="prCan"></canvas>
   <p class="pr-texto" id="prTexto"></p>
@@ -359,9 +368,9 @@
   <button class="btn principal" id="btnRevivir">Despertar en la posada</button>
 </div>
 
-<script src="js/en.js?v=1.14.1"></script>
-<script src="js/idioma.js?v=1.14.1"></script>
-<script src="auth/auth.js?v=1.14.1"></script>
-<script src="js/game.js?v=1.14.1"></script>
+<script src="js/en.js?v=1.15.0"></script>
+<script src="js/idioma.js?v=1.15.0"></script>
+<script src="auth/auth.js?v=1.15.0"></script>
+<script src="js/game.js?v=1.15.0"></script>
 </body>
 </html>
