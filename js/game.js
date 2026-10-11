@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.16.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.16.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -5499,21 +5499,21 @@ function dibujarJugador(t){
   } else {
     const r = Math.sin(t / 420); ky = 1 + .025 * r; kx = 1 - .012 * r;
   }
-  // montado: el gato va de lado, sentado (sin pasos) sobre el jabalí, que es el que anda
-  let subida = 0;
-  const montado = enMontura();
-  if (montado && !pose){ dir = 'lado'; derecha = P.ladoMont !== false; f = 0; rot = 0; kx = 1; ky = 1; alza = 0; subida = dibujarMontura(t, mov, derecha, pie); }
+  // montado: el jinete entero (jabalí, silla, gato sentado y su pierna) lo pinta dibujarJinete
+  let subida = 0, cabeza = 0;
+  const montado = enMontura(), jinete = montado && !pose && GD.px;
+  if (jinete){ cabeza = dibujarJinete(t, mov, P.ladoMont !== false, pie, GD); subida = 1; }
   // la vista de lado mira a la izquierda en la hoja: se refleja para ir a la derecha
   // si el gato tiene vista propia hacia la derecha se usa; si no, se refleja
   const usarDe = dir === 'lado' && derecha && GD.de && GD.de.length;
   const flip = dir === 'lado' && derecha && !usarDe;
   let setV = usarDe ? 'de' : dir, fV = f;
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
-  if ((!mov || montado) && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
+  if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
   // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
   let dxA = 0, dyA = 0, kAtk = 0;
   if (GD.px){
-    alza = mov && !pose && !montado ? 0 : Math.round(alza);
+    alza = mov && !pose ? 0 : Math.round(alza);
     if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
     rot = 0; kx = 1; ky = 1;
     // ataque: estocada hacia donde apunta (en píxeles enteros); al recibir un golpe, retrocede y tiembla
@@ -5530,9 +5530,10 @@ function dibujarJugador(t){
   if (P.golpe > 0 && !GD.px) ctx.globalAlpha = .65;
   // pixel art: tras el destello blanco, parpadea semitransparente mientras es invulnerable
   if (GD.px && P.inv > 0 && P.golpe <= 0 && Math.floor(t / 60) % 2) ctx.globalAlpha = .45;
+  if (!jinete){
   ctx.save();
-  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza - subida) + dyA); }
-  else ctx.translate(P.x, pie + alza - subida);
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza) + dyA); }
+  else ctx.translate(P.x, pie + alza);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
   const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : hojaJugador();
@@ -5541,10 +5542,11 @@ function dibujarJugador(t){
   ctx.drawImage(hojaG, sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   if (GD.px) dibujarEquipoGato(ctx, imgGato(PJ.gato), frG, setV, esc, PJ.equipo, 'frente');
   ctx.restore();
+  }
   ctx.globalAlpha = 1;
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
-  const ny = pie - ALTO_GATO_PJ - 10 - subida;
+  const ny = jinete ? cabeza - 10 : pie - ALTO_GATO_PJ - 10;
   rotulo(PJ.nombre, P.x, ny, '700 14px Rajdhani, sans-serif', '#7fc8ff', 'rgba(0,0,0,.85)', 3);
   const tit = tituloActual();
   if (tit) rotulo(`«${tit}»`, P.x, ny - 15, '600 12px Rajdhani, sans-serif', '#ffd100', 'rgba(0,0,0,.85)', 3);
@@ -7611,21 +7613,117 @@ function toggleMontura(){
   texto(P.x, P.y - 90, P.montura ? 'Montas tu jabalí' : 'Te bajas del jabalí', '#ffd76a', 14);
   $('btnMontura').setAttribute('aria-pressed', P.montura);
 }
-// dibuja el jabalí con su silla y devuelve cuánto sube el gato para ir sentado encima
-function dibujarMontura(t, mov, derecha, pie){
-  if (!monListo) return 0;
-  const D = MON.tipos.jabali, lista = mov ? D.walk : D.idle;
-  const idx = lista[(mov ? Math.floor(P.paso / 9) : Math.floor(t / 260)) % lista.length];
-  const ref = MON.cuadros[D.walk[0]][3];
-  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie + 2, 34, 8, 0, 0, TAU); ctx.fill();
-  const alto = pintarMonstruo('jabali', idx, P.x, pie + 4, ref, ref, !derecha, 0, null);
-  // silla roja con borde dorado sobre el lomo
-  const lomo = Math.round(pie + 4 - alto * .62), x = Math.round(P.x) + (derecha ? -6 : 6);
-  ctx.fillStyle = '#1a0c08'; ctx.fillRect(x - 13, lomo - 3, 26, 9);
-  ctx.fillStyle = '#b8242c'; ctx.fillRect(x - 12, lomo - 2, 24, 7);
-  ctx.fillStyle = '#e8b84a'; ctx.fillRect(x - 12, lomo + 4, 24, 1); ctx.fillRect(x - 2, lomo + 5, 4, 6);
-  // el gato sube y baja un poco con el trote
-  return Math.round(alto * .55) + (mov ? (Math.floor(P.paso / 9) % 2) * 2 : 0);
+// silueta de cada cuadro del jabalí (una vez): dónde empieza el lomo (sin la cresta oscura) y dónde acaba la barriga
+const PERFIL_JAB = new Map();
+function perfilJabali(idx){
+  if (PERFIL_JAB.has(idx)) return PERFIL_JAB.get(idx);
+  const [sx, sy, w, h] = MON.cuadros[idx];
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const a = c.getContext('2d', { willReadFrequently:true }); a.drawImage(MON_IMG, sx, sy, w, h, 0, 0, w, h);
+  const d = a.getImageData(0, 0, w, h).data, lomo = [], panza = [];
+  for (let x = 0; x < w; x++){
+    lomo[x] = -1; panza[x] = -1;
+    // el lomo empieza donde hay tres píxeles claros de cuerpo seguidos (la cresta es más oscura y tiene brillos sueltos)
+    const claro = y => { const k = (y * w + x) * 4; return d[k + 3] > 127 && d[k] * .3 + d[k + 1] * .59 + d[k + 2] * .11 > 110; };
+    for (let y = 0; y < h - 2; y++) if (claro(y) && claro(y + 1) && claro(y + 2)){ lomo[x] = y; break; }
+    for (let y = h - 1; y >= 0; y--){ if (d[(y * w + x) * 4 + 3] > 127){ panza[x] = y; break; } }
+  }
+  const r = { w, h, lomo, panza }; PERFIL_JAB.set(idx, r); return r;
+}
+// de los cuadros de caminar de lado, el de las piernas juntas (paso intermedio): visto de lado es una sola pierna
+const CUADRO_JINETE = new Map();
+function cuadroJinete(){
+  const clave = PJ.gato + '|' + (PJ.tinte || '');
+  if (CUADRO_JINETE.has(clave)) return CUADRO_JINETE.get(clave);
+  const lista = GATOS_DIR[PJ.gato].lado; let mejor = lista[0], min = 1e9;
+  for (const fr of lista){
+    const [sx, sy, w, h] = fr, c = document.createElement('canvas'); c.width = w; c.height = h;
+    const a = c.getContext('2d', { willReadFrequently:true }); a.drawImage(hojaJugador(), sx, sy, w, h, 0, 0, w, h);
+    const d = a.getImageData(0, Math.round(h * .8), w, h - Math.round(h * .8)).data;
+    let x0 = w, x1 = -1;
+    for (let k = 0; k < d.length; k += 4) if (d[k + 3] > 127){ const x = (k / 4) % w; if (x < x0) x0 = x; if (x > x1) x1 = x; }
+    if (x1 - x0 < min){ min = x1 - x0; mejor = fr; }
+  }
+  // la pierna de ese cuadro: dónde está (columnas) y de qué color es el pantalón (lo más repetido, sin el contorno)
+  const [sx, sy, w, h] = mejor, hr = Math.round(h * .74), c = document.createElement('canvas'); c.width = w; c.height = h;
+  const a = c.getContext('2d', { willReadFrequently:true }); a.drawImage(hojaJugador(), sx, sy, w, h, 0, 0, w, h);
+  const d = a.getImageData(0, 0, w, h).data, n = {};
+  let px0 = w, px1 = -1, col = '#333', m = 0;
+  for (let y = hr; y < h; y++) for (let x = 0; x < w; x++){
+    const k = (y * w + x) * 4; if (d[k + 3] < 128) continue;
+    if (y >= h - 6){ if (x < px0) px0 = x; if (x > px1) px1 = x; }   // las columnas de la pierna, por los pies (sin la cola)
+    if (y < hr + 2 || y > h - 4 || d[k] * .3 + d[k + 1] * .59 + d[k + 2] * .11 < 28) continue;
+    const cc = `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`; n[cc] = (n[cc] || 0) + 1; if (n[cc] > m){ m = n[cc]; col = cc; }
+  }
+  const r = { fr:mejor, hr, px0, px1, pantalon:col };
+  CUADRO_JINETE.set(clave, r); return r;
+}
+// el jinete completo: jabalí (al doble, para que sea una montura de verdad), manta y silla ajustadas a la curva del
+// lomo, y el gato sentado con la cadera en la silla y la pierna (las dos juntas, vistas de lado) colgando por el
+// costado hasta el estribo. Todo se pinta mirando a la derecha y se refleja entero para ir a la izquierda.
+// Devuelve dónde queda la cabeza (para el nombre).
+const K_MONTURA = 2;
+function dibujarJinete(t, mov, derecha, pie, GD){
+  if (!monListo) return pie - ALTO_GATO_PJ;
+  const K = K_MONTURA, D = MON.tipos.jabali, lista = mov ? D.walk : D.idle;
+  const idx = lista[(mov ? Math.floor(P.paso / 12) : Math.floor(t / 260)) % lista.length];
+  const [bx, by] = MON.cuadros[idx], { w, h, lomo } = perfilJabali(idx);
+  const X0 = Math.round(P.x) + (derecha ? -1 : 1) * Math.round(w * K / 2), Y0 = Math.round(pie + 4) - h * K;
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie + 2, w * K * .42, 10, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.translate(X0, Y0); if (!derecha) ctx.scale(-1, 1);
+  const px = (x, y, ancho, alto, col) => { ctx.fillStyle = col; ctx.fillRect(x, y, ancho, alto); };
+  // la silla va en el centro del lomo; su línea sigue la curva del cuerpo (suavizada, sin la cresta)
+  const x0 = Math.round(w * .3), x1 = Math.round(w * .6), sc = Math.round((x0 + x1) / 2);
+  const linea = x => { let a = 0, n = 0; for (let k = x - 2; k <= x + 2; k++) if (lomo[k] >= 0){ a += lomo[k]; n++; } return n ? Math.round(a / n) : lomo[sc]; };
+  const L = []; for (let x = x0 - 3; x <= x1 + 3; x++) L[x] = linea(x);
+  const O = '#1a0c08';
+  // --- en píxeles del dibujo del jabalí (cada uno vale K) ---
+  ctx.save(); ctx.scale(K, K);
+  // jabalí, sin la cresta que asomaría por encima de la silla
+  ctx.save(); ctx.beginPath(); ctx.rect(-4, -60, w + 8, h + 70);
+  ctx.moveTo(x0 - 1, -60); ctx.lineTo(x0 - 1, L[x0] - 1); for (let x = x0; x <= x1; x++) ctx.lineTo(x, L[x] - 1); ctx.lineTo(x1 + 1, L[x1] - 1); ctx.lineTo(x1 + 1, -60); ctx.closePath();
+  ctx.clip('evenodd');
+  ctx.drawImage(MON_IMG, bx, by, w, h, 0, 0, w, h);
+  ctx.restore();
+  // manta roja con ribete dorado que cae por el costado
+  for (let x = x0 - 2; x <= x1 + 2; x++) px(x, L[x] - 1, 1, 7, O);
+  for (let x = x0 - 1; x <= x1 + 1; x++){ px(x, L[x], 1, 4, '#a01c28'); px(x, L[x] + 4, 1, 1, '#e8b84a'); }
+  for (let x = x0 + 1; x <= x1 - 1; x += 3) px(x, L[x] + 5, 1, 1, '#e8b84a');   // flecos
+  // asiento de cuero, con el borrén trasero alto
+  for (let x = x0; x <= x1; x++) px(x, L[x] - 3, 1, 4, O);
+  for (let x = x0 + 1; x <= x1 - 1; x++){ px(x, L[x] - 2, 1, 2, '#7a4420'); px(x, L[x] - 2, 1, 1, '#9a5a2c'); }
+  px(x0 - 1, L[x0] - 6, 3, 5, O); px(x0, L[x0] - 5, 1, 3, '#9a5a2c');
+  ctx.restore();
+  // --- el gato, en píxeles de pantalla ---
+  const J = cuadroJinete(), fr = J.fr, [sx, sy, fw, fh, ax, ay] = fr, esc = escGato(PJ.gato, ALTO_GATO_PJ / 96);
+  // la cadera (el bajo de la ropa) va en el asiento
+  const cadera = J.hr * esc, asientoY = (L[sc] - 2) * K, asientoX = sc * K;
+  // a caballo no lleva el arma en la mano (quedaría flotando junto a la silla): solo el casco
+  const equipoJ = { ...PJ.equipo, arma:null };
+  const AV = 6 * esc, BAJA = 3 * esc;   // la pierna se adelanta y baja: muslo hacia delante y rodilla doblada
+  ctx.save();
+  ctx.translate(asientoX, asientoY - cadera + Math.round(fh * esc)); ctx.scale(-1, 1);   // el dibujo del gato mira a la izquierda (aquí, -x es hacia delante)
+  const yCad = (J.hr - ay) * esc, xPierna = (J.px0 - ax) * esc - AV, anchoP = (J.px1 - J.px0 + 1) * esc;
+  // el cuerpo, de la cadera para arriba
+  ctx.save(); ctx.beginPath(); ctx.rect(-200, -400, 400, 400 + yCad); ctx.clip();
+  ctx.drawImage(hojaJugador(), sx, sy, fw, fh, -ax * esc, -ay * esc, fw * esc, fh * esc);
+  dibujarEquipoGato(ctx, imgGato(PJ.gato), fr, 'lado', esc, equipoJ, 'frente');
+  ctx.restore();
+  // muslo: del asiento hacia delante, del color del pantalón
+  const xMuslo0 = xPierna, xMuslo1 = xPierna + anchoP + 4 * esc;
+  ctx.fillStyle = '#140c10'; ctx.fillRect(xMuslo0 - esc, yCad - 2 * esc, xMuslo1 - xMuslo0 + 2 * esc, 7 * esc);
+  ctx.fillStyle = J.pantalon; ctx.fillRect(xMuslo0, yCad - esc, xMuslo1 - xMuslo0, 5 * esc);
+  // la pierna del propio dibujo (las dos juntas, vistas de lado), colgando hacia el estribo
+  ctx.drawImage(hojaJugador(), sx + J.px0, sy + J.hr, J.px1 - J.px0 + 1, fh - J.hr, xPierna, yCad + BAJA, anchoP, (fh - J.hr) * esc);
+  ctx.restore();
+  // perilla delantera de la silla, por delante de la pierna del gato
+  ctx.save(); ctx.scale(K, K); px(x1 - 1, L[x1] - 5, 3, 4, O); px(x1, L[x1] - 4, 1, 2, '#9a5a2c'); ctx.restore();
+  // estribo de metal bajo la suela
+  const suela = asientoY + (fh - J.hr) * esc + BAJA, pieX = asientoX - (J.px0 + J.px1 + 1 - 2 * ax) * esc / 2 + AV;
+  px(Math.round(pieX - 7), suela - 1, 14, 3, O); px(Math.round(pieX - 6), suela, 12, 1, '#c8c8d8');
+  ctx.restore();
+  return Y0 + asientoY - cadera;
 }
 
 // =====================================================
