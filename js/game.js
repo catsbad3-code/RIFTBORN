@@ -741,7 +741,7 @@ function guardar(){
 }
 
 function limpiarEscena(){
-  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = [];
+  enemigos = []; proys = []; proysE = []; botin = []; efectos = []; particulas = []; textos = []; soldados = []; zonas = []; huellas = []; clima = []; peligros = [];
   jefeVivo = null; campo = null; $('jefe').classList.add('oculto');
   if (P) P.objetivo = null;
   interCerca = null; $('btnInteractuar').classList.add('oculto');
@@ -4591,6 +4591,7 @@ function golpeLinea(x1, y1, x2, y2, ancho, dmg){
 function herir(e, dmg, critExtra = 0){
   sfx('golpe', .06);
   if (e.muerto) return;
+  if (e.rugido > 0){ if (Math.random() < .2) texto(e.x, e.y - e.r - 10, 'Inmune', '#9a91c2', 13); return; }
   dmg *= rand(.9, 1.1) * efMod.dmg() * (e.vuln > 0 ? 1.3 : 1);
   const forzado = !FUENTE && P.critSig && critExtra >= 0; if (forzado) P.critSig = false;
   const crit = forzado || Math.random() < D.crit + critExtra;
@@ -5084,15 +5085,76 @@ function updateMazmorra(dt){
     else if (Math.hypot(p.x - P.x, p.y - P.y) < p.r + P.r - 2){ golpearJugador(p.dmg, p.src); if (p.tela){ ponerEfecto('agi_dn', 2.5); texto(P.x, P.y - 90, '¡Atrapado en la telaraña!', '#f2f2f2', 13); } p.vida = 0; }
   }
   proysE = proysE.filter(p => p.vida > 0);
+  if (peligros.length) updatePeligros(dt);
 }
 
+// =====================================================
+//  JEFES CON FASES: al 66% y al 33% de vida rugen, se vuelven más rápidos y estrenan ataques
+//  Los ataques nuevos marcan el suelo antes de golpear (círculos que se llenan): hay que salir a tiempo.
+// =====================================================
+let peligros = [];
+const PATRONES_FASE = [null,
+  ['anillo', 'carga', 'invocar'],
+  ['anillo', 'lluvia', 'carga', 'pisoton', 'invocar', 'lluvia'],
+  ['espiral', 'lluvia', 'pisoton', 'carga', 'charcos', 'espiral', 'invocar']];
+const faseDe = e => e.hp < e.maxHp * .34 ? 3 : e.hp < e.maxHp * .67 ? 2 : 1;
+function cambioFase(e, fase){
+  e.fase = fase; e.rugido = 1.3; e.vel *= 1.15; e.patron = -1; e.cd = 1.6; e.aviso = 0; e.carga = 0;
+  banner(fase === 2 ? `¡${e.nombre} se enfurece!` : `¡${e.nombre} desata todo su poder!`, fase === 2 ? 'Fase 2: vigila el suelo' : 'Fase final');
+  chat(fase === 2 ? `${e.nombre} entra en la fase 2.` : `${e.nombre} entra en su fase final.`, '#ff6b7f');
+  sfx('jefe'); shake = 18; fxAnillo(e.x, e.y, 20, 220, e.color, .6); fxAnillo(e.x, e.y, 10, 160, '#ffffff', .4); chispas(e.x, e.y - 30, e.color, 50, 300);
+  // el rugido aparta a todos de un empujón
+  for (const U of [P, ...GRUPO.filter(g => g.vivo)]){
+    const dx = U.x - e.x, dy = U.y - e.y, d = Math.hypot(dx, dy) || 1;
+    if (d < 200){ U.x += dx / d * (200 - d) * .8; U.y += dy / d * (200 - d) * .8; colisiones(U); }
+  }
+}
+// marca en el suelo que estalla al acabarse el tiempo (o charco que quema mientras dura)
+function marcarSuelo(x, y, r, aviso, dmg, src, op = {}){ peligros.push({ x, y, r, t:aviso, max:aviso, dmg, src, col:op.col || (op.charco ? src.color : '#ff4f5f'), charco:op.charco || 0, tick:0 }); }
+function ataqueEspecial(e, tipo, dx, dy, enf){
+  const U = e.blanco || P;
+  if (tipo === 'anillo'){
+    const n = enf ? 20 : 14, off = rand(0, TAU);
+    for (let i = 0; i < n; i++){ const a = off + i * TAU / n; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 210, vy:Math.sin(a) * 210, r:8, dmg:e.dmg * .7, vida:3.5, color:e.color, src:e }); }
+    shake = Math.max(shake, 5);
+  } else if (tipo === 'carga'){
+    e.aviso = enf ? .45 : .7; e.cdir = Math.atan2(dy, dx);
+  } else if (tipo === 'invocar'){
+    for (let i = 0; i < (enf ? 4 : 3); i++) crearEnemigo(E.R.enemigos[i % E.R.enemigos.length], e.x + rand(-70, 70), e.y + rand(-70, 70), true);
+    chispas(e.x, e.y, e.color, 20, 200);
+  } else if (tipo === 'lluvia'){
+    // círculos que caen sobre ti y a tu alrededor
+    const n = e.fase >= 3 ? 9 : 6;
+    marcarSuelo(U.x, U.y, 64, 1.2, e.dmg * 1.2, e);
+    for (let i = 1; i < n; i++){ const a = rand(0, TAU), r = rand(70, 240); marcarSuelo(U.x + Math.cos(a) * r, U.y + Math.sin(a) * r * .8, 64, 1.1 + i * .06, e.dmg * 1.2, e); }
+    texto(e.x, e.y - 90, '¡Cuidado arriba!', '#ffd76a', 15);
+  } else if (tipo === 'pisoton'){
+    // un gran golpe alrededor del jefe: hay que alejarse
+    e.quieto = 1.1; marcarSuelo(e.x, e.y, 200, 1.1, e.dmg * 1.6, e, { col:'#ff5a3a' });
+    texto(e.x, e.y - 90, '¡Aléjate!', '#ff8a5a', 16);
+  } else if (tipo === 'espiral'){
+    e.espiral = 2.6; e.angEsp = rand(0, TAU); e.tEsp = 0; e.quieto = 2.6;
+  } else if (tipo === 'charcos'){
+    for (let i = 0; i < 3; i++){ const a = rand(0, TAU), r = i ? rand(60, 160) : 0; marcarSuelo(U.x + Math.cos(a) * r, U.y + Math.sin(a) * r * .8, 70, .7, e.dmg * .3, e, { charco:6 }); }
+  }
+}
 function actualizarJefe(e, dx, dy, d, dt){
   const U = e.blanco || P;
   if (!e.aggro && d < 430 && lineaVision(e.x, e.y, P.x, P.y)){
     e.aggro = true; E.jefeVisto = true; $('jefe').classList.remove('oculto'); banner(e.nombre, 'Jefe de la mazmorra'); shake = 10;
   }
   if (!e.aggro) return;
+  const fase = faseDe(e);
+  if (fase > (e.fase || 1)) cambioFase(e, fase);
+  // mientras ruge no se mueve ni recibe daño
+  if (e.rugido > 0){ e.rugido -= dt; if (Math.random() < .4) chispas(e.x, e.y - 30, e.color, 2, 120); colisiones(e); return; }
   const lento = e.lento > 0 ? .6 : 1, enf = e.hp < e.maxHp / 2;
+  e.quieto = (e.quieto || 0) - dt;
+  if (e.espiral > 0){
+    // espiral de proyectiles que gira
+    e.espiral -= dt; e.tEsp -= dt;
+    if (e.tEsp <= 0){ e.tEsp = .09; e.angEsp += .32; for (const k of [0, Math.PI]){ const a = e.angEsp + k; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 200, vy:Math.sin(a) * 200, r:7, dmg:e.dmg * .5, vida:3.2, color:e.color, src:e }); } }
+  }
   if (e.carga > 0){
     e.carga -= dt;
     e.x += Math.cos(e.cdir) * e.vel * 4.4 * dt; e.y += Math.sin(e.cdir) * e.vel * 4.4 * dt;
@@ -5101,25 +5163,55 @@ function actualizarJefe(e, dx, dy, d, dt){
     e.aviso -= dt;
     if (e.aviso <= 0) e.carga = .5;
   } else {
-    const [vx, vy] = direccionHacia(e, U);
-    e.x += vx * e.vel * lento * dt; e.y += vy * e.vel * lento * dt;
-    if (e.cd <= 0){
-      e.patron = (e.patron + 1) % 3;
-      if (e.patron === 0){
-        const n = enf ? 20 : 14, off = rand(0, TAU);
-        for (let i = 0; i < n; i++){ const a = off + i * TAU / n; proysE.push({ x:e.x, y:e.y, vx:Math.cos(a) * 210, vy:Math.sin(a) * 210, r:8, dmg:e.dmg * .7, vida:3.5, color:e.color, src:e }); }
-        shake = Math.max(shake, 5);
-      } else if (e.patron === 1){
-        e.aviso = enf ? .45 : .7; e.cdir = Math.atan2(dy, dx);
-      } else {
-        for (let i = 0; i < (enf ? 4 : 3); i++) crearEnemigo(E.R.enemigos[i % E.R.enemigos.length], e.x + rand(-70, 70), e.y + rand(-70, 70), true);
-        chispas(e.x, e.y, e.color, 20, 200);
-      }
-      e.cd = enf ? 2 : 2.8;
+    if (e.quieto <= 0){ const [vx, vy] = direccionHacia(e, U); e.x += vx * e.vel * lento * dt; e.y += vy * e.vel * lento * dt; }
+    if (e.cd <= 0 && !(e.espiral > 0)){
+      const lista = PATRONES_FASE[e.fase || 1];
+      e.patron = (e.patron + 1) % lista.length;
+      ataqueEspecial(e, lista[e.patron], dx, dy, enf);
+      e.cd = (e.fase || 1) >= 3 ? 1.7 : enf ? 2 : 2.8;
     }
   }
   colisiones(e);
   if (d < e.r + U.r + 4 && e.cdGolpe <= 0){ e.cdGolpe = .9; pegar(U, false, e.dmg, e); }
+}
+// las marcas del suelo: se llenan y estallan, o queman mientras duran
+function updatePeligros(dt){
+  for (const p of peligros){
+    p.t -= dt;
+    if (p.t > 0) continue;
+    const dentro = U => Math.hypot(U.x - p.x, (U.y - p.y) / .8) < p.r + (U.r || 14);
+    if (!p.charco){
+      if (!p.hecho){
+        p.hecho = true;
+        if (dentro(P)) golpearJugador(p.dmg, p.src);
+        for (const g of GRUPO) if (g.vivo && dentro(g)) danarAliado(g, p.dmg * .6, p.src);
+        fxAnillo(p.x, p.y, 8, p.r, p.col, .3); chispas(p.x, p.y, p.col, p.r > 120 ? 40 : 14, p.r > 120 ? 300 : 180); shake = Math.max(shake, p.r > 120 ? 12 : 5);
+      }
+    } else {
+      p.charco -= dt; p.tick -= dt;
+      if (p.tick <= 0){ p.tick = .5; if (dentro(P)){ golpearJugador(p.dmg, p.src); ponerEfecto('agi_dn', 1.2); } }
+    }
+  }
+  peligros = peligros.filter(p => p.t > 0 || (p.charco > 0) );
+}
+function dibujarPeligros(t){
+  for (const p of peligros){
+    const ry = p.r * .8;
+    if (p.t > 0){
+      // aviso: borde rojo y un relleno que crece hasta estallar
+      const k = 1 - p.t / p.max;
+      ctx.globalAlpha = .18; ctx.fillStyle = p.col; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = .35 + .3 * k; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * k, ry * k, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = .9; ctx.strokeStyle = p.col; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t / 50;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    } else if (p.charco > 0){
+      // charco que burbujea
+      ctx.globalAlpha = Math.min(1, p.charco) * .55; ctx.fillStyle = p.col; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, ry, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = Math.min(1, p.charco) * .8; ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 4; i++){ const a = t / 600 + i * 1.7, r = p.r * .55 * ((i * .37 + t / 1500) % 1); pxCuadro(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r * .8, '#ffffff', 3); }
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 // la interfaz sólo se toca cuando un valor cambia (escribir en la página en cada cuadro es caro)
@@ -7390,6 +7482,7 @@ function draw(t){
   }
 
   dibujarEfectos(true);
+  if (peligros.length) dibujarPeligros(t);
 
   // un aro marca a tu objetivo (en el teléfono, también al enemigo al que apuntas solo)
   if (E.tipo === 'mazmorra'){
@@ -7521,6 +7614,13 @@ function dibujarEnemigo(e){
   dibujarAviso(e);
   const pie = e.y + e.r * .8;
   ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.25, e.r * .45, 0, 0, TAU); ctx.fill();
+  // aura de la fase: más grande y roja cuanto más enfadado está el jefe
+  if (e.jefe && e.fase > 1){
+    const pul = 1 + .1 * Math.sin(t / (e.fase > 2 ? 90 : 160));
+    ctx.strokeStyle = e.fase > 2 ? 'rgba(255,60,80,.8)' : 'rgba(255,170,60,.7)'; ctx.lineWidth = e.fase > 2 ? 4 : 3;
+    ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.6 * pul, e.r * .6 * pul, 0, 0, TAU); ctx.stroke();
+    if (e.rugido > 0){ ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 2.2, e.r * .8, 0, 0, TAU); ctx.fill(); }
+  }
   if (e.lento > 0){ ctx.strokeStyle = '#bff0ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, pie - 2, e.r * 1.4, e.r * .55, 0, 0, TAU); ctx.stroke(); }
   const cerca = Math.hypot(P.x - e.x, P.y - e.y) < e.r + P.r + 26;
   const lista = e.at ? D.atk : (D.idle && !e.mueve) ? D.idle : D.walk;
