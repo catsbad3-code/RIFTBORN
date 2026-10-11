@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.13.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.14.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -2503,13 +2503,13 @@ function avisarHistoria(tipo, e){
 function filaHistoria(){
   const h = PJ.historia, C = h && HISTORIA[h.cap];
   if (!C || !h.activo) return '';
-  return `<div class="seg-m seg-hist ${h.listo ? 'ok' : ''}"><span class="seg-t">📜 ${C.titulo}</span>` +
-    (h.listo ? '<span class="seg-o ok">Vuelve a la ciudad</span>' : `<span class="seg-o">- ${C.obj.txt}${C.obj.n > 1 ? `: ${h.prog}/${C.obj.n}` : ''}</span>`) + '</div>';
+  return `<div class="seg-m seg-hist ${h.listo ? 'ok' : ''}"><span class="seg-t"><span>📜</span> <span>${C.titulo}</span></span>` +
+    (h.listo ? '<span class="seg-o ok">Vuelve a la ciudad</span>' : `<span class="seg-o">- <span>${C.obj.txt}</span>${C.obj.n > 1 ? `: ${h.prog}/${C.obj.n}` : ''}</span>`) + '</div>';
 }
 // lo que ya sabes del misterio (en «Ver la historia» del menú de pausa)
 function resumenHistoria(){
   const h = PJ.historia || { cap:0 };
-  return HISTORIA.slice(0, h.cap).map(C => ['narr', `${C.titulo.split(':')[1].trim()}: ${C.resumen}`]);
+  return HISTORIA.slice(0, h.cap).map(C => ['narr', () => `${window.tr(C.titulo.split(':')[1].trim())}: ${window.tr(C.resumen)}`]);
 }
 
 // ---------- hermandades ----------
