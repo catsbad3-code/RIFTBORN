@@ -807,15 +807,14 @@ function bfs(G, sx, sy){
   const dist = new Int16Array(G.cols * G.rows).fill(-1), cola = new Int32Array(G.cols * G.rows);
   if (sx < 0 || sy < 0 || sx >= G.cols || sy >= G.rows || G.solido[sy * G.cols + sx]) return dist;
   let a = 0, b = 0; cola[b++] = sy * G.cols + sx; dist[sy * G.cols + sx] = 0;
+  // vecinos a mano (antes se creaban 5 listas por casilla visitada)
+  const C = G.cols, S = G.solido;
   while (a < b){
-    const i = cola[a++], x = i % G.cols, y = (i / G.cols) | 0;
-    for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx = x + ox, ny = y + oy;
-      if (nx < 0 || ny < 0 || nx >= G.cols || ny >= G.rows) continue;
-      const j = ny * G.cols + nx;
-      if (G.solido[j] || dist[j] >= 0) continue;
-      dist[j] = dist[i] + 1; cola[b++] = j;
-    }
+    const i = cola[a++], x = i % C, d1 = dist[i] + 1;
+    if (x + 1 < C && !S[i + 1] && dist[i + 1] < 0){ dist[i + 1] = d1; cola[b++] = i + 1; }
+    if (x > 0 && !S[i - 1] && dist[i - 1] < 0){ dist[i - 1] = d1; cola[b++] = i - 1; }
+    if (i + C < S.length && !S[i + C] && dist[i + C] < 0){ dist[i + C] = d1; cola[b++] = i + C; }
+    if (i - C >= 0 && !S[i - C] && dist[i - C] < 0){ dist[i - C] = d1; cola[b++] = i - C; }
   }
   return dist;
 }
@@ -4811,10 +4810,20 @@ let reiniciarChat = () => {};
   $('chatMin').onclick = () => { ch.classList.toggle('min'); $('chatMin').textContent = ch.classList.contains('min') ? '+' : '–'; guardarChat(); };
   if (ch.classList.contains('min')) $('chatMin').textContent = '+';
 })();
+// los mensajes se juntan y se añaden una vez por cuadro: medir la caja del chat en mitad del combate obligaba
+// a la página a recalcularse en cada golpe
+let chatCola = [];
 function chat(txt, color = '#e9e4ff'){
-  const c = $('chatLog'), p = document.createElement('p');
+  const p = document.createElement('p'); p.textContent = txt; p.style.color = color;
+  if (!chatCola.length) requestAnimationFrame(volcarChat);
+  chatCola.push(p);
+}
+function volcarChat(){
+  const c = $('chatLog'), f = document.createDocumentFragment();
   const abajo = c.scrollHeight - c.scrollTop - c.clientHeight < 30;
-  p.textContent = txt; p.style.color = color; c.appendChild(p);
+  for (const p of chatCola) f.appendChild(p);
+  chatCola = [];
+  c.appendChild(f);
   while (c.children.length > 120) c.firstChild.remove();
   if (abajo) c.scrollTop = c.scrollHeight;
 }
@@ -4956,7 +4965,8 @@ function updateMazmorra(dt){
   }
 
   timerCampo -= dt;
-  if (timerCampo <= 0){ timerCampo = .25; campo = bfs(E, pcx, pcy); }
+  // el mapa de caminos solo se rehace cuando el gato cambia de casilla (o cada 2 s por si acaso)
+  if (timerCampo <= 0 || !campo || campo.x !== pcx || campo.y !== pcy || campo.E !== E){ timerCampo = 2; campo = bfs(E, pcx, pcy); campo.x = pcx; campo.y = pcy; campo.E = E; }
 
   for (const e of enemigos){
     const U = blancoEnemigo(e, dt);
@@ -5945,7 +5955,13 @@ let fondoListo = false;
 FONDO_MENU.onload = () => fondoListo = true;
 FONDO_MENU.src = 'img/fondo-menu.jpg';
 const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let menuFondoT = -1e9, menuFondoTam = '';
 function dibujarMenuFondo(t){
+  // el acercamiento es muy lento: basta con repintarlo 12 veces por segundo. Los paneles con cristal esmerilado de
+  // encima recalculan su desenfoque cada vez que el fondo cambia, y eso era lo que bajaba los FPS del inicio
+  const tam = W + 'x' + H + fondoListo;
+  if (tam === menuFondoTam && t - menuFondoT < 83 && t >= menuFondoT) return;
+  menuFondoT = t; menuFondoTam = tam;
   ctx.fillStyle = '#1a1440'; ctx.fillRect(0, 0, W, H);
   if (!fondoListo) return;
   // ajuste tipo "cover" con un acercamiento lento
@@ -6097,15 +6113,11 @@ function dibujarLucesCiudad(t){
 function dibujarPortalCiudad(p, t){
   const R = RANGOS[p.rango], esc = Math.min(1, p.nace / .8);
   dibujarPortal(p.x, p.y, p.rango, t, esc);
-  ctx.textAlign = 'center';
-  ctx.font = '28px Marcellus, Georgia, serif';
+  // textos ya dibujados (rotulo): el del tiempo cambia una vez por segundo
   const letra = p.mundo ? '☠' : p.semanal ? '♛' : R.l;
-  ctx.fillStyle = '#000'; ctx.fillText(letra, p.x + 1, p.y - 117 * esc + 1);
-  ctx.fillStyle = p.mundo ? '#ff4f6b' : p.semanal ? '#ffd100' : R.color; ctx.fillText(letra, p.x, p.y - 117 * esc);
-  ctx.font = '600 13px Rajdhani, sans-serif'; ctx.fillStyle = p.cierra < 30 ? '#ff8a9b' : '#e9e4ff';
-  ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
+  rotulo(letra, p.x, Math.round(p.y - 117 * esc), '28px Marcellus, Georgia, serif', p.mundo ? '#ff4f6b' : p.semanal ? '#ffd100' : R.color, null, 0, true);
   const txt = p.mundo ? `Jefe de mundo: ${jefeMundoNombre()}${jefeMundoHecho() ? ' (derrotado)' : ''}` : p.semanal ? `Titán semanal: ${titanDeLaSemana()}${titanHecho() ? ' (derrotado)' : ''}` : `Rango ${R.l}, se cierra en ${formatoTiempo(p.cierra)}`;
-  ctx.strokeText(txt, p.x, p.y + 66); ctx.fillText(txt, p.x, p.y + 66);
+  rotulo(txt, p.x, p.y + 66, '600 13px Rajdhani, sans-serif', p.cierra < 30 ? '#ff8a9b' : '#e9e4ff', 'rgba(0,0,0,.7)', 3);
 }
 
 // paredes interiores: madera con ventanas (posada) y piedra (mercado)
@@ -6641,6 +6653,7 @@ function iniciarAudio(){
   SON.master = SON.ctx.createGain(); SON.master.gain.value = .8; SON.master.connect(SON.ctx.destination);
   SON.mus = SON.ctx.createGain(); SON.mus.gain.value = SON.musica ? .22 : 0; SON.mus.connect(SON.master);
   SON.fx = SON.ctx.createGain(); SON.fx.gain.value = SON.efectos ? .5 : 0; SON.fx.connect(SON.master);
+  bufRuido(SON.ctx);
   setInterval(programarMusica, 100);
 }
 addEventListener('pointerdown', iniciarAudio); addEventListener('keydown', iniciarAudio);
@@ -6651,13 +6664,20 @@ function tono(f, dur, { tipo = 'square', vol = .3, desde = 0, hasta = null, dest
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + ataque); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
   o.connect(g); g.connect(destino || SON.fx); o.start(t); o.stop(t + dur + .02);
 }
-function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
-  const c = SON.ctx, t = c.currentTime + desde, n = Math.ceil(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+// un solo búfer de ruido (2 s) para todos los sonidos: cada uno toca un trozo al azar (antes se creaba uno nuevo en cada paso o golpe y daba tirones)
+let RUIDO_BUF = null;
+function bufRuido(c){
+  if (RUIDO_BUF && RUIDO_BUF.sampleRate === c.sampleRate) return RUIDO_BUF;
+  const n = c.sampleRate * 2, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return RUIDO_BUF = b;
+}
+function ruido(dur, { vol = .3, desde = 0, filtro = 1200, q = 1, tipoF = 'bandpass', destino = null } = {}){
+  const c = SON.ctx, t = c.currentTime + desde, b = bufRuido(c), largo = Math.min(dur + .02, 1.9);
   const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
   s.buffer = b; f.type = tipoF; f.frequency.value = filtro; f.Q.value = q;
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
-  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t); s.stop(t + dur + .02);
+  s.connect(f); f.connect(g); g.connect(destino || SON.fx); s.start(t, Math.random() * (2 - largo), largo);
 }
 const SFX = {
   ataque(){ ruido(.12, { vol:.35, filtro:2600, q:.8 }); tono(520, .08, { tipo:'triangle', vol:.12, hasta:260 }); },
@@ -6726,6 +6746,8 @@ function programarMusica(){
   if (!SON.musica) return;   // sin música no se programan notas
   const nueva = pistaActual();
   if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
+  // si el juego se atascó (pestaña oculta, carga), no se recuperan de golpe las notas atrasadas: se sigue desde ahora
+  if (SON.sig < SON.ctx.currentTime - .05) SON.sig = SON.ctx.currentTime + .05;
   const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
   const nota = (grado, oct = 0) => { const L = P0.escala.length, o = Math.floor(grado / L); return NOTA(P0.raiz + 12 * (o + oct) + P0.escala[((grado % L) + L) % L]); };
   while (SON.sig < SON.ctx.currentTime + .3){
@@ -7237,18 +7259,17 @@ function dibujarNocheCiudad(){
   const d = oscuridad();
   if (d < .02) return;
   if (!NOCHE.cv) NOCHE.cv = document.createElement('canvas');
-  const c = NOCHE.cv, w = Math.ceil(W / 2), h = Math.ceil(H / 2);
+  // la oscuridad es difusa: se pinta a un tercio de resolución, y los huecos de luz son manchas ya pintadas (antes: un degradado nuevo por farola en cada cuadro)
+  const E3 = 3, c = NOCHE.cv, w = Math.ceil(W / E3), h = Math.ceil(H / E3);
   if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
   const a = c.getContext('2d');
   a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
   a.fillStyle = `rgba(12,16,48,${d})`; a.fillRect(0, 0, w, h);
   a.globalCompositeOperation = 'destination-out';
   const hueco = (x, y, r, k = 1) => {
-    x = (x - cam.x) / 2; y = (y - cam.y) / 2; r /= 2;
+    x = (x - cam.x) / E3; y = (y - cam.y) / E3; r = Math.round(r / E3);
     if (x < -r || y < -r || x > w + r || y > h + r) return;
-    const g = a.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
-    a.fillStyle = g; a.fillRect(x - r, y - r, r * 2, r * 2);
+    a.drawImage(manchaLuz(r, k), x - r, y - r);
   };
   for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
   for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
@@ -7256,6 +7277,14 @@ function dibujarNocheCiudad(){
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(c, 0, 0, W, H); ctx.restore();
 }
 
+const MANCHAS = {};
+function manchaLuz(r, k){
+  const clave = r + '|' + k; if (MANCHAS[clave]) return MANCHAS[clave];
+  const c = document.createElement('canvas'); c.width = c.height = r * 2; const a = c.getContext('2d');
+  const g = a.createRadialGradient(r, r, 0, r, r, r); g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  a.fillStyle = g; a.fillRect(0, 0, r * 2, r * 2);
+  return MANCHAS[clave] = c;
+}
 // clima en partículas de pantalla: lluvia en la ciudad y uno propio en cada tipo de cueva
 const CLIMA_CUEVA = ['esporas', 'arena', 'nieve', 'brasas', 'vacio', 'brasas'];
 function tipoClima(){
@@ -7650,7 +7679,7 @@ function loop(t){
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (enJuego && !pantallaActual) update(dt);
   if (enJuego) updateBuscador(dt);
-  draw(t);
+  if (pantallaActual !== 'pPrologo') draw(t);   // la cinemática tapa toda la pantalla: no hace falta dibujar el mundo detrás
   if (enJuego && wTab === 'personaje' && abierta('wPj')) dibujarFigura(t);
   if (pantallaActual === 'pPersonajes' && pjSel){ const pj = cuenta() && cuenta().personajes.find(p => p.id === pjSel); if (pj) dibujarEscenaPj($('selCv'), pj.gato || 0, pj.clase, t, rotSel, pj.mascota, pj.equipo, pj.tinte); }
   else if (pantallaActual === 'pPersonajes') $('selCv').getContext('2d').clearRect(0, 0, 520, 560);
