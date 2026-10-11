@@ -16,10 +16,11 @@
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.15.0">
+<link rel="stylesheet" href="css/style.css?v=1.16.0">
 </head>
 <body>
 <canvas id="c"></canvas>
+<canvas id="nocheCv" aria-hidden="true"></canvas>
 
 <!-- ============ HUD ============ -->
 <div id="hud">
@@ -64,6 +65,7 @@
   <button id="btnPersonaje" class="micro-btn" title="Personaje (C)" aria-label="Personaje">👤</button>
   <button id="btnLibro" class="micro-btn" title="Libro de poderes (P)" aria-label="Libro de poderes">📖</button><button id="btnMis" class="micro-btn" title="Registro de misiones (L)" aria-label="Registro de misiones">📜</button>
   <button id="btnMascota" class="micro-btn" title="Mascota (G)" aria-label="Mascota">🐾</button>
+  <button id="btnMontura" class="micro-btn" title="Montar el jabalí (Y)" aria-label="Montar el jabalí" aria-pressed="false">🐗</button>
   <button id="btnBolsa" class="micro-btn" title="Bolsa (B)" aria-label="Bolsa">🎒</button>
   <button id="btnBuscador" class="micro-btn" title="Buscador de mazmorras (I)" aria-label="Buscador de mazmorras">🔍</button>
   <button id="btnPantalla" class="micro-btn oculto" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
@@ -96,7 +98,7 @@
   <div class="wl-izq">
     <button class="wbtn" id="tabReg" type="button">Crear cuenta</button>
     <button class="wbtn" id="tabEntrar" type="button">Ya tengo cuenta</button>
-    <small class="wl-version">Versión 1.15.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
+    <small class="wl-version">Versión 1.16.0 (Eclipse)<br>Tu cuenta se guarda en este navegador</small>
   </div>
   <div class="wl-der">
     <button class="wbtn" type="button" data-ir="pAyuda">Cómo jugar</button>
@@ -132,6 +134,7 @@
       <dt>E</dt><dd>Entrar, hablar o usar lo que tengas cerca</dd>
       <dt>C, B y P</dt><dd>Personaje, bolsa y libro de poderes</dd>
       <dt>G</dt><dd>Invocar o guardar a tu mascota</dd>
+      <dt>Y</dt><dd>Montar o bajarte del jabalí (en la ciudad)</dd>
       <dt>Tab</dt><dd>Elegir el siguiente enemigo como objetivo (o haz clic en él)</dd>
       <dt>5 6 7 8</dt><dd>Habilidades de tu clase</dd>
       <dt>Z</dt><dd>Usar la habilidad que devoraste a un monstruo</dd>
@@ -368,9 +371,9 @@
   <button class="btn principal" id="btnRevivir">Despertar en la posada</button>
 </div>
 
-<script src="js/en.js?v=1.15.0"></script>
-<script src="js/idioma.js?v=1.15.0"></script>
-<script src="auth/auth.js?v=1.15.0"></script>
-<script src="js/game.js?v=1.15.0"></script>
+<script src="js/en.js?v=1.16.0"></script>
+<script src="js/idioma.js?v=1.16.0"></script>
+<script src="auth/auth.js?v=1.16.0"></script>
+<script src="js/game.js?v=1.16.0"></script>
 </body>
 </html>

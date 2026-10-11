@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.15.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.16.0'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -712,7 +712,8 @@ function empezar(id){
   PJ = migrar(cuenta().personajes.find(p => p.id === id));
   derivar();
   P = { x:0, y:0, mx:0, my:0, pose:{ n:'', t:0, dur:1 }, r:14, hp:D.maxHp, en:PJ.clase === 'guerrero' ? 0 : D.maxEn, combo:0, ang:Math.PI / 2, ldx:0, ldy:1,
-        cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0 };
+        cd1:0, cd2:0, cdPoc:0, cdP:{}, inv:0, golpe:0, montura:!!PJ.montado };
+  $('btnMontura').setAttribute('aria-pressed', P.montura);
   const c = CLASES[PJ.clase];
   $('mAtk').innerHTML = '<canvas width="64" height="64"></canvas>'; $('mHab').innerHTML = '<canvas width="64" height="64"></canvas>';
   pintarIconoBoton($('mAtk').firstChild, c.h1.spr); pintarIconoBoton($('mHab').firstChild, c.h2.spr);
@@ -3073,6 +3074,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyZ') usarDevorada();
   if (e.code === 'KeyE' && interCerca) interCerca.accion();
   if (e.code === 'KeyG') toggleMascota();
+  if (e.code === 'KeyY') toggleMontura();
   if (e.code === 'Tab'){ e.preventDefault(); siguienteObjetivo(); }
   if (e.code === 'KeyV'){ VER_PLACAS = !VER_PLACAS; try { localStorage.setItem('rb_placas', VER_PLACAS ? '1' : '0'); } catch (er) {} texto(P.x, P.y - 74, VER_PLACAS ? 'Placas de vida: sí' : 'Placas de vida: no', '#e9e4ff', 13); }
   const tecla = CODIGO_TECLA[e.code];
@@ -3121,6 +3123,7 @@ $('btnPantalla').onclick = alternarPantallaCompleta;
 $('btnPantallaPausa').onclick = alternarPantallaCompleta;
 marcarPantallaCompleta();
 $('btnMascota').onclick = toggleMascota;
+$('btnMontura').onclick = toggleMontura;
 $('btnBolsa').onclick = () => alternarVentana('wBolsa');
 $('btnBuscador').onclick = () => abrirBuscador();
 $('durAviso').onclick = () => { wTab = 'personaje'; abrirVentana('wPj'); };
@@ -3192,6 +3195,11 @@ setTimeout(function(){
     a.imageSmoothingEnabled = false; a.drawImage(RATAS_IMG, sx, sy, w, h, 32 - w * k / 2, 62 - h * k, w * k, h * k); };
   if (ratasListo) pintarPet(); else RATAS_IMG.addEventListener('load', pintarPet, { once:true });
   window.pintarIcoPet = pintarPet;
+  // el jabalí de la montura, con el cuadro de reposo de su hoja
+  ico('btnMontura', '<canvas width="64" height="64"></canvas>');
+  const pintarJab = () => { const c = $('btnMontura').firstChild, a = c.getContext('2d'), [sx, sy, w, h] = MON.cuadros[MON.tipos.jabali.idle[0]], k = Math.min(62 / w, 62 / h);
+    a.imageSmoothingEnabled = false; a.drawImage(MON_IMG, sx, sy, w, h, 32 - w * k / 2, 63 - h * k, w * k, h * k); };
+  if (monListo) pintarJab(); else MON_IMG.addEventListener('load', pintarJab, { once:true });
 }, 0); $('icoLibro').innerHTML = ic3('libro'); $('icoMis').innerHTML = ic3('pergamino');
 const abierta = id => !$(id).classList.contains('oculto');
 function abrirVentana(id){ $(id).classList.remove('oculto'); renderVentana(id); }
@@ -4861,7 +4869,8 @@ function update(dt){
   const ml = Math.hypot(mx, my);
   if (ml > 1){ mx /= ml; my /= ml; }
   if (ml > .15){ P.ldx = mx / ml; P.ldy = my / ml; if (E.tipo !== 'mazmorra') P.ang = Math.atan2(my, mx); }
-  const vel = (esInterior() ? D.vel * .8 : D.vel) * efMod.vel();
+  const vel = (esInterior() ? D.vel * .8 : D.vel) * efMod.vel() * (enMontura() ? VEL_MONTURA : 1);
+  if (Math.abs(mx) > .2) P.ladoMont = mx > 0;
   // aceleración y frenado suaves (independiente de los FPS)
   const resp = 1 - Math.exp(-dt * (ml > .05 ? 14 : 18));
   P.vx = (P.vx || 0) + (mx * vel - (P.vx || 0)) * resp;
@@ -5490,17 +5499,21 @@ function dibujarJugador(t){
   } else {
     const r = Math.sin(t / 420); ky = 1 + .025 * r; kx = 1 - .012 * r;
   }
+  // montado: el gato va de lado, sentado (sin pasos) sobre el jabalí, que es el que anda
+  let subida = 0;
+  const montado = enMontura();
+  if (montado && !pose){ dir = 'lado'; derecha = P.ladoMont !== false; f = 0; rot = 0; kx = 1; ky = 1; alza = 0; subida = dibujarMontura(t, mov, derecha, pie); }
   // la vista de lado mira a la izquierda en la hoja: se refleja para ir a la derecha
   // si el gato tiene vista propia hacia la derecha se usa; si no, se refleja
   const usarDe = dir === 'lado' && derecha && GD.de && GD.de.length;
   const flip = dir === 'lado' && derecha && !usarDe;
   let setV = usarDe ? 'de' : dir, fV = f;
   // quieto: si el gato tiene cuadros de reposo, se usan (pies en el suelo, respiración suave)
-  if (!mov && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
+  if ((!mov || montado) && !pose && GD['q_' + setV] && GD['q_' + setV].length){ setV = 'q_' + setV; fV = Math.floor(t / 700); kx = 1; ky = 1; }
   // pixel art: la caminata ya trae el rebote en sus cuadros; nada de girar ni estirar (deformaría los píxeles)
   let dxA = 0, dyA = 0, kAtk = 0;
   if (GD.px){
-    alza = mov && !pose ? 0 : Math.round(alza);
+    alza = mov && !pose && !montado ? 0 : Math.round(alza);
     if (!mov && !pose) alza = Math.sin(t / 420) > .6 ? -1 : 0;
     rot = 0; kx = 1; ky = 1;
     // ataque: estocada hacia donde apunta (en píxeles enteros); al recibir un golpe, retrocede y tiembla
@@ -5509,15 +5522,17 @@ function dibujarJugador(t){
   }
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, setV, fV), esc = escG;
   // sombra y aro con el color de la clase
-  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
+  if (!subida){
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie, 17, 6, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = CLASES[PJ.clase].color + '88'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(P.x, pie, 19, 7, 0, 0, TAU); ctx.stroke();
+  }
   if (P.golpe > 0 && !GD.px) ctx.globalAlpha = .65;
   // pixel art: tras el destello blanco, parpadea semitransparente mientras es invulnerable
   if (GD.px && P.inv > 0 && P.golpe <= 0 && Math.floor(t / 60) % 2) ctx.globalAlpha = .45;
   ctx.save();
-  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza) + dyA); }
-  else ctx.translate(P.x, pie + alza);
+  if (GD.px){ ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(P.x) + dxA, Math.round(pie + alza - subida) + dyA); }
+  else ctx.translate(P.x, pie + alza - subida);
   if (rot) ctx.rotate(rot); ctx.scale(flip ? -kx : kx, ky);
   // pixel art: al recibir un golpe parpadea en blanco (silueta) en vez de volverse transparente
   const hojaG = GD.px && P.golpe > 0 && Math.floor(t / 50) % 2 === 0 ? siluetaBlanca(imgGato(PJ.gato)) : hojaJugador();
@@ -5529,7 +5544,7 @@ function dibujarJugador(t){
   ctx.globalAlpha = 1;
   if (GD.px && pose === 'atk') zarpazoPixel(Math.round(P.x) + dxA, Math.round(pie) - 26, P.ang, kAtk, CLASES[PJ.clase].color);
   // nombre sobre la cabeza, estilo MMO
-  const ny = pie - ALTO_GATO_PJ - 10;
+  const ny = pie - ALTO_GATO_PJ - 10 - subida;
   rotulo(PJ.nombre, P.x, ny, '700 14px Rajdhani, sans-serif', '#7fc8ff', 'rgba(0,0,0,.85)', 3);
   const tit = tituloActual();
   if (tit) rotulo(`«${tit}»`, P.x, ny - 15, '600 12px Rajdhani, sans-serif', '#ffd100', 'rgba(0,0,0,.85)', 3);
@@ -5975,7 +5990,7 @@ function updateMascota(dt){
   // en reposo mira a la cámara y, de vez en cuando, hacia un lado
   if (!M.mov && M.quieto > .4) M.dir = (M.quieto > 2 && M.quieto < 6 && Math.sin(M.quieto * 1.7) > .55) ? 'lado' : 'abajo';
   if (d > 55){
-    const v = Math.min(D.vel * 1.15, (d - 40) * 4);
+    const v = Math.min(D.vel * 1.15 * (enMontura() ? VEL_MONTURA : 1), (d - 40) * 4);
     M.x += dx / d * v * dt; M.y += dy / d * v * dt;
     M.mov = v > 25;
     M.paso = (M.paso || 0) + v * dt;
@@ -6785,6 +6800,7 @@ const SFX = {
   comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
   paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
   click(){ tono(1200, .03, { vol:.06 }); },
+  montar(){ tono(140, .18, { tipo:'sawtooth', vol:.14, hasta:90 }); ruido(.15, { vol:.15, filtro:700, q:2, desde:.05 }); tono(330, .08, { tipo:'square', vol:.08, desde:.18, hasta:520 }); },
   // cada clase suena distinto: el guerrero golpea metal, la sombra corta el aire, el mago chisporrotea...
   ataque_guerrero(){ ruido(.16, { vol:.4, filtro:900, q:1.2 }); tono(180, .14, { tipo:'square', vol:.16, hasta:90 }); tono(1400, .05, { tipo:'triangle', vol:.08, desde:.02 }); },
   ataque_sombra(){ ruido(.09, { vol:.32, filtro:4200, q:.6, tipoF:'highpass' }); tono(900, .06, { tipo:'sawtooth', vol:.06, hasta:400 }); },
@@ -7346,13 +7362,16 @@ function dibujarHuellas(){
 
 // noche en la ciudad: se oscurece la pantalla y se recortan círculos de luz en farolas, portales y alrededor del gato
 const NOCHE = { cv:null };
+// la noche va en un lienzo pequeño aparte, encima del juego: el navegador lo estira solo (antes se estiraba a pantalla
+// completa en cada cuadro y se llevaba la mitad del tiempo de dibujo). El minimapa queda fuera, con su hueco.
+const MINI = { ok:false };
+function ocultarNoche(){ const c = NOCHE.el; if (c && c.style.display !== 'none') c.style.display = 'none'; }
 function dibujarNocheCiudad(){
-  if (E.tipo !== 'ciudad') return;
-  const d = oscuridad();
-  if (d < .02) return;
-  if (!NOCHE.cv) NOCHE.cv = document.createElement('canvas');
-  // la oscuridad es difusa: se pinta a un tercio de resolución, y los huecos de luz son manchas ya pintadas (antes: un degradado nuevo por farola en cada cuadro)
-  const E3 = 3, c = NOCHE.cv, w = Math.ceil(W / E3), h = Math.ceil(H / E3);
+  const d = E.tipo === 'ciudad' ? oscuridad() : 0;
+  if (d < .02){ ocultarNoche(); return; }
+  const c = NOCHE.el || (NOCHE.el = $('nocheCv'));
+  if (c.style.display !== 'block') c.style.display = 'block';
+  const E3 = 3, w = Math.ceil(W / E3), h = Math.ceil(H / E3);
   if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
   const a = c.getContext('2d');
   a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
@@ -7366,7 +7385,12 @@ function dibujarNocheCiudad(){
   for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
   for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
   hueco(P.x, P.y - 20, 120, .55);
-  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(c, 0, 0, W, H); ctx.restore();
+  // el minimapa y el cartel de la zona no se oscurecen (su sitio lo apunta dibujarMinimapa)
+  if (MINI.ok){
+    a.fillStyle = '#000';
+    a.beginPath(); a.arc(MINI.cx / E3, MINI.cy / E3, (MINI.r + 4) / E3, 0, TAU); a.fill();
+    a.fillRect((MINI.px - MINI.tw / 2 - 2) / E3, (MINI.cy - MINI.r - 26) / E3, (MINI.tw + 4) / E3, 24 / E3);
+  }
 }
 
 const MANCHAS = {};
@@ -7444,7 +7468,7 @@ function burbuja(x, y, txt, alfa = 1){
 //  DIBUJO PRINCIPAL
 // =====================================================
 function draw(t){
-  if (!enJuego){ dibujarMenuFondo(t); return; }
+  if (!enJuego){ ocultarNoche(); dibujarMenuFondo(t); return; }
   ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
@@ -7569,6 +7593,39 @@ function draw(t){
     ctx.strokeStyle = 'rgba(233,228,255,.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.ox, s.oy, 55, 0, TAU); ctx.stroke();
     ctx.fillStyle = 'rgba(123,77,255,.5)'; ctx.beginPath(); ctx.arc(s.ox + dx, s.oy + dy, 24, 0, TAU); ctx.fill();
   }
+}
+
+// =====================================================
+//  MONTURA: el jabalí (el mismo de los portales, domado y con silla)
+//  Solo en la ciudad: en los portales y dentro de los edificios se va a pie, y al salir se vuelve a montar solo.
+// =====================================================
+const VEL_MONTURA = 1.6;
+const enMontura = () => !!(P && P.montura && E && E.tipo === 'ciudad' && P.hp > 0);
+function toggleMontura(){
+  if (!enJuego || pantallaActual || !P) return;
+  if (E.tipo !== 'ciudad' && !P.montura){ texto(P.x, P.y - 74, 'El jabalí solo se puede montar en la ciudad', '#9a91c2', 14); return; }
+  P.montura = !P.montura;
+  PJ.montado = P.montura;
+  sfx(P.montura ? 'montar' : 'click');
+  chispas(P.x, P.y + 6, '#c8a878', 14, 120);
+  texto(P.x, P.y - 90, P.montura ? 'Montas tu jabalí' : 'Te bajas del jabalí', '#ffd76a', 14);
+  $('btnMontura').setAttribute('aria-pressed', P.montura);
+}
+// dibuja el jabalí con su silla y devuelve cuánto sube el gato para ir sentado encima
+function dibujarMontura(t, mov, derecha, pie){
+  if (!monListo) return 0;
+  const D = MON.tipos.jabali, lista = mov ? D.walk : D.idle;
+  const idx = lista[(mov ? Math.floor(P.paso / 9) : Math.floor(t / 260)) % lista.length];
+  const ref = MON.cuadros[D.walk[0]][3];
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(P.x, pie + 2, 34, 8, 0, 0, TAU); ctx.fill();
+  const alto = pintarMonstruo('jabali', idx, P.x, pie + 4, ref, ref, !derecha, 0, null);
+  // silla roja con borde dorado sobre el lomo
+  const lomo = Math.round(pie + 4 - alto * .62), x = Math.round(P.x) + (derecha ? -6 : 6);
+  ctx.fillStyle = '#1a0c08'; ctx.fillRect(x - 13, lomo - 3, 26, 9);
+  ctx.fillStyle = '#b8242c'; ctx.fillRect(x - 12, lomo - 2, 24, 7);
+  ctx.fillStyle = '#e8b84a'; ctx.fillRect(x - 12, lomo + 4, 24, 1); ctx.fillRect(x - 2, lomo + 5, 4, 6);
+  // el gato sube y baja un poco con el trote
+  return Math.round(alto * .55) + (mov ? (Math.floor(P.paso / 9) % 2) * 2 : 0);
 }
 
 // =====================================================
@@ -7720,6 +7777,7 @@ function dibujarMinimapa(){
   }
   const fs = CARTEL.fs, tw = CARTEL.tw; ctx.font = `${fs}px Marcellus, Georgia, serif`;
   const pxp = clamp(cx, izq + tw / 2, W - tw / 2 - 8);
+  MINI.cx = cx; MINI.cy = cy; MINI.r = r; MINI.px = pxp; MINI.tw = tw; MINI.ok = true;
   ctx.fillStyle = 'rgba(15,11,28,.85)'; ctx.fillRect(pxp - tw / 2, cy - r - 24, tw, 20);
   ctx.strokeStyle = '#b8933f'; ctx.lineWidth = 1; ctx.strokeRect(pxp - tw / 2 + .5, cy - r - 23.5, tw - 1, 19);
   ctx.fillStyle = colorZona; ctx.fillText(nombre, pxp, cy - r - 9);
