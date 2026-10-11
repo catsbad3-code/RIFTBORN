@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.14.0'; // también en index.html (estilos y scripts)
+const VERSION = '1.14.1'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // ---------- todo el mundo en pixel art ----------
 // cada hoja del mundo tiene una versión en pixel art (img/px) con cada dibujo reducido al tamaño con que se ve en pantalla.
@@ -651,6 +651,8 @@ function renderCrear(){
 }
 function infoClase(){
   const c = CLASES[claseElegida];
+  // en el teléfono en vertical no cabe la ficha: el nombre y la descripción van bajo los iconos
+  $('claseNom').innerHTML = `<b style="color:${c.color}">${c.nombre}</b><br>${c.desc}`;
   $('claseInfo').innerHTML = `<div class="wpanel-tit">Clase</div><h3 style="color:${c.color}">${c.nombre}</h3><p>${c.desc}</p>
     <dl><dt>Clic izquierdo: ${c.h1.n}</dt><dd>${c.h1.d}</dd><dt>Clic derecho: ${c.h2.n}</dt><dd>${c.h2.d}</dd>
     <dt>Atributos iniciales</dt><dd>Fuerza ${c.base.fue}, Agilidad ${c.base.agi}, Vitalidad ${c.base.vit}, Inteligencia ${c.base.int}</dd></dl>`;

@@ -437,7 +437,10 @@ body.jugando #buffs{display:flex}
 .wc-ic[aria-pressed="true"]{border-color:var(--wo);box-shadow:0 0 10px rgba(255,209,0,.8)}
 .wc-ic:hover{border-color:#e8c76a}
 .wc-sub{font:500 12px Rajdhani,sans-serif;color:#ddd;text-align:center;margin:-6px 0 8px}
-.wc-der{position:absolute;right:18px;top:30px;width:280px;text-align:left;font:500 14px Rajdhani,sans-serif;color:#eee}
+#clases{grid-template-columns:repeat(5,1fr)}
+.wc-clase-movil{display:none;margin:0 0 2px;line-height:1.25}
+.wc-clase-movil b{font:600 14px "Marcellus",Georgia,serif}
+.wc-der{position:absolute;right:18px;top:66px;width:280px;text-align:left;font:500 14px Rajdhani,sans-serif;color:#eee}
 .wc-der h3{font:600 20px "Marcellus",Georgia,serif;margin-bottom:6px}
 .wc-der p{margin-bottom:8px;line-height:1.35}
 .wc-der dt{color:var(--wo);font-weight:700;margin-top:6px}
@@ -454,7 +457,9 @@ body.jugando #buffs{display:flex}
   .ws-der .wbtn,.ws-izq .wbtn{min-width:0;font-size:13px;padding:6px 10px}
   .wc-izq{left:8px;right:8px;width:auto;top:8px;padding:6px}.wc-iconos{grid-template-columns:repeat(8,1fr);margin-bottom:4px}
   .wc-der{display:none}
-  .wow-crear .ws-escena{top:46%}
+  .wc-clase-movil{display:block}#clases{grid-template-columns:repeat(6,1fr)}
+  .wow-crear .wc-izq{right:52px}
+  .wow-crear .ws-escena{top:48%}
   .wc-nombre{left:50%;bottom:62px}
 }
 /* pantallas medianas o teléfono acostado: escena a la izquierda y lista a la derecha, sin taparse */
@@ -469,8 +474,10 @@ body.jugando #buffs{display:flex}
   .wc-nombre .error{order:9;width:100%;text-align:center;min-height:0}
   .wc-nombre .wbtn.enorme{font-size:16px;padding:8px 22px}
   .wow-crear .ws-der{bottom:10px}
-  .wc-izq{left:8px;right:auto;width:min(230px,30vw);top:8px}.wc-iconos{grid-template-columns:repeat(4,1fr)}
-  .wc-der{display:block;right:8px;top:8px;width:min(240px,30vw);max-height:calc(100% - 130px);overflow:auto;font-size:12px}
+  .wc-izq{left:8px;right:auto;width:min(230px,30vw);top:8px}.wc-iconos{grid-template-columns:repeat(4,1fr)}#clases{grid-template-columns:repeat(5,1fr)}
+  .wc-clase-movil{display:none}.wow-crear .wc-izq{right:auto}
+  /* la ficha de la clase debajo del botón ♪ y sin bajar hasta el nombre */
+  .wc-der{display:block;right:8px;top:56px;width:min(240px,30vw);max-height:calc(100% - 56px - 112px);overflow:auto;font-size:12px}
   .wc-der h3{font-size:16px}
 }
 
