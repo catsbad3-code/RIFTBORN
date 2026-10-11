@@ -1368,7 +1368,16 @@ window.I18N_EN = {
 "Las contraseñas no coinciden.": "The passwords do not match.",
 "Ese usuario ya existe. Inicia sesión.": "That username already exists. Log in.",
 "Este navegador no permite guardar datos.": "This browser does not allow saving data.",
-"Usuario o contraseña incorrectos.": "Wrong username or password."
+"Usuario o contraseña incorrectos.": "Wrong username or password.",
+"Activada": "On",
+"Desactivada": "Off",
+"Activados": "On",
+"Desactivados": "Off",
+"Quitar la música": "Turn music off",
+"Poner la música": "Turn music on",
+"Música": "Music",
+"Sonido: la música y los efectos se apagan desde la pausa (Esc).": "Sound: music and effects can be turned off from the pause menu (Esc).",
+"la música se quita con el botón ♪ del menú o desde la pausa (Esc), donde también se apagan los efectos.": "turn the music off with the ♪ button in the menu or from the pause menu (Esc), where you can also mute sound effects."
 };
 // términos sueltos: se aplican solo a lo que, tras buscar la frase entera, sigue en español
 window.I18N_EN_TERMINOS = [["(\\S+) del Monarca", "Monarch's $1"], ["(\\S+) del Musgo", "Moss $1"], ["(\\S+) de Arena", "Sand $1"], ["(\\S+) de Escarcha", "Frost $1"], ["(\\S+) de Magma", "Magma $1"], ["(\\S+) del Vacío", "Void $1"], ["(\\S+) Carmesí", "Crimson $1"], ["\\bCapucha\\b", "Hood"], ["\\bYelmo\\b", "Helm"], ["\\bDiadema\\b", "Circlet"], ["\\bAmuleto\\b", "Amulet"], ["\\bColgante\\b", "Pendant"], ["\\bTalismán\\b", "Talisman"], ["\\bAbrigo\\b", "Coat"], ["\\bCoraza\\b", "Cuirass"], ["\\bTúnica\\b", "Tunic"], ["\\bGuantes\\b", "Gloves"], ["\\bGarras\\b", "Claws"], ["\\bBrazales\\b", "Bracers"], ["\\bPantalones\\b", "Trousers"], ["\\bGrebas\\b", "Greaves"], ["\\bMusleras\\b", "Legguards"], ["\\bBotas\\b", "Boots"], ["\\bSandalias\\b", "Sandals"], ["\\bEscarpes\\b", "Sabatons"], ["\\bAnillo\\b", "Ring"], ["\\bSello\\b", "Signet"], ["\\bSortija\\b", "Band"], ["\\bEspada\\b", "Sword"], ["\\bDaga\\b", "Dagger"], ["\\bBáculo\\b", "Staff"], ["\\bGrimorio\\b", "Grimoire"], ["\\bCabeza\\b", "Head"], ["\\bCuello\\b", "Neck"], ["\\bPecho\\b", "Chest"], ["\\bManos\\b", "Hands"], ["\\bPiernas\\b", "Legs"], ["\\bPies\\b", "Feet"], ["\\bDedo\\b", "Finger"], ["\\bArma\\b", "Weapon"], ["\\bFuerza\\b", "Strength"], ["\\bAgilidad\\b", "Agility"], ["\\bVitalidad\\b", "Vitality"], ["\\bInteligencia\\b", "Intellect"], ["(\\d+) de daño\\b", "$1 damage"], ["\\bde daño\\b", "damage"], ["\\bmaná\\b", "mana"], ["\\bmonstruos\\b", "monsters"], ["\\bnivel (\\d+)", "level $1"], ["\\bNivel (\\d+)", "Level $1"], ["\\bComún\\b", "Common"], ["\\bPoco común\\b", "Uncommon"], ["\\bRaro\\b", "Rare"], ["\\bÉpico\\b", "Epic"], ["\\bLegendario\\b", "Legendary"], [" y ", " and "]];

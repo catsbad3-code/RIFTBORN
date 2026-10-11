@@ -353,6 +353,7 @@ const PANELES_JUEGO = ['pPausa','pPerfil','pTienda','pForja','pPortal','pMascota
 let pantallaActual = null, ayudaVolver = 'pAuth', perfilVolver = null;
 function pantalla(id){
   pantallaActual = id;
+  document.body.classList.toggle('con-son-flot', !enJuego);
   PANTALLAS.forEach(p => $(p).classList.toggle('oculto', p !== id));
   sticks.mov = null; mouse.izq = false; holdAtk = false;
 }
@@ -6045,7 +6046,7 @@ function pistaActual(){
 }
 function programarMusica(){
   if (!SON.ctx || SON.ctx.state !== 'running') return;
-  SON.mus.gain.setTargetAtTime(SON.musica ? .22 : 0, SON.ctx.currentTime, .3);
+  if (!SON.musica) return;   // sin música no se programan notas
   const nueva = pistaActual();
   if (nueva !== SON.pista){ SON.pista = nueva; SON.paso = 0; SON.sig = SON.ctx.currentTime + .15; }
   const P0 = PISTAS[SON.pista], corchea = 60 / P0.bpm / 2;
@@ -6062,11 +6063,21 @@ function programarMusica(){
   }
 }
 function botonesSonido(){
-  $('btnMusica').textContent = `Música: ${SON.musica ? 'Sí' : 'No'}`;
-  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Sí' : 'No'}`;
-  if (SON.fx) SON.fx.gain.value = SON.efectos ? .5 : 0;
+  $('btnMusica').textContent = `Música: ${SON.musica ? 'Activada' : 'Desactivada'}`;
+  $('btnEfectos').textContent = `Efectos de sonido: ${SON.efectos ? 'Activados' : 'Desactivados'}`;
+  const f = $('btnSonFlot'); f.textContent = SON.musica ? '♪' : '✕♪'; f.setAttribute('aria-pressed', SON.musica);
+  f.title = SON.musica ? 'Quitar la música' : 'Poner la música';
+  // el cambio se oye al momento (antes se apagaba poco a poco y las notas ya programadas seguían sonando)
+  if (SON.ctx){
+    const t = SON.ctx.currentTime;
+    SON.mus.gain.cancelScheduledValues(t); SON.mus.gain.setValueAtTime(SON.musica ? .22 : 0, t);
+    SON.fx.gain.value = SON.efectos ? .5 : 0;
+    if (SON.musica){ SON.pista = null; }   // vuelve a empezar la pista desde el principio
+  }
 }
-$('btnMusica').onclick = () => { SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+const alternarMusica = () => { iniciarAudio(); SON.musica = !SON.musica; guardarSonido(); botonesSonido(); };
+$('btnMusica').onclick = alternarMusica;
+$('btnSonFlot').onclick = alternarMusica;
 $('btnEfectos').onclick = () => { SON.efectos = !SON.efectos; guardarSonido(); botonesSonido(); };
 botonesSonido();
 
