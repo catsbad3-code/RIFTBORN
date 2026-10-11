@@ -108,7 +108,15 @@ const CLASES = {
   mago: { nombre:'Mago de las Sombras', color:'#4f9aff', desc:'Canaliza las sombras y la magia oscura. Elegante y letal.',
     base:{ fue:6, agi:9, vit:9, int:16 },
     h1:{ n:'Lanzamiento de sombras', d:'Rayo de sombra que explota al impactar.', cd:.55, ic:'🌑' },
-    h2:{ n:'Bola de sombra', d:'Vórtice que arrastra, daña y ralentiza a los enemigos.', cd:5, coste:35, ic:'🌀' } }
+    h2:{ n:'Bola de sombra', d:'Vórtice que arrastra, daña y ralentiza a los enemigos.', cd:5, coste:35, ic:'🌀' } },
+  sacerdote: { nombre:'Sacerdote de la Luz', color:'#ffe066', desc:'Sana sus heridas y las de su grupo, y castiga con luz sagrada.',
+    base:{ fue:6, agi:8, vit:12, int:14 },
+    h1:{ n:'Castigo', d:'Un rayo de luz sagrada que daña al impactar.', cd:.55, ic:'✝' },
+    h2:{ n:'Luz sanadora', d:'Te cura a ti y a tu grupo un 22% de la vida y daña a los enemigos cercanos.', cd:6, coste:30, ic:'✨' } },
+  arquero: { nombre:'Arquero Errante', color:'#ff9a3d', desc:'Ataca desde lejos con su arco y nunca deja que se le acerquen.',
+    base:{ fue:8, agi:15, vit:10, int:7 },
+    h1:{ n:'Disparo', d:'Una flecha rápida y precisa.', cd:.5, ic:'🏹' },
+    h2:{ n:'Disparo múltiple', d:'Cinco flechas en abanico frente a ti.', cd:4, coste:30, ic:'🎯' } }
 };
 
 const RANGOS = [
@@ -137,6 +145,8 @@ const ENEM = {
 CLASES.guerrero.h1.spr = 'px:espada'; CLASES.guerrero.h2.spr = 'px:onda';
 CLASES.sombra.h1.spr = 'px:daga';     CLASES.sombra.h2.spr = 'px:capa';
 CLASES.mago.h1.spr = 'px:estrella';   CLASES.mago.h2.spr = 'px:espiral';
+CLASES.sacerdote.h1.spr = 'px:cruz';  CLASES.sacerdote.h2.spr = 'px:halo';
+CLASES.arquero.h1.spr = 'px:flecha';  CLASES.arquero.h2.spr = 'px:arco';
 
 // Poderes de las sombras: se aprenden al subir de nivel y van en la barra (Q F R 1 2 3 4)
 const PODERES = {
@@ -170,6 +180,20 @@ const TALENTOS = {
     { id:'flujo',   n:'Flujo',            d:'+20% de regeneración de energía por rango.', ic:'lluvia',f:(D, r) => D.regEn *= 1 + .2 * r },
     { id:'escudo',  n:'Escudo de maná',   d:'+3% de defensa por rango.',                  ic:'domo',  f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
     { id:'ritmo',   n:'Tiempo arcano',    d:'-6% de tiempo de recarga por rango.',        ic:'bola',  f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  sacerdote: [
+    { id:'fe',      n:'Fe inquebrantable',d:'+6% de vida máxima por rango.',              ic:'px:halo',  f:(D, r) => D.maxHp = Math.round(D.maxHp * (1 + .06 * r)) },
+    { id:'luz',     n:'Luz abrasadora',   d:'+7% de daño mágico por rango.',              ic:'px:sol',   f:(D, r) => D.mag *= 1 + .07 * r },
+    { id:'calma',   n:'Calma interior',   d:'+20% de regeneración de energía por rango.', ic:'px:ala',   f:(D, r) => D.regEn *= 1 + .2 * r },
+    { id:'gracia',  n:'Gracia',           d:'+35% de regeneración de vida por rango.',    ic:'px:cruz',  f:(D, r) => D.regHp *= 1 + .35 * r },
+    { id:'ritmo',   n:'Plegaria veloz',   d:'-6% de tiempo de recarga por rango.',        ic:'px:escudo',f:(D, r) => D.cdK *= 1 - .06 * r }
+  ],
+  arquero: [
+    { id:'punteria',n:'Puntería',         d:'+3% de golpe crítico por rango.',            ic:'px:diana', f:(D, r) => D.crit = Math.min(.65, D.crit + .03 * r) },
+    { id:'tension', n:'Cuerda tensa',     d:'+7% de daño físico por rango.',              ic:'px:arco',  f:(D, r) => D.fis *= 1 + .07 * r },
+    { id:'viento',  n:'Paso ligero',      d:'+4% de velocidad por rango.',                ic:'px:ala',   f:(D, r) => D.vel = Math.min(340, D.vel * (1 + .04 * r)) },
+    { id:'cuero',   n:'Cuero curtido',    d:'+3% de defensa por rango.',                  ic:'px:escudo',f:(D, r) => D.def = Math.min(.6, D.def + .03 * r) },
+    { id:'ritmo',   n:'Carcaj sin fondo', d:'-6% de tiempo de recarga por rango.',        ic:'px:lluviaf',f:(D, r) => D.cdK *= 1 - .06 * r }
   ]
 };
 const MAX_RANGO_TAL = 3;
@@ -208,7 +232,7 @@ const RANURAS = {
   piernas: { n:'Piernas', ic:'👖', bases:['Pantalones','Grebas','Musleras'] },
   pies:    { n:'Pies',    ic:'👢', bases:['Botas','Sandalias','Escarpes'] },
   anillo:  { n:'Dedo',    ic:'💍', bases:['Anillo','Sello','Sortija'] },
-  arma:    { n:'Arma',    ic:'🗡️', bases:['Espada','Daga','Báculo','Grimorio'] }
+  arma:    { n:'Arma',    ic:'🗡️', bases:['Espada','Daga','Báculo','Grimorio','Arco'] }
 };
 const IZQ = ['cabeza','amuleto','pecho','manos'], DER = ['piernas','pies','anillo','arma'];
 const SUFIJOS = ['del Musgo','de Arena','de Escarcha','de Magma','del Vacío','Carmesí'];
@@ -302,7 +326,13 @@ function iconoDe(o){
   let h = 0; for (const ch of String(o.id)) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return lista[Math.abs(h) % lista.length];
 }
+let ICONO_ARCO = null;
 function icoObj(o){
+  if (o.slot === 'arma' && o.nombre.startsWith('Arco')){
+    if (!ICONO_ARCO){ const p = pixEquipo('Arco', 2), c = document.createElement('canvas'); c.width = c.height = 24; const a = c.getContext('2d');
+      a.translate(12, 12); a.rotate(Math.PI / 4); a.drawImage(p.c, -p.w / 2, -p.h / 2); ICONO_ARCO = c.toDataURL(); }
+    return `<span class="ico-obj" style="background-image:url(${ICONO_ARCO})"></span>`;
+  }
   const i = iconoDe(o);
   if (i === null) return RANURAS[o.slot].ic;
   return `<span class="ico-obj" style="background-image:url(${ICONOS_URL});background-position:${(i / (ICONOS_N - 1) * 100).toFixed(4)}% 0"></span>`;
@@ -589,8 +619,10 @@ function dibujarEscenaPj(cv, gato, clase, t, rot, mascota, equipo = null, tinte 
 }
 
 let claseElegida = 'mago';
+// el arma con la que empieza cada clase (y la de sus emblemas)
+const ARMA_CLASE = { guerrero:'Espada', sombra:'Daga', mago:'Báculo', sacerdote:'Báculo', arquero:'Arco' };
 let gatoPj = 0;
-const ICONO_CLASE = { guerrero:'⚔️', sombra:'🗡️', mago:'🔮' };
+const ICONO_CLASE = { guerrero:'⚔️', sombra:'🗡️', mago:'🔮', sacerdote:'✨', arquero:'🏹' };
 const NOMBRES_AL = ['Kael','Mira','Thorne','Luna','Vex','Nyx','Rayo','Sombra','Bigotes','Zarpa','Eclipse','Ónix','Ceniza','Runa','Michi','Garra'];
 function renderCrear(){
   $('cNombre').value = ''; $('cErr').textContent = ''; rotSel = 0;
@@ -634,6 +666,7 @@ $('btnCrear').onclick = () => {
     stats:{ ...CLASES[claseElegida].base }, puntos:0, oro:3000, monedaCobre:true, curvaDura:true, pociones:3, arma:0 });
   pj.gato = gatoPj; pj.prologo = false;
   pj.equipo.arma = crearObjeto(0, 0, 'arma', 0);
+  { const a = pj.equipo.arma, b = ARMA_CLASE[pj.clase]; a.nombre = b + a.nombre.slice(a.nombre.indexOf(' ')); }
   pj.equipo.pecho = crearObjeto(0, 0, 'pecho', 0);
   c.personajes.push(pj); guardarCuenta(c);
   pjSel = pj.id; rotSel = 0;
@@ -3480,10 +3513,11 @@ function objetivoTactil(max = 360){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < Math.max(max, 420)) return P.objetivo;
   return enemigoCercano(P.x, P.y, max);
 }
+const A_DISTANCIA = ['mago', 'sacerdote', 'arquero'];
 // ataque automático (teléfono): golpea solo cuando hay un monstruo a tu alcance
 function autoAtaque(){
   if (!esTactil || !AJ_TEL.auto || E.tipo !== 'mazmorra' || P.cd1 > 0) return false;
-  return !!objetivoTactil(PJ.clase === 'mago' ? 330 : 105);
+  return !!objetivoTactil(A_DISTANCIA.includes(PJ.clase) ? 330 : 105);
 }
 function apuntar(){
   if (objetivoValido() && Math.hypot(P.objetivo.x - P.x, P.objetivo.y - P.y) < 620){ P.ang = Math.atan2(P.objetivo.y - P.y, P.objetivo.x - P.x); return; }
@@ -3519,7 +3553,7 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx(sfxClase('ataque'), .08);
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK * (estados.rapido ? .5 : 1); sfx(sfxClase('ataque'), .08);
   } else {
     if (P.cd2 > 0 || P.gcd > 0) return;
     const coste2 = costeDe(c.h2);
@@ -3633,7 +3667,9 @@ const PODER_FN = {
 const RECURSO = {
   guerrero: { n:'Ira',     sin:'Sin ira',     col:'linear-gradient(#e2443c,#8a1410)', factor:.5 },
   sombra:   { n:'Energía', sin:'Sin energía', col:'linear-gradient(#ffe25a,#b89410)', factor:.7 },
-  mago:     { n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 }
+  mago:     { n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 },
+  sacerdote:{ n:'Maná',    sin:'Sin maná',    col:'linear-gradient(#5591ff,#1c45b3)', factor:1 },
+  arquero:  { n:'Enfoque', sin:'Sin enfoque', col:'linear-gradient(#ffb35a,#b85a10)', factor:.7 }
 };
 const recurso = () => RECURSO[PJ.clase] || RECURSO.mago;
 // lo que cuesta un poder compartido o una habilidad de clase en el recurso de tu clase
@@ -3642,6 +3678,8 @@ const recursoLleno = () => PJ.clase === 'guerrero' ? 0 : D.maxEn;
 function ajustarRecurso(D){
   if (PJ.clase === 'guerrero'){ D.maxEn = 100; D.regEn = 0; }
   else if (PJ.clase === 'sombra'){ D.maxEn = 100; D.regEn = 14 + D.s.agi * .08; }
+  // el arquero tensa el arco con la agilidad: también le suma daño
+  else if (PJ.clase === 'arquero'){ D.maxEn = 100; D.regEn = 12 + D.s.agi * .08; D.fis += D.s.agi * .7; }
 }
 function ganarIra(n){ if (PJ.clase === 'guerrero' && P) P.en = Math.min(D.maxEn, P.en + n); }
 function updateRecurso(dt){
@@ -3684,7 +3722,8 @@ Object.assign(PODERES, {
   evocacion:{ clase:'mago', n:'Evocación',                d:'Recuperas la mitad de tu maná al instante.', nivel:8, cd:60, coste:0, ic:'lluvia' },
   bloque:   { clase:'mago', n:'Bloque de hielo',          d:'Inmune a todo daño durante 4 s.', nivel:10, cd:90, coste:0, ic:'pilar' }
 });
-const BARRA_CLASE = { guerrero:['heroico','grito','provocar','torbellino'], sombra:['siniestro','eviscerar','picadillo','patada'], mago:['escarcha','nova','arcana','evocacion'] };
+const BARRA_CLASE = { guerrero:['heroico','grito','provocar','torbellino'], sombra:['siniestro','eviscerar','picadillo','patada'], mago:['escarcha','nova','arcana','evocacion'],
+  sacerdote:['sanar','dolor','fortaleza','alarido'], arquero:['certero','conmocion','marcacaza','rafaga'] };
 TECLAS.push('5', '6', '7', '8');
 Object.assign(CODIGO_TECLA, { Digit5:'5', Digit6:'6', Digit7:'7', Digit8:'8' });
 
@@ -3759,12 +3798,27 @@ const GLIFOS = {
   reloj:   ['................','...aaaaaaaaaa...','...abbbbbbbba...','....accccccа....','....abddddba....','.....abddba.....','......abba......','......abba......','.....abccba.....','....abcddcba....','....acddddca....','...abbbbbbbba...','...aaaaaaaaaa...','................','................','................'],
   puno:    ['................','................','....aaaaaa......','...abbbbbba.....','..abcbcbcbba....','..abcbcbcbbaa...','..abbbbbbbbba...','..abcccbbbbba...','..abbbbbbbbba...','...abbbbbbba....','....abbbbba.....','....abbbbba.....','....aaaaaaa.....','................','................','................']
 };
-const COLOR_FX = { guerrero:['#e2443c', '#ff9a8a', '#ffffff'], sombra:['#5ad84a', '#c8ff8a', '#ffffff'], mago:['#4f9aff', '#c8f0ff', '#ffffff'] };
+// glifos del sacerdote y del arquero
+Object.assign(GLIFOS, {
+  cruz: ['................', '......aaaa......', '......abca......', '......abca......', '......abca......', '.aaaaaabcaaaaaa.', '.abbbbbddbbbbba.', '.acccccddccccca.', '.aaaaaabcaaaaaa.', '......abca......', '......abca......', '......abca......', '......abca......', '......abca......', '......aaaa......', '................'],
+  sol: ['.......d........', '................', '.......d........', '...daaaaaaaad...', '...aabbbbbbaa...', '...abbccccbba...', '...abccccccba...', '...abccccccba...', 'd.dabccccccba.d.', '...abccccccba...', '...abbccccbba...', '...aabbbbbbaa...', '...daaaaaaaad...', '................', '........d.......', '................'],
+  halo: ['....aaaaaaaa....', '.aaaaddddddaaaa.', 'aadddaaaaaadddaa', 'adddaa....aaddda', 'aadddaaaaaadddaa', '.aaaaddddddaaaa.', '....aaaaaaaa....', '.....aabbaa.....', '....aabccbaa....', '....abbcbbba....', '...aabbbbbbaa...', '...abbbbbbbba...', '..aabbbbbbbbaa..', '..abbbbbbbbbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..'],
+  ala: ['................', '........aaaaaaa.', '......aaabcbbca.', '....aaabbcbbcca.', '...aacbbcbbcbca.', '..aacbbcbbcbbca.', '.aacbbcbbcbbcca.', '.acbbcbbcbbccaa.', '.abbcbbcbbccaa..', '.abcbbcbbccaa...', '.aabbcbbccaa....', '..aacbbccaa.....', '...aabccaa......', '....aaaaa.......', '................', '................'],
+  arco: ['...aaa..........', '...acaa.........', '...acbaaa.......', '...acaabaa......', '...acaabbaa.....', '...acaaabbaa....', 'aaaaca.aabbaaaa.', 'acaacaaaabbaadaa', 'adddddddddddddda', 'acaacaaaabbaadaa', 'aaaacaaabbaaaaa.', '...acaabbaa.....', '...acaabaa......', '...acbaaa.......', '...acaa.........', '...aaa..........'],
+  flecha: ['................', '..........aaaaa.', '..........accca.', '..........aacca.', '.........aabaca.', '........aabaaaa.', '.......aabaa....', '......aabaa.....', '.....aabaa......', '....aabaa.......', '...aabaa........', 'aaaabaa.........', 'addbaa..........', 'adbda...........', 'aadda...........', '.aaaa...........'],
+  trampa: ['................', '................', 'aaaaaaaaaaaaaaaa', 'abbbbbbbbbbbbbba', 'abcacacacacacaba', 'abacacacacacacba', 'abaaaaaaaaaaaaba', 'aba...adda...aba', 'abaaaaaddaaaaaba', 'abacacacacacacba', 'aacacacacacacaaa', 'abbbbbbbbbbbbbba', 'abbbbbbbbbbbbbba', 'aaaaaaaaaaaaaaaa', '................', '................'],
+  diana: ['................', '....aaaaaaaa....', '...aaccccccaa...', '..aaccbbbbccaa..', '.aaccbbbbbbccaa.', '.accbbccccbbcca.', '.acbbccddccbbca.', '.acbbcddddcbbca.', '.acbbcddddcbbca.', '.acbbccddccbbca.', '.accbbccccbbcca.', '.aaccbbbbbbccaa.', '..aaccbbbbccaa..', '...aaccccccaa...', '....aaaaaaaa....', '................'],
+  serpiente: ['................', '................', '................', '........aaaaaaa.', '.......aabbaadaa', '.......abcbbabba', '......aacccbbaba', '.aaa..abcaacbaaa', '.abaaaacaaaabaa.', '.acbaabca..acba.', '.aabaacaa..aaba.', '..acbbca....aca.', '..aaccaa....aaa.', '...aaaa.........', '................', '................'],
+  lluviaf: ['.aaaaa....adbda.', '.adbda....aabaa.', '.aabaa.....aba..', '..aba.aaaaaaba..', '..aba.adbdaaba..', '..aba.aabaaaba..', '..aba..abaaabaa.', '.aabaa.abaacbca.', '.acbca.abaacbca.', '.acbca.abaaacaa.', '.aacaaaabaaaaa..', '..aaa.acbca.....', '......acbca.....', '......aacaa.....', 'aaaaaaaaaaaaaaaa', 'adddddddddddddda']
+});
+const COLOR_FX = { guerrero:['#e2443c', '#ff9a8a', '#ffffff'], sombra:['#5ad84a', '#c8ff8a', '#ffffff'], mago:['#4f9aff', '#c8f0ff', '#ffffff'], sacerdote:['#ffe066', '#fff2b0', '#ffffff'], arquero:['#ff9a3d', '#ffd9a0', '#ffffff'] };
 const colFx = (i = 0) => (COLOR_FX[PJ.clase] || COLOR_FX.mago)[i];
 const PALETA_CLASE = {
   guerrero:{ a:'#2a0606', b:'#d8283c', c:'#ff9a8a', d:'#c0c8d8' },
   sombra:  { a:'#100a1e', b:'#5aa83a', c:'#c8ff8a', d:'#b98bff' },
-  mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' }
+  mago:    { a:'#08142a', b:'#3a8ad8', c:'#c8f0ff', d:'#ffffff' },
+  sacerdote:{ a:'#2a1e04', b:'#e8b830', c:'#fff2b0', d:'#ffffff' },
+  arquero: { a:'#2a1404', b:'#b8682a', c:'#ffd9a0', d:'#7ad86b' }
 };
 const ICONOS_PX = {};
 function iconoPx(glifo, pal){
@@ -3889,6 +3943,123 @@ function libroDevorar(){
 }
 function equiparDevorada(n){ devorarDe().equipada = n; construirBarra(); renderLibro(); guardar(); }
 
+// =====================================================
+//  CLASES NUEVAS: SACERDOTE Y ARQUERO
+// =====================================================
+// curar al jugador y a su grupo (el sacerdote sana a todos los que tiene cerca)
+function curar(frac, radio = 260){
+  const c = Math.round(D.maxHp * frac);
+  if (P.hp < D.maxHp){ P.hp = Math.min(D.maxHp, P.hp + c); texto(P.x + rand(-6, 6), P.y - 76, '+' + c, '#7dffa8', 15); }
+  for (const g of GRUPO) if (g.vivo && g.hp < g.maxHp && Math.hypot(g.x - P.x, g.y - P.y) < radio){ const n = Math.round(g.maxHp * frac); g.hp = Math.min(g.maxHp, g.hp + n); texto(g.x, g.y - 60, '+' + n, '#7dffa8', 13); }
+  pintarGrupo && GRUPO.length && pintarGrupo();
+}
+function quitarMalos(){ let n = 0; for (const id in estados) if (EFECTOS[id] && EFECTOS[id].malo){ delete estados[id]; n++; } if (n) pintarBuffs(true); return n; }
+function sinObjetivo(reintegro = 0){ texto(P.x, P.y - 74, 'Sin objetivo', '#9a91c2', 14); P.en += reintegro; }
+// una flecha (o un rayo de luz) desde el gato hacia donde apunta
+function disparar(tipo, a, dmg, op = {}){
+  const v = op.vel || (tipo === 'flecha' ? 720 : 520);
+  const p = { px:tipo, x:P.x + Math.cos(a) * 20, y:P.y + Math.sin(a) * 20, vx:Math.cos(a) * v, vy:Math.sin(a) * v, r:op.r || 7, alt:28,
+    dmg, vida:op.vida || .75, color:op.color || (tipo === 'flecha' ? '#ffd9a0' : '#ffe066'), aoe:op.aoe || 16, lento:op.lento };
+  if (op.perfora){ p.perfora = true; p.hits = new Set(); }
+  proys.push(p);
+  return p;
+}
+Object.assign(HAB, {
+  sacerdote1(){ pose('atk', DUR_ATK); disparar('luz', P.ang, D.mag * 1.05, { aoe:36, vida:1.1 }); fxAnillo(P.x + Math.cos(P.ang) * 18, P.y + Math.sin(P.ang) * 10, 12, 4, '#ffe066', .2); },
+  sacerdote2(){
+    pose('cast', .45); curar(.22);
+    golpeCirculo(P.x, P.y, 115, D.mag * 1.2);
+    fxAnillo(P.x, P.y, 10, 115, '#ffe066', .45); chispas(P.x, P.y - 20, '#fff2b0', 26, 200);
+  },
+  arquero1(){ pose('atk', DUR_ATK * .8); disparar('flecha', P.ang + rand(-.03, .03), D.fis * .95); },
+  arquero2(){ pose('atk', DUR_ATK); for (let i = -2; i <= 2; i++) disparar('flecha', P.ang + i * .16, D.fis * .85); chispas(P.x + Math.cos(P.ang) * 20, P.y - 20, '#ff9a3d', 10, 120); }
+});
+Object.assign(PODERES, {
+  // sacerdote
+  sanar:     { clase:'sacerdote', n:'Sanar',                 d:'Te curas a ti y a tu grupo un 18% de la vida.', nivel:1, cd:0, coste:20, ic:'gota' },
+  dolor:     { clase:'sacerdote', n:'Palabra de dolor',      d:'Tu objetivo pierde vida durante 10 s.', nivel:3, cd:0, coste:10, ic:'calavera' },
+  fortaleza: { clase:'sacerdote', n:'Fortaleza',             d:'Recibes un 30% menos de daño durante 30 s.', nivel:5, cd:30, coste:15, ic:'escudo' },
+  alarido:   { clase:'sacerdote', n:'Alarido psíquico',      d:'Los enemigos cercanos huyen aterrados 3 s.', nivel:8, cd:25, coste:20, ic:'onda' },
+  purificar: { clase:'sacerdote', n:'Purificar',             d:'Te quitas venenos y maldiciones y recuperas un 8% de vida.', nivel:10, cd:8, coste:10, ic:'estrella' },
+  // arquero
+  certero:   { clase:'arquero', n:'Disparo certero',         d:'Una flecha muy poderosa y veloz.', nivel:1, cd:0, coste:30, ic:'diana' },
+  conmocion: { clase:'arquero', n:'Disparo de conmoción',    d:'Una flecha que daña y ralentiza 4 s.', nivel:3, cd:8, coste:15, ic:'trueno' },
+  marcacaza: { clase:'arquero', n:'Marca del cazador',       d:'Tu objetivo recibe un 30% más de daño durante 15 s.', nivel:5, cd:20, coste:10, ic:'ojo' },
+  rafaga:    { clase:'arquero', n:'Ráfaga',                  d:'Disparas tres flechas seguidas a tu objetivo.', nivel:8, cd:10, coste:30, ic:'abanico' },
+  fingir:    { clase:'arquero', n:'Fingir muerte',           d:'Te haces el muerto: los enemigos te pierden la pista.', nivel:10, cd:30, coste:0, ic:'calavera' }
+});
+Object.assign(PODER_FN, {
+  sanar(){ pose('cast', .4); curar(.18); fxAnillo(P.x, P.y, 30, 6, '#7dffa8', .35); chispas(P.x, P.y - 30, '#bfffd0', 14, 120); },
+  dolor(){ const e = blanco(360); if (!e) return sinObjetivo(10); pose('cast', .3); golpeUnico(e, D.mag * .3); e.dot = { dps:D.mag * .45, t:10, tick:1, col:'#b98bff' }; fxEstela(P.x, P.y - 10, e.x, e.y - 10, '#b98bff', .3); },
+  fortaleza(){ ponerEfecto('def_up', 30); fxAnillo(P.x, P.y, 10, 60, '#ffe066', .4); },
+  alarido(){ pose('cast', .4); fxAnillo(P.x, P.y, 10, 140, '#b98bff', .45); for (const e of enemigos) if (!e.jefe && Math.hypot(e.x - P.x, e.y - P.y) < 140 + e.r){ e.aturdido = 3; texto(e.x, e.y - 60, 'Aterrado', '#d8b0ff', 13); } },
+  purificar(){ const n = quitarMalos(); curar(.08); texto(P.x, P.y - 90, n ? 'Purificado' : 'Nada que purificar', '#fff2b0', 13); chispas(P.x, P.y - 20, '#ffffff', 16, 140); },
+  certero(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.fis * 2.1, { vel:860, color:'#ffe066' }); },
+  conmocion(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.fis * 1.1, { lento:4, aoe:28, color:'#9fd8ff' }); },
+  marcacaza(){ const e = blanco(420); if (!e) return sinObjetivo(10); e.vuln = 15; texto(e.x, e.y - 64, '¡Marcado!', '#ff9a3d', 14); fxAnillo(e.x, e.y, 40, 8, '#ff9a3d', .5); },
+  rafaga(){
+    pose('atk', DUR_ATK);
+    for (let i = 0; i < 3; i++) setTimeout(() => { if (!enJuego || E.tipo !== 'mazmorra') return; apuntar(); disparar('flecha', P.ang, D.fis * 1.05); sfx('ataque_arquero', .05); }, i * 140);
+  },
+  fingir(){ P.inv = Math.max(P.inv, 1); pose('oculto', .8); reducirAmenaza(.1); for (const e of enemigos) if (!e.jefe && e.objetivo === P) e.aggro = false; texto(P.x, P.y - 80, 'Fingiendo muerte…', '#c0c8d8', 13); }
+});
+Object.assign(PODER_FN, {
+  escudoluz(){ P.escudo = Math.round(D.maxHp * .25); P.tEscudo = 15; fxAnillo(P.x, P.y, 10, 40, '#ffe066', .4); texto(P.x, P.y - 80, 'Escudo de luz', '#ffe066', 13); },
+  fuegosagrado(){
+    const e = blanco(360); if (!e) return sinObjetivo(20);
+    pose('cast', .35); P.ang = Math.atan2(e.y - P.y, e.x - P.x); herir(e, D.mag * 1.7);
+    if (!e.muerto) e.dot = { dps:D.mag * .35, t:6, tick:1, col:'#ffb347' };
+    fxPx.push({ t:'haz', x:e.x, y:e.y, col:'#ffb347', ancho:18, vida:.45, max:.45 }); chispas(e.x, e.y - 20, '#ffb347', 18, 180);
+  },
+  renovar(){
+    pose('cast', .3); fxAnillo(P.x, P.y, 10, 50, '#7dffa8', .4);
+    fxPx.push({ t:'renovar', vida:12, max:12, tick:1, paso:(f, dt) => { f.tick -= dt; if (f.tick <= 0){ f.tick = 1; curar(.03); } } });
+  },
+  novasagrada(){ pose('cast', .4); golpeCirculo(P.x, P.y, 140, D.mag * 1.6); curar(.1); fxAnillo(P.x, P.y, 10, 140, '#fff2b0', .45); chispas(P.x, P.y, '#ffe066', 40, 280); shake = 6; },
+  pozoluz(){
+    pose('cast', .6); const p = puntoMira(320);
+    zonas.push({ x:p.x, y:p.y, r:100, ticks:8, cada:.38, t:.15, dmg:D.mag * .65, col:'#ffe066' });
+    fxPx.push({ t:'haz', x:p.x, y:p.y, col:'#ffe066', ancho:70, vida:3.1, max:3.1 });
+  },
+  oracion(){ pose('invocar', .8); quitarMalos(); curar(1, 400); banner('Oración', 'La luz te restaura por completo'); fxAnillo(P.x, P.y, 10, 120, '#ffffff', .6); chispas(P.x, P.y - 30, '#fff2b0', 50, 260); },
+  juicio(){
+    pose('cast', .6); let n = 0;
+    for (const e of enemigos) if (!e.muerto && Math.hypot(e.x - P.x, e.y - P.y) < 340 + e.r && n < 10){
+      const blancoE = e, k = n++;
+      fxPx.push({ t:'haz', x:e.x, y:e.y, col:'#ffe066', ancho:34, vida:.7 + k * .08, max:.7 + k * .08, paso:(f) => {
+        if (f.vida <= .05 && !f.hecho){ f.hecho = true; if (!blancoE.muerto) herir(blancoE, D.mag * 3.2); chispas(f.x, f.y, '#fff2b0', 24, 240); shake = Math.max(shake, 8); } } });
+    }
+    if (!n) texto(P.x, P.y - 74, 'No hay enemigos cerca', '#9a91c2', 14);
+    else banner('¡Juicio final!', 'La luz castiga a tus enemigos');
+  },
+  flechaarcana(){ pose('atk', DUR_ATK); disparar('flecha', P.ang, D.poder * 1.8, { perfora:true, vel:820, vida:.8, r:12, color:'#b98bff' }); fxAnillo(P.x, P.y, 10, 30, '#b98bff', .25); },
+  trampahielo(){
+    pose('cast', .3); const p = puntoMira(260);
+    for (const e of enemigos) if (Math.hypot(e.x - p.x, e.y - p.y) < 90 + e.r){ e.raiz = e.jefe ? 1 : 3; herir(e, D.poder * .6); }
+    zonas.push({ x:p.x, y:p.y, r:90, ticks:5, cada:.5, t:.5, dmg:D.poder * .2, lento:3, col:'#9fd8ff' });
+    fxPx.push({ t:'zona', x:p.x, y:p.y, r:90, col:'#9fd8ff', vida:2.5, max:2.5 }); fxEstela(P.x, P.y - 10, p.x, p.y, '#9fd8ff', .3);
+  },
+  retirada(){
+    const x0 = P.x, y0 = P.y, a = P.ang + Math.PI; let paso = 0;
+    for (const e of enemigos) if (!e.jefe && Math.hypot(e.x - P.x, e.y - P.y) < 90 + e.r) e.aturdido = 1;
+    golpeCirculo(P.x, P.y, 80, D.poder * .5);
+    while (paso < 200 && !solidoEn(P.x + Math.cos(a) * 16, P.y + Math.sin(a) * 16)){ P.x += Math.cos(a) * 8; P.y += Math.sin(a) * 8; paso += 8; }
+    colisiones(P); P.inv = Math.max(P.inv, .35); fxEstela(x0, y0, P.x, P.y, '#ffd9a0', .35); pose('oculto', .12);
+  },
+  volea(){
+    pose('cast', .5); const p = puntoMira(330);
+    zonas.push({ x:p.x, y:p.y, r:115, ticks:7, cada:.3, t:.25, dmg:D.poder * .75, col:'#ff9a3d' });
+    fxPx.push({ t:'flechas', x:p.x, y:p.y, r:115, col:'#ffd9a0', vida:2.3, max:2.3 });
+  },
+  picadura(){ const e = blanco(380); if (!e) return sinObjetivo(15); pose('atk', DUR_ATK); P.ang = Math.atan2(e.y - P.y, e.x - P.x); disparar('flecha', P.ang, D.fis * .6, { color:'#5aff5a' }); e.dot = { dps:D.fis * .5, t:10, tick:1, col:'#5aff5a' }; },
+  rapido(){ ponerEfecto('rapido', 10); chispas(P.x, P.y - 20, '#ffe066', 20, 160); },
+  tormentaf(){
+    pose('cast', .6); const p = puntoMira(340);
+    zonas.push({ x:p.x, y:p.y, r:170, ticks:12, cada:.25, t:.2, dmg:D.poder * .8, col:'#ff5a1e' });
+    fxPx.push({ t:'flechas', x:p.x, y:p.y, r:170, col:'#ff9a3d', vida:3.2, max:3.2 }); banner('¡Tormenta de flechas!', '');
+  }
+});
+
 // los 7 poderes de la barra (Q F R 1 2 3 4), distintos para cada clase; los poderes de sombra compartidos quedan fuera
 const PODERES_CLASE = {
   guerrero:[
@@ -3917,11 +4088,30 @@ const PODERES_CLASE = {
     ['elemental',  'Elemental de agua',  'Invocas un elemental que lanza descargas de escarcha durante 20 s.', 12, 30, 35, 'elemental', '#3a8ad8'],
     ['barrera',    'Barrera de hielo',   'Un escudo absorbe daño igual al 30% de tu vida durante 30 s.', 16, 30, 30, 'burbuja', '#c8f0ff'],
     ['meteoro',    'Meteoro',            'Un meteoro cae sobre la zona y arrasa todo.', 20, 45, 60, 'meteoro', '#ff5a1e']
+  ],
+  sacerdote:[
+    ['escudoluz',  'Palabra de poder: escudo','Un escudo de luz absorbe daño igual al 25% de tu vida durante 15 s.', 2, 12, 20, 'escudo', '#ffe066'],
+    ['fuegosagrado','Fuego sagrado',      'Llamas sagradas queman a tu objetivo durante 6 s.', 4, 6, 20, 'llama', '#ffb347'],
+    ['renovar',    'Renovar',            'Recuperas vida poco a poco durante 12 s (tú y tu grupo).', 6, 10, 15, 'ala', '#7dffa8'],
+    ['novasagrada','Nova sagrada',       'Estallido de luz que daña a los enemigos cercanos y te cura.', 9, 8, 30, 'sol', '#fff2b0'],
+    ['pozoluz',    'Pozo de luz',        'Una columna de luz cae sobre la zona y quema a todos durante 3 s.', 12, 14, 35, 'cruz', '#ffe066'],
+    ['oracion',    'Oración',            'Recuperas toda tu vida y quitas todos los efectos malos.', 16, 60, 40, 'halo', '#ffffff'],
+    ['juicio',     'Juicio final',       'Haces caer pilares de luz sobre todos los enemigos cercanos.', 20, 50, 60, 'sol', '#ffe066']
+  ],
+  arquero:[
+    ['flechaarcana','Disparo arcano',     'Una flecha mágica que atraviesa a todos los enemigos en línea.', 2, 6, 20, 'flecha', '#b98bff'],
+    ['trampahielo','Trampa de hielo',    'Lanzas una trampa: congela a los enemigos de la zona y los ralentiza.', 4, 15, 15, 'trampa', '#9fd8ff'],
+    ['retirada',   'Retirada',           'Saltas hacia atrás y aturdes 1 s a los enemigos de los que te alejas.', 6, 12, 10, 'ala', '#ffd9a0'],
+    ['volea',      'Volea',              'Una lluvia de flechas cae sobre la zona.', 9, 10, 35, 'lluviaf', '#ff9a3d'],
+    ['picadura',   'Picadura de serpiente','Envenenas a tu objetivo: pierde vida durante 10 s.', 12, 5, 15, 'serpiente', '#5aff5a'],
+    ['rapido',     'Disparo rápido',     'Durante 10 s disparas el doble de rápido.', 16, 40, 0, 'reloj', '#ffe066'],
+    ['tormentaf',  'Tormenta de flechas','Una tormenta de flechas arrasa una zona enorme.', 20, 45, 50, 'lluviaf', '#ff5a1e']
   ]
 };
 // glifos de las 5 habilidades de clase (teclas 5 a 8)
 const GLIFO_HAB = { heroico:'espada', grito:'trueno', provocar:'puno', torbellino:'espiral', ejecutar:'hacha', siniestro:'daga', eviscerar:'daga', picadillo:'reloj', patada:'puno', esfumarse:'capa',
-  escarcha:'copo', nova:'copo', arcana:'estrella', evocacion:'reloj', bloque:'burbuja' };
+  escarcha:'copo', nova:'copo', arcana:'estrella', evocacion:'reloj', bloque:'burbuja',
+  sanar:'gota', dolor:'calavera', fortaleza:'escudo', alarido:'onda', purificar:'estrella', certero:'diana', conmocion:'trueno', marcacaza:'ojo', rafaga:'abanico', fingir:'calavera' };
 for (const [clase, lista] of Object.entries(PODERES_CLASE)) for (const [id, n, d, nivel, cd, coste, glifo, col] of lista)
   PODERES[id] = { clase, n, d, nivel, cd, coste, ic:'px:' + glifo, col, barra:true };
 for (const [id, g] of Object.entries(GLIFO_HAB)) if (PODERES[id]) PODERES[id].ic = 'px:' + g;
@@ -3971,6 +4161,18 @@ function dibujarFxPx(t){
       // ventisca: copos que caen dentro de un círculo
       ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .55, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
       for (let i = 0; i < 22; i++){ const a = rand(0, TAU), d = Math.sqrt(Math.random()) * f.r; pxCuadro(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d * .55 - rand(0, 60), Math.random() < .5 ? '#ffffff' : f.col); }
+    } else if (f.t === 'haz'){
+      // columna de luz que baja del cielo
+      const w = f.ancho * (.6 + .4 * Math.sin(k * Math.PI));
+      ctx.globalAlpha = Math.min(1, f.vida / f.max * 2) * .35; ctx.fillStyle = f.col; ctx.fillRect(Math.round(f.x - w / 2), f.y - 420, Math.round(w), 420);
+      ctx.globalAlpha = Math.min(1, f.vida / f.max * 2);
+      for (let i = 0; i < 14; i++) pxCuadro(f.x + rand(-w / 2, w / 2), f.y - rand(0, 400), Math.random() < .5 ? '#ffffff' : f.col, 4);
+      ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, w * .9 + 8, (w * .9 + 8) * .4, 0, 0, TAU); ctx.stroke();
+    } else if (f.t === 'flechas'){
+      // lluvia de flechas: caen en diagonal dentro del círculo
+      ctx.strokeStyle = f.col; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .55, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      for (let i = 0; i < 16; i++){ const a = rand(0, TAU), d = Math.sqrt(Math.random()) * f.r, x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * .55 - rand(0, 90);
+        for (let j = 0; j < 4; j++) pxCuadro(x - j * 3, y - j * 6, j ? '#8a5a2b' : '#ffffff', 3); pxCuadro(x - 12, y - 24, f.col, 3); }
     } else if (f.t === 'estandarte'){
       ctx.globalAlpha = 1; const x = Math.round(f.x), y = Math.round(f.y);
       ctx.drawImage(iconoPx('estandarte', PALETA_CLASE.guerrero), x - 24, y - 60, 48, 48);
@@ -3993,8 +4195,15 @@ function dibujarVortice(p, t, esc){
 }
 // proyectiles en pixel art (bola de fuego, escarcha, cuchillos)
 function dibujarProyPx(p, t){
-  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], arcano:['#4f9aff', '#c8f0ff', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
+  const a = Math.atan2(p.vy, p.vx), cols = { fuego:['#ff5a1e', '#ffb347', '#ffe25a'], hielo:['#3a8ad8', '#9fd8ff', '#ffffff'], arcano:['#4f9aff', '#c8f0ff', '#ffffff'], luz:['#e8b830', '#ffe066', '#ffffff'], cuchillo:['#c0c8d8', '#ffffff', '#5aa83a'] }[p.px];
   const y = p.y - (p.alt || 0);
+  if (p.px === 'flecha'){
+    const c = Math.cos(a), s = Math.sin(a);
+    for (let i = 0; i < 7; i++) pxCuadro(p.x - c * i * 4, y - s * i * 4, i === 0 ? '#ffffff' : i < 6 ? '#8a5a2b' : p.color, i === 0 ? 4 : 3);
+    pxCuadro(p.x - c * 26 - s * 4, y - s * 26 + c * 4, p.color, 3); pxCuadro(p.x - c * 26 + s * 4, y - s * 26 - c * 4, p.color, 3);
+    if (p.perfora) for (let i = 0; i < 3; i++) pxCuadro(p.x - c * rand(0, 30) + rand(-5, 5), y - s * rand(0, 30) + rand(-5, 5), p.color, 3);
+    return;
+  }
   if (p.px === 'cuchillo'){ for (let i = 0; i < 4; i++) pxCuadro(p.x - Math.cos(a) * i * 4, y - Math.sin(a) * i * 4, i ? cols[0] : cols[1], 3); return; }
   for (let i = 0; i < 8; i++) pxCuadro(p.x - Math.cos(a) * i * 5 + rand(-3, 3), y - Math.sin(a) * i * 5 + rand(-3, 3), cols[Math.min(2, i / 3 | 0)], i < 2 ? 5 : 3);
   for (let i = 0; i < 5; i++) pxCuadro(p.x + rand(-6, 6), y + rand(-6, 6), cols[i % 3], 4);
@@ -4180,7 +4389,8 @@ const EFECTOS = {
   com_atk: { n:'Bien alimentado',    d:'+10% de daño',               ic:'b_atk_up' },
   com_def: { n:'Bien alimentado',    d:'Recibes 10% menos daño',     ic:'b_def_up' },
   com_vel: { n:'Bien alimentado',    d:'+10% de velocidad y +30% de energía recuperada', ic:'b_agi_up' },
-  evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' }
+  evasion: { n:'Evasión',            d:'Esquivas la mitad de los golpes', ic:'b_agi_up' },
+  rapido:  { n:'Disparo rápido',     d:'Disparas el doble de rápido',  ic:'b_agi_up' }
 };
 // qué debuff deja cada monstruo al golpearte (y con qué probabilidad)
 const DEBUFF_MONSTRUO = { slime:['agi_dn', 3, .35], mantis:['atk_dn', 5, .3], escorpion:['def_dn', 5, .3], arana:['veneno', 4, .45], jabali:['agi_dn', 2, .3] };
@@ -4716,6 +4926,7 @@ const EQ_PIX = {
   Espada:   { agarre:15, filas:['...o...','..oWo..','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','..oWSo.','ooGRGoo','oGGGGGo','.oogoo.','..oHo..','..oHo..','..oGo..','...o...'] },
   Daga:     { agarre:8,  filas:['..o..','.oWo.','.oWSo','.oWSo','.oWSo','oGRGo','.oHo.','.oHo.','.oGo.','..o..'] },
   Báculo:   { agarre:14, filas:['..ooo..','.oRRWo.','oRRRRWo','oRRRRRo','orRRRro','.orrro.','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','..oBo..','..oBo..','..oBo..','..obo..','...o...'] },
+  Arco:     { agarre:9,  filas:['.oo.....','.WoRo...','.W.oBo..','.W.oBo..','.W..oBo.','.W..oBo.','.W...oBo','.W...oBo','.W...oHo','.W...oHo','.W...oHo','.W...oBo','.W...oBo','.W..oBo.','.W..oBo.','.W.oBo..','.W.oBo..','.WoRo...','.oo.....'] },
   Grimorio: { agarre:4,  filas:['ooooooooo','oRRRRRRRo','oRRGGGRRo','oRRGrGRRo','oRRGGGRRo','oRRRRRRRo','oPPPPPPPo','ooooooooo'] },
   Yelmo:    { filas:['......oooooo......','....ooSSSSSSoo....','...oSWWWWWWWSSo...','..oSWWWWWWWWWSSo..','.oSWWWWWWWWWWWSSo.','.oSSSSSSSSSSSSSSo.','oGGGGGGGRRGGGGGGGo','oooooooooooooooooo'] },
   Diadema:  { filas:['o.....o.....o','Go...oRo...oG','oGo.oGGGo.oGo','oGGGGGGGGGGGo','oGRGGGRGGGRGo','ooooooooooooo'] },
@@ -6516,11 +6727,11 @@ function darEmblemas(n, motivo){
   texto(P.x, P.y - 96, `+${n} emblema${n > 1 ? 's' : ''}`, '#b98bff', 14);
   if (motivo) chat(`Recibes ${n} emblema${n > 1 ? 's' : ''} (${motivo}).`, '#b98bff');
 }
-const STAT_CLASE = { guerrero:['fue','vit'], sombra:['agi','fue'], mago:['int','vit'] };
+const STAT_CLASE = { guerrero:['fue','vit'], sombra:['agi','fue'], mago:['int','vit'], sacerdote:['int','vit'], arquero:['agi','fue'] };
 const PRECIO_EMB = { cabeza:30, amuleto:20, pecho:35, manos:20, piernas:30, pies:20, anillo:15, arma:45 };
 function objetoEmblema(slot, rango){
   const nivel = UMBRAL_RANGO[rango] + 10, pres = (3 + nivel * .7) * RAREZAS[3].m * 1.15, [a, b] = STAT_CLASE[PJ.clase];
-  const base = { arma:{ guerrero:'Espada', sombra:'Daga', mago:'Báculo' }[PJ.clase] }[slot] || RANURAS[slot].bases[0];
+  const base = { arma:ARMA_CLASE[PJ.clase] }[slot] || RANURAS[slot].bases[0];
   const o = { id:'emb-' + slot + '-' + rango + '-' + Date.now().toString(36) + (uidObj++), slot, nombre:`${base} del Triunfo`, rareza:3, nivel,
     stats:{ [a]:Math.round(pres * .6), [b]:Math.round(pres * .4) } };
   if (slot === 'arma') o.dmg = Math.round(pres * 1.25);
