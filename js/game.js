@@ -2814,6 +2814,24 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && enJ
 
 function pausar(){ $('notaGuardado').textContent = ''; $('btnSaltarPrologo').classList.toggle('oculto', !prologo); pantalla('pPausa'); }
 $('btnHistoria').onclick = () => verHistoria();
+// modo app: se puede instalar en el teléfono o el ordenador y jugar sin internet
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+let avisoInstalar = null;
+const yaInstalado = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); avisoInstalar = e;
+  for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).classList.remove('oculto');
+});
+addEventListener('appinstalled', () => { avisoInstalar = null; for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).classList.add('oculto'); });
+for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).onclick = async () => {
+  if (!avisoInstalar) return;
+  avisoInstalar.prompt();
+  try { await avisoInstalar.userChoice; } catch (e) {}
+  avisoInstalar = null;
+  for (const b of ['btnInstalar', 'btnInstalarPausa']) $(b).classList.add('oculto');
+};
+// en iPhone no hay aviso de instalación: se explica cómo hacerlo a mano
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !yaInstalado()) $('notaInstalarIos').classList.remove('oculto');
 // idioma: en el inicio de sesión y en la pausa (se guarda y la página se recarga en el idioma elegido)
 document.querySelectorAll('[data-idioma]').forEach(b => {
   b.setAttribute('aria-pressed', b.dataset.idioma === window.IDIOMA);

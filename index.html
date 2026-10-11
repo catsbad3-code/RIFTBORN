@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Riftborn">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="img/icono.png">
+<link rel="apple-touch-icon" href="img/icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="img/icono.png">
 <title>Riftborn: El Ascenso del Eclipse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,7 +112,9 @@
   <div class="menu">
     <button class="btn principal" data-ir="pPersonajes">Jugar</button>
     <button class="btn" data-ir="pAyuda">Cómo jugar</button>
+    <button class="btn oculto" id="btnInstalar">Instalar el juego</button>
   </div>
+  <p class="nota oculto" id="notaInstalarIos">En iPhone: toca Compartir y luego «Añadir a pantalla de inicio» para instalarlo.</p>
 </div>
 
 <div id="pAyuda" class="overlay portada oculto">
@@ -225,6 +229,7 @@
     <button class="btn" id="btnVerPerfil">Perfil</button>
     <button class="btn" id="btnGuardar">Guardar partida</button>
     <button class="btn" id="btnHistoria">Ver la historia</button>
+    <button class="btn oculto" id="btnInstalarPausa">Instalar el juego</button>
     <button class="btn" id="btnIdioma" translate="no">Idioma · Language: Español</button>
     <button class="btn oculto" id="btnSaltarPrologo">Saltar el prólogo</button>
     <button class="btn" id="btnMusica">Música: Sí</button>
