@@ -3505,12 +3505,12 @@ function usarHab(n){
   const c = CLASES[PJ.clase];
   if (n === 1){
     if (P.cd1 > 0) return;
-    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx('ataque', .08);
+    P.cd1 = c.h1.cd * (1 - Math.min(.35, D.s.agi * .005)) * D.cdK; sfx(sfxClase('ataque'), .08);
   } else {
     if (P.cd2 > 0 || P.gcd > 0) return;
     const coste2 = costeDe(c.h2);
     if (P.en < coste2){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); P.cd2 = .3; vibrar([20, 40, 20]); return; }
-    P.cd2 = c.h2.cd * D.cdK; P.en -= coste2; P.gcd = GCD; vibrar(15); sfx('poder');
+    P.cd2 = c.h2.cd * D.cdK; P.en -= coste2; P.gcd = GCD; vibrar(15); sfx(sfxClase('poder'));
   }
   apuntar();
   HAB[PJ.clase + n]();
@@ -3560,7 +3560,7 @@ function usarPoder(id){
   if ((P.cdP[id] || 0) > 0 || P.gcd > 0) return;
   if (pw.clase && pw.clase !== PJ.clase) return;
   if (P.en < costeDe(pw)){ texto(P.x, P.y - 74, recurso().sin, '#4fa3ff', 14); vibrar([20, 40, 20]); return; }
-  P.en -= costeDe(pw); P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx('poder');
+  P.en -= costeDe(pw); P.cdP[id] = pw.cd * D.cdK; P.gcd = GCD; vibrar(15); sfx(sfxClase('poder'));
   apuntar();
   PODER_FN[id]();
 }
@@ -6033,8 +6033,22 @@ const SFX = {
   logro(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.2, desde:i * .1 })); },
   comer(){ tono(660, .07, { vol:.1 }); tono(880, .07, { vol:.1, desde:.1 }); tono(660, .07, { vol:.1, desde:.2 }); },
   paso(){ ruido(.035, { vol:.05, filtro:E && E.tipo === 'mazmorra' ? 500 : 1400, q:3 }); },
-  click(){ tono(1200, .03, { vol:.06 }); }
+  click(){ tono(1200, .03, { vol:.06 }); },
+  // cada clase suena distinto: el guerrero golpea metal, la sombra corta el aire, el mago chisporrotea...
+  ataque_guerrero(){ ruido(.16, { vol:.4, filtro:900, q:1.2 }); tono(180, .14, { tipo:'square', vol:.16, hasta:90 }); tono(1400, .05, { tipo:'triangle', vol:.08, desde:.02 }); },
+  ataque_sombra(){ ruido(.09, { vol:.32, filtro:4200, q:.6, tipoF:'highpass' }); tono(900, .06, { tipo:'sawtooth', vol:.06, hasta:400 }); },
+  ataque_mago(){ tono(660, .12, { tipo:'sine', vol:.14, hasta:1320 }); tono(990, .1, { tipo:'triangle', vol:.08, desde:.03, hasta:1980 }); ruido(.08, { vol:.1, filtro:6000, tipoF:'highpass' }); },
+  ataque_sacerdote(){ [1047, 1319].forEach((f, i) => tono(f, .22, { tipo:'sine', vol:.1, desde:i * .04 })); },
+  ataque_arquero(){ tono(220, .07, { tipo:'triangle', vol:.18, hasta:140 }); ruido(.12, { vol:.18, filtro:2400, q:3, desde:.02 }); },
+  poder_guerrero(){ tono(90, .4, { tipo:'sawtooth', vol:.2, hasta:45 }); ruido(.45, { vol:.3, filtro:400, tipoF:'lowpass' }); },
+  poder_sombra(){ ruido(.3, { vol:.22, filtro:1600, q:4 }); tono(440, .28, { tipo:'sawtooth', vol:.08, hasta:110 }); },
+  poder_mago(){ [523, 784, 1047].forEach((f, i) => tono(f, .3, { tipo:'triangle', vol:.1, desde:i * .05 })); ruido(.35, { vol:.12, filtro:3000, q:2 }); },
+  poder_sacerdote(){ [784, 988, 1175, 1568].forEach((f, i) => tono(f, .5, { tipo:'sine', vol:.09, desde:i * .06, ataque:.04 })); },
+  poder_arquero(){ for (let k = 0; k < 3; k++){ tono(240 - k * 20, .07, { tipo:'triangle', vol:.14, desde:k * .07, hasta:150 }); ruido(.1, { vol:.14, filtro:2600, q:3, desde:k * .07 + .02 }); } },
+  devorar(){ tono(120, .5, { tipo:'sawtooth', vol:.16, hasta:40 }); ruido(.5, { vol:.18, filtro:700, q:3 }); [392, 523, 659].forEach((f, i) => tono(f, .25, { tipo:'triangle', vol:.12, desde:.35 + i * .08 })); }
 };
+// el sonido de ataque o de poder propio de la clase (si no tiene, el de siempre)
+const sfxClase = base => PJ && SFX[`${base}_${PJ.clase}`] ? `${base}_${PJ.clase}` : base;
 // reproduce un efecto (con un mínimo de tiempo entre repeticiones del mismo)
 function sfx(n, minimo = .03){
   if (!SON.ctx || !SON.efectos || SON.ctx.state !== 'running') return;
@@ -6053,10 +6067,16 @@ const PISTAS = {
   mazmorra: { bpm:100, raiz:50, escala:[0, 1, 3, 5, 7, 8, 10], mel:[0, -1, 2, 1, 0, -1, 4, 3, 2, -1, 1, 0, -1, 0, 1, 2], bajo:[0, 0, 0, 0, 5, 5, 4, 4], onda:'square' },
   titan:    { bpm:138, raiz:50, escala:[0, 1, 3, 5, 6, 8, 10], mel:[0, 0, 4, 3, 0, 0, 5, 4, 0, 0, 6, 5, 4, 3, 2, 1], bajo:[0, 0, 0, 0, 1, 1, 0, 0], onda:'sawtooth' },
   casino:   { bpm:126, raiz:58, escala:[0, 2, 4, 7, 9, 10],  mel:[0, 2, 4, 3, 5, -1, 4, 2, 0, 2, 4, 5, 3, 2, 1, -1], bajo:[0, 4, 3, 4, 0, 4, 3, 2], onda:'triangle' },
+  // prólogo: la calle bajo la lluvia, la Voz del Mundo y la gruta donde renace (también para las escenas de historia)
+  lluvia:   { bpm:66,  raiz:57, escala:[0, 2, 3, 5, 7, 8, 10], mel:[4, -1, 3, -1, 2, -1, 0, -1, 2, -1, 3, 2, 0, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'sine', pad:[[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]], lluvia:true },
+  eter:     { bpm:56,  raiz:62, escala:[0, 2, 4, 7, 9],      mel:[4, -1, -1, 6, -1, -1, 5, -1, 3, -1, -1, 2, -1, -1, -1, -1], bajo:[0, 0, 0, 0, 3, 3, 3, 3], onda:'sine', pad:[[0, 2, 4], [3, 5, 7]] },
+  gruta:    { bpm:80,  raiz:52, escala:[0, 1, 3, 5, 7, 8, 11], mel:[0, -1, 2, -1, 3, 2, -1, -1, 4, -1, 3, -1, 2, 1, -1, -1], bajo:[0, 0, 0, 0, 5, 5, 6, 6], onda:'triangle', pad:[[0, 2, 4], [5, 7, 9]], gota:true },
   menu:     { bpm:72,  raiz:55, escala:[0, 2, 3, 5, 7, 8, 10], mel:[0, -1, 2, -1, 4, -1, 3, 2, 0, -1, 2, -1, 1, -1, -1, -1], bajo:[0, 0, 5, 5, 3, 3, 4, 4], onda:'triangle' }
 };
 function pistaActual(){
-  if (!enJuego || cine) return 'menu';
+  if (cine){ const esc = CINE[cine.e].escena; return esc === 'calle' || esc === 'luces' ? 'lluvia' : esc === 'vacio' ? 'eter' : 'gruta'; }
+  if (!enJuego) return 'menu';
+  if (E.tutorial || pantallaActual === 'pDialogo' && E.tipo !== 'casino') return 'gruta';
   if (E.tipo === 'mazmorra') return E.semanal ? 'titan' : 'mazmorra';
   if (E.tipo === 'ciudad') return oscuridad() > .3 ? 'noche' : 'ciudad';
   if (E.tipo === 'casino') return 'casino';
@@ -6073,6 +6093,10 @@ function programarMusica(){
     const i = SON.paso, desde = SON.sig - SON.ctx.currentTime, m = P0.mel[i % P0.mel.length];
     if (m >= 0) tono(nota(m, 1), corchea * .9, { tipo:P0.onda, vol:.16, desde, destino:SON.mus, ataque:.01 });
     if (i % 2 === 0) tono(nota(P0.bajo[(i >> 1) % P0.bajo.length], -1), corchea * 1.8, { tipo:'triangle', vol:.3, desde, destino:SON.mus, ataque:.01 });
+    // acordes largos de fondo, lluvia y gotas que caen en la cueva
+    if (P0.pad && i % 8 === 0) for (const g of P0.pad[(i >> 3) % P0.pad.length]) tono(nota(g), corchea * 8, { tipo:'sine', vol:.06, desde, destino:SON.mus, ataque:corchea * 2 });
+    if (P0.lluvia) ruido(corchea, { vol:.035, filtro:5500, tipoF:'highpass', desde, destino:SON.mus });
+    if (P0.gota && i % 5 === 3 && Math.random() < .6) tono(1400 + Math.random() * 700, .12, { tipo:'sine', vol:.07, desde, destino:SON.mus, hasta:900 });
     if (SON.pista === 'mazmorra' || SON.pista === 'titan' || SON.pista === 'ciudad'){
       if (i % 4 === 0) tono(90, .12, { tipo:'sine', vol:.35, hasta:45, desde, destino:SON.mus });
       if (i % 4 === 2) ruido(.05, { vol:.12, filtro:6000, tipoF:'highpass', desde, destino:SON.mus });
