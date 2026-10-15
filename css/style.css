@@ -535,7 +535,7 @@ body.jugando #buffs{display:flex}
 .wbag-pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:4px 6px;background:rgba(0,0,0,.5);border:1px solid #3d3016;border-radius:3px;font-size:12px;color:#bbb}
 .dinero{display:inline-flex;gap:7px;align-items:center;font:700 14px Rajdhani,sans-serif;color:#fff;text-shadow:0 1px 1px #000}
 .mon{display:inline-flex;align-items:center;gap:2px}
-.mon i{display:inline-block;width:13px;height:13px;flex-shrink:0;background:url(../img/ui-1.png) no-repeat;background-size:300% 100%}
+.mon i{display:inline-block;width:13px;height:13px;flex-shrink:0;background:url(../img/interfaz/ui-1.png) no-repeat;background-size:300% 100%}
 .mon i.m-o{background-position:0 0}
 .mon i.m-p{background-position:50% 0}
 .mon i.m-c{background-position:100% 0}
@@ -620,21 +620,21 @@ body.jugando #buffs{display:flex}
 #miCuerpo .linea span,#miCuerpo .linea b{min-width:min-content;overflow-wrap:normal}
 #miCuerpo .linea{gap:14px}
 #miCuerpo .linea b{text-align:right}
-.wbtn{background:none !important;border:10px solid transparent !important;border-image:url(../img/ui-2.png) 9 10 fill / 10px 11px stretch !important;
+.wbtn{background:none !important;border:10px solid transparent !important;border-image:url(../img/interfaz/ui-2.png) 9 10 fill / 10px 11px stretch !important;
   box-shadow:0 3px 5px rgba(0,0,0,.55) !important;border-radius:0 !important;color:#ffe9b0 !important;text-shadow:0 1px 0 #3a1a08,0 0 3px #000 !important;padding:2px 12px !important}
 .wbtn:hover{filter:brightness(1.18) saturate(1.1)}
 .wbtn.grande{padding:4px 16px !important}.wbtn.enorme{padding:6px 22px !important}
-.wl-izq .wbtn,.wl-der .wbtn,.ws-der .wbtn,.ws-izq .wbtn,#btnBorrarPj,#btnLogout,#btnAleatorio,#tabEntrar{border-image-source:url(../img/ui-3.png) !important;color:#f1ead8 !important}
-.wv-x,.wrot{background:none !important;border:6px solid transparent !important;border-image:url(../img/ui-2.png) 9 10 fill / 6px 7px stretch !important;border-radius:0 !important}
+.wl-izq .wbtn,.wl-der .wbtn,.ws-der .wbtn,.ws-izq .wbtn,#btnBorrarPj,#btnLogout,#btnAleatorio,#tabEntrar{border-image-source:url(../img/interfaz/ui-3.png) !important;color:#f1ead8 !important}
+.wv-x,.wrot{background:none !important;border:6px solid transparent !important;border-image:url(../img/interfaz/ui-2.png) 9 10 fill / 6px 7px stretch !important;border-radius:0 !important}
 .wl-hechizos,.libro .wv-cuerpo{background:none}
-.libro .wv-cuerpo{border:14px solid transparent;border-image:url(../img/ui-4.png) 22 22 fill / 14px stretch;box-shadow:none;margin:6px}
+.libro .wv-cuerpo{border:14px solid transparent;border-image:url(../img/interfaz/ui-4.png) 22 22 fill / 14px stretch;box-shadow:none;margin:6px}
 .herm-band{width:44px;height:88px;padding:0;cursor:pointer;border:2px solid transparent;border-radius:6px;background-repeat:no-repeat;background-size:800% 100%;background-color:rgba(0,0,0,.35)}
 .herm-band[aria-pressed="true"]{border-color:#ffd100;box-shadow:0 0 10px rgba(255,209,0,.7)}
 .herm-escudo.band{clip-path:none;border:none;background-repeat:no-repeat;background-size:800% 100%;width:44px;height:88px}
-.btn{background:none !important;border:10px solid transparent !important;border-image:url(../img/ui-3.png) 9 10 fill / 10px 11px stretch !important;border-radius:0 !important;
+.btn{background:none !important;border:10px solid transparent !important;border-image:url(../img/interfaz/ui-3.png) 9 10 fill / 10px 11px stretch !important;border-radius:0 !important;
   color:#f1ead8 !important;text-shadow:0 1px 0 #2a1a08,0 0 3px #000;box-shadow:0 3px 5px rgba(0,0,0,.5) !important;padding:4px 12px !important}
-.btn.principal,.btn.dorado{border-image-source:url(../img/ui-2.png) !important;color:#ffe9b0 !important}
-.btn.peligro{border-image-source:url(../img/ui-2.png) !important;color:#ffb3b3 !important}
+.btn.principal,.btn.dorado{border-image-source:url(../img/interfaz/ui-2.png) !important;color:#ffe9b0 !important}
+.btn.peligro{border-image-source:url(../img/interfaz/ui-2.png) !important;color:#ffb3b3 !important}
 .btn:hover:not(:disabled){filter:brightness(1.18)}
 .btn:disabled{filter:grayscale(.7) brightness(.6)}
 .mi-donde{text-align:left;margin:6px 0;padding:6px 8px;border-radius:6px;background:rgba(255,209,0,.08);border:1px solid rgba(255,209,0,.25);font-size:.92rem}
@@ -907,10 +907,10 @@ body.tactil .wv-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overfl
 .casp-premios span{display:flex;align-items:center;gap:2px}
 .casp-acc .btn{padding:.35rem .9rem !important}
 .btn.cas-ap{padding:.1rem .35rem !important;border-width:6px !important;font-size:.82rem;line-height:1.15}
-.cas-ap[aria-pressed="true"]{border-image-source:url(../img/ui-2.png) !important;color:#ffe9b0 !important}
+.cas-ap[aria-pressed="true"]{border-image-source:url(../img/interfaz/ui-2.png) !important;color:#ffe9b0 !important}
 .cas-ficha{display:inline-flex !important;align-items:center;gap:4px}
 .cas-ficha i{width:14px;height:14px;border-radius:50%;border:3px dashed;display:inline-block}
-.cas-sim{display:inline-block;width:28px;height:28px;background:url(../img/casino.png) no-repeat;image-rendering:pixelated;flex:none}
+.cas-sim{display:inline-block;width:28px;height:28px;background:url(../img/mundo/casino.png) no-repeat;image-rendering:pixelated;flex:none}
 #casCan{min-width:0}
 /* teléfono (de pie o acostado) y pantallas bajas: la mesa ocupa toda la pantalla y los controles son más pequeños */
 @media (max-width:600px),(max-height:520px){
@@ -983,6 +983,11 @@ body.con-son-flot:not(.jugando) .son-flotante{display:block}
 @media (max-width:1500px){
   body:not(.tactil) .accion{width:35px;height:35px;border-radius:8px}
   body:not(.tactil) #panelAccion #barra{gap:3px;padding:4px 6px}
+}
+/* con el botón de la montura el menú pequeño creció: entre 1240 y 1320 px se achican sus botones para no tocar la barra */
+@media (max-width:1320px) and (min-width:1241px){
+  body:not(.tactil) #micro{gap:3px;padding:3px 6px}
+  body:not(.tactil) .micro-btn{width:28px;height:30px}
 }
 @media (max-width:1240px){
   body:not(.tactil) #micro{flex-wrap:wrap;width:172px;justify-content:center;row-gap:4px}
