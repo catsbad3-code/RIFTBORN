@@ -984,6 +984,11 @@ body.con-son-flot:not(.jugando) .son-flotante{display:block}
   body:not(.tactil) .accion{width:35px;height:35px;border-radius:8px}
   body:not(.tactil) #panelAccion #barra{gap:3px;padding:4px 6px}
 }
+/* con el botón de la montura el menú pequeño creció: entre 1240 y 1320 px se achican sus botones para no tocar la barra */
+@media (max-width:1320px) and (min-width:1241px){
+  body:not(.tactil) #micro{gap:3px;padding:3px 6px}
+  body:not(.tactil) .micro-btn{width:28px;height:30px}
+}
 @media (max-width:1240px){
   body:not(.tactil) #micro{flex-wrap:wrap;width:172px;justify-content:center;row-gap:4px}
   body:not(.tactil) .micro-btn{width:30px;height:32px}
