@@ -22,7 +22,35 @@ function escGato(tipo, base){
   return g.px ? Math.max(1, Math.round(e)) : e;
 }
 let gatosListo = false, gatosPend = 2 + HOJAS_GATO.length;
-const gatoCargado = () => { if (--gatosPend === 0){ gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
+// Al cargar las hojas se ajustan los cuadros de caminar de cada gato en pixel art:
+//  - el punto de apoyo de cada cuadro pasa a ser el centro de la cabeza y el pecho (antes era el de los pies, que se
+//    mueve al dar el paso, y el cuerpo daba saltitos adelante y atrás al andar)
+//  - quieto, cada vista usa el cuadro con las piernas más juntas (antes, de lado, se quedaba con el paso abierto)
+function ajustarCuadrosGato(){
+  for (const GD of GATOS_DIR){
+    if (!GD || !GD.px || GD.ajustado) continue;
+    const c = document.createElement('canvas'), a = c.getContext('2d', { willReadFrequently:true });
+    for (const v of ['ab', 'ar', 'lado', 'de']){
+      const set = GD[v]; if (!set || !set.length) continue;
+      let quieto = set[0], min = 1e9;
+      for (const fr of set){
+        const [sx, sy, w, h] = fr; c.width = w; c.height = h; a.clearRect(0, 0, w, h); a.drawImage(GD.img, sx, sy, w, h, 0, 0, w, h);
+        const d = a.getImageData(0, 0, w, h).data, opaco = (x, y) => d[(y * w + x) * 4 + 3] > 127;
+        // centro de la cabeza y el pecho (del 12% al 50% de la altura): la cola y los pies quedan fuera
+        let suma = 0, n = 0;
+        for (let y = Math.round(h * .12); y < Math.round(h * .5); y++) for (let x = 0; x < w; x++) if (opaco(x, y)){ suma += x; n++; }
+        if (n) fr[4] = Math.round(suma / n * 2) / 2;
+        // lo abiertas que van las piernas: anchura de las últimas filas
+        let x0 = w, x1 = -1;
+        for (let y = h - 5; y < h; y++) for (let x = 0; x < w; x++) if (opaco(x, y)){ if (x < x0) x0 = x; if (x > x1) x1 = x; }
+        if (x1 - x0 < min){ min = x1 - x0; quieto = fr; }
+      }
+      if (!GD['q_' + v]) GD['q_' + v] = [quieto];
+    }
+    GD.ajustado = true;
+  }
+}
+const gatoCargado = () => { if (--gatosPend === 0){ ajustarCuadrosGato(); gatosListo = true; document.dispatchEvent(new Event('gatoslistos')); } };
 GATOS_IMG.onload = gatoCargado; MIST_IMG.onload = gatoCargado;
 for (const [i] of HOJAS_GATO){ const im = GATOS_DIR[i].img; im.onload = gatoCargado; im.src = im.dataset.src + '?v=' + VERSION; }
 GATOS_IMG.src = 'img/personajes/gatos.png';
