@@ -1,7 +1,7 @@
 // =====================================================
 //  UTILIDADES
 // =====================================================
-const VERSION = '1.17.1'; // también en index.html (estilos y scripts)
+const VERSION = '1.17.2'; // también en index.html (estilos y scripts)
 const $ = id => document.getElementById(id);
 // el juego está repartido en varios archivos: lo que llega pronto (una imagen ya guardada) espera a que estén todos
 const alCargar = fn => document.readyState === 'loading' ? addEventListener('DOMContentLoaded', fn, { once:true }) : fn();
