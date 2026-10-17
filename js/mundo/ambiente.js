@@ -39,15 +39,44 @@ const NOCHE = { cv:null };
 // completa en cada cuadro y se llevaba la mitad del tiempo de dibujo). El minimapa queda fuera, con su hueco.
 const MINI = { ok:false };
 function ocultarNoche(){ const c = NOCHE.el; if (c && c.style.display !== 'none') c.style.display = 'none'; }
-function dibujarNocheCiudad(){
-  const d = E.tipo === 'ciudad' ? oscuridad() : 0;
-  if (d < .02){ ocultarNoche(); return; }
+// capa de oscuridad aparte, a un tercio de resolución: la noche de la ciudad, la penumbra de las cuevas alrededor del gato
+// y la de los interiores. Pintarla en el lienzo grande a resolución completa costaba muchos FPS en el teléfono.
+function capaOscura(){
   const c = NOCHE.el || (NOCHE.el = $('nocheCv'));
   if (c.style.display !== 'block') c.style.display = 'block';
   const E3 = 3, w = Math.ceil(W / E3), h = Math.ceil(H / E3);
   if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
   const a = c.getContext('2d');
   a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
+  return { a, w, h, E3 };
+}
+// el minimapa y el cartel de la zona no se oscurecen (su sitio lo apunta dibujarMinimapa)
+function huecoMinimapa(a, E3){
+  if (!MINI.ok) return;
+  a.globalCompositeOperation = 'destination-out'; a.fillStyle = '#000';
+  if (!esInterior()){ a.beginPath(); a.arc(MINI.cx / E3, MINI.cy / E3, (MINI.r + 4) / E3, 0, TAU); a.fill(); }   // en los interiores no hay mapa, solo el cartel
+  if (E.tipo === 'mazmorra') a.fillRect((MINI.cx - 60) / E3, (MINI.cy + MINI.r + 4) / E3, 120 / E3, 20 / E3);   // «N monstruos» debajo del mapa
+  a.fillRect((MINI.px - MINI.tw / 2 - 2) / E3, (MINI.cy - MINI.r - 26) / E3, (MINI.tw + 4) / E3, 24 / E3);
+}
+function dibujarNocheCiudad(){
+  if (E.tipo === 'mazmorra'){
+    // cueva: se ve bien cerca del gato y se oscurece hacia los bordes
+    const { a, w, h, E3 } = capaOscura(), x = (P.x - cam.x) / E3, y = (P.y - 20 - cam.y) / E3;
+    const g = a.createRadialGradient(x, y, 120 / E3, x, y, Math.max(360, Math.min(W, H) * .75) / E3);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
+    a.fillStyle = g; a.fillRect(0, 0, w, h);
+    huecoMinimapa(a, E3); return;
+  }
+  if (esInterior()){
+    const { a, w, h, E3 } = capaOscura();
+    const g = a.createRadialGradient(w / 2, h / 2, 120 / E3, w / 2, h / 2, Math.max(W, H) * .7 / E3);
+    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
+    a.fillStyle = g; a.fillRect(0, 0, w, h);
+    huecoMinimapa(a, E3); return;
+  }
+  const d = E.tipo === 'ciudad' ? oscuridad() : 0;
+  if (d < .02){ ocultarNoche(); return; }
+  const { a, w, h, E3 } = capaOscura();
   a.fillStyle = `rgba(12,16,48,${d})`; a.fillRect(0, 0, w, h);
   a.globalCompositeOperation = 'destination-out';
   const hueco = (x, y, r, k = 1) => {
@@ -58,12 +87,7 @@ function dibujarNocheCiudad(){
   for (const f of E.farolas || []) for (const [dx, dy] of f.luces){ hueco(f.x + dx, f.y + dy + 40, 150, .95); }
   for (const p of portales) hueco(p.x, p.y - 40, 170, .8);
   hueco(P.x, P.y - 20, 120, .55);
-  // el minimapa y el cartel de la zona no se oscurecen (su sitio lo apunta dibujarMinimapa)
-  if (MINI.ok){
-    a.fillStyle = '#000';
-    a.beginPath(); a.arc(MINI.cx / E3, MINI.cy / E3, (MINI.r + 4) / E3, 0, TAU); a.fill();
-    a.fillRect((MINI.px - MINI.tw / 2 - 2) / E3, (MINI.cy - MINI.r - 26) / E3, (MINI.tw + 4) / E3, 24 / E3);
-  }
+  huecoMinimapa(a, E3);
 }
 
 const MANCHAS = {};

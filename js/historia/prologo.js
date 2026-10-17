@@ -80,9 +80,7 @@ function pintarRetrato(cv, quien){
   // el ratón: mientras habla por telepatía solo se ve su silueta
   if (!ratasListo) return;
   const tipo = PJ.mascota ? PJ.mascota.tipo : 0, [sx, sy, w, h] = RATAS_DIR[tipo].ab[0], k = Math.max(1, Math.floor(Math.min(S / w, S / h) * .85));
-  if (quien === 'eco') c.filter = 'brightness(0)';
-  c.drawImage(RATAS_IMG, sx, sy, w, h, Math.round((S - w * k) / 2), Math.round((S - h * k) / 2 + 4), w * k, h * k);
-  c.filter = 'none';
+  c.drawImage(quien === 'eco' ? siluetaBlanca(RATAS_IMG, '#000') : RATAS_IMG, sx, sy, w, h, Math.round((S - w * k) / 2), Math.round((S - h * k) / 2 + 4), w * k, h * k);
   if (quien === 'eco'){ c.fillStyle = '#c8a8ff'; c.font = `900 ${S * .4}px Marcellus, Georgia, serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', S / 2, S / 2 + 4); }
 }
 

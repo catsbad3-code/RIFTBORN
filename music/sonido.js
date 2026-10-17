@@ -5,8 +5,9 @@ const SON = { ctx:null, master:null, mus:null, fx:null, musica:true, efectos:tru
 try { const g = JSON.parse(localStorage.getItem('rb_sonido') || '{}'); if (g.musica === false) SON.musica = false; if (g.efectos === false) SON.efectos = false; } catch (e) {}
 function guardarSonido(){ try { localStorage.setItem('rb_sonido', JSON.stringify({ musica:SON.musica, efectos:SON.efectos })); } catch (e) {} }
 // el navegador sólo deja sonar después de un toque o una tecla
+// (en el iPhone el toque cuenta al levantar el dedo, y el sonido puede quedar «interrumpido» al volver al juego)
 function iniciarAudio(){
-  if (SON.ctx){ if (SON.ctx.state === 'suspended') SON.ctx.resume(); return; }
+  if (SON.ctx){ if (SON.ctx.state !== 'running'){ SON.ctx.resume().catch(() => {}); desbloquearIos(); } return; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   SON.ctx = new AC();
   SON.master = SON.ctx.createGain(); SON.master.gain.value = .8; SON.master.connect(SON.ctx.destination);
@@ -15,7 +16,9 @@ function iniciarAudio(){
   bufRuido(SON.ctx);
   setInterval(programarMusica, 100);
 }
-addEventListener('pointerdown', iniciarAudio); addEventListener('keydown', iniciarAudio);
+// iPhone: un sonido mudo dentro del toque deja el audio desbloqueado para siempre
+function desbloquearIos(){ try { const b = SON.ctx.createBuffer(1, 1, 22050), s = SON.ctx.createBufferSource(); s.buffer = b; s.connect(SON.ctx.destination); s.start(0); } catch (e) {} }
+for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) addEventListener(ev, iniciarAudio, { passive:true });
 function tono(f, dur, { tipo = 'square', vol = .3, desde = 0, hasta = null, destino = null, ataque = .005 } = {}){
   const c = SON.ctx, t = c.currentTime + desde, o = c.createOscillator(), g = c.createGain();
   o.type = tipo; o.frequency.setValueAtTime(f, t);

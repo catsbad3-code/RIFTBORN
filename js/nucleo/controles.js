@@ -134,6 +134,10 @@ for (const id of ['btnInstalar', 'btnInstalarPausa']) $(id).onclick = async () =
 };
 // en iPhone no hay aviso de instalación: se explica cómo hacerlo a mano
 if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !yaInstalado()) $('notaInstalarIos').classList.remove('oculto');
+// Safari del iPhone: pellizcar la pantalla no hace zoom en mitad de la partida
+addEventListener('gesturestart', e => e.preventDefault());
+// pide al navegador que no borre la partida guardada aunque pasen días sin jugar (Safari la borra si no)
+if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(si => si || navigator.storage.persist()).catch(() => {});
 // idioma: en el inicio de sesión y en la pausa (se guarda y la página se recarga en el idioma elegido)
 document.querySelectorAll('[data-idioma]').forEach(b => {
   b.setAttribute('aria-pressed', b.dataset.idioma === window.IDIOMA);

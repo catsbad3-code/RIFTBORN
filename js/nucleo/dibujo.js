@@ -112,11 +112,7 @@ function draw(t){
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // iluminación
-  const sx = P.x - cam.x, sy = P.y - 20 - cam.y;
-  if (E.tipo === 'mazmorra') ctx.drawImage(penumbra('cueva'), Math.round(sx - W), Math.round(sy - H), W * 2, H * 2);
-  else if (esInterior()) ctx.drawImage(penumbra('interior'), 0, 0, W, H);
-
+  // iluminación: noche de la ciudad, penumbra de cuevas e interiores (en su propia capa, más barata)
   dibujarNocheCiudad();
   dibujarClima(t);
   dibujarMinimapa();

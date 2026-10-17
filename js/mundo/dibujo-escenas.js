@@ -59,17 +59,18 @@ function dibujarPortal(x, y, fila, t, esc = 1){
   ctx.imageSmoothingEnabled = suave;
 }
 
-function dibujarParedes(colorTope, colorCara, colorLinea, tintTope, tintCara){
-  const x0 = Math.max(0, Math.floor(cam.x / T) - 1), x1 = Math.min(E.cols - 1, Math.floor((cam.x + W) / T) + 1);
-  const y0 = Math.max(0, Math.floor(cam.y / T) - 1), y1 = Math.min(E.rows - 1, Math.floor((cam.y + H) / T) + 1);
+// c y zona (en casillas) sirven para pintar las paredes en otro lienzo, como los trozos de cueva ya dibujados
+function dibujarParedes(colorTope, colorCara, colorLinea, tintTope, tintCara, c = ctx, zona = null){
+  const x0 = zona ? zona.x0 : Math.max(0, Math.floor(cam.x / T) - 1), x1 = zona ? zona.x1 : Math.min(E.cols - 1, Math.floor((cam.x + W) / T) + 1);
+  const y0 = zona ? zona.y0 : Math.max(0, Math.floor(cam.y / T) - 1), y1 = zona ? zona.y1 : Math.min(E.rows - 1, Math.floor((cam.y + H) / T) + 1);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++){
     if (!E.solido[y * E.cols + x] || (E.mueble && E.mueble[y * E.cols + x])) continue;
-    ctx.fillStyle = colorTope; ctx.fillRect(x * T, y * T, T + .5, T + .5);
-    if (tintTope){ ctx.fillStyle = tintTope; ctx.fillRect(x * T, y * T, T + .5, T + .5); }
+    c.fillStyle = colorTope; c.fillRect(x * T, y * T, T + .5, T + .5);
+    if (tintTope){ c.fillStyle = tintTope; c.fillRect(x * T, y * T, T + .5, T + .5); }
     if (y + 1 < E.rows && !E.solido[(y + 1) * E.cols + x]){
-      ctx.fillStyle = colorCara; ctx.fillRect(x * T, y * T + T * .45, T + .5, T * .55 + .5);
-      if (tintCara){ ctx.fillStyle = tintCara; ctx.fillRect(x * T, y * T + T * .45, T + .5, T * .55 + .5); }
-      if (colorLinea){ ctx.fillStyle = colorLinea; ctx.fillRect(x * T, y * T + T * .45, T + .5, 2); }
+      c.fillStyle = colorCara; c.fillRect(x * T, y * T + T * .45, T + .5, T * .55 + .5);
+      if (tintCara){ c.fillStyle = tintCara; c.fillRect(x * T, y * T + T * .45, T + .5, T * .55 + .5); }
+      if (colorLinea){ c.fillStyle = colorLinea; c.fillRect(x * T, y * T + T * .45, T + .5, 2); }
     }
   }
 }
