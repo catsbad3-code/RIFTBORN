@@ -16,7 +16,7 @@ const bonoHerm = () => PJ && PJ.hermandad ? (nivelHerm(PJ.hermandad) - 1) * .02 
 let colorHerm = COLORES_HERM[0];
 function abrirHermandad(msg){
   const h = PJ.hermandad, si = $('miSi'), no = $('miNo');
-  $('miNombre').textContent = 'Lucía, la registradora';
+  $('miNombre').textContent = 'Roxy, la recepcionista';
   si.classList.remove('oculto'); no.textContent = 'Cerrar';
   if (!h){
     $('miTitulo').textContent = 'Fundar una hermandad';
@@ -52,7 +52,7 @@ function abrirHermandad(msg){
       <div class="linea"><span>Bono de la hermandad</span><b>+${Math.round(bonoHerm() * 100)}% de dinero y experiencia</b></div>
       <div class="linea"><span>Siguiente nivel</span><b>${nv < 10 ? `Despeja ${sig} mazmorra${sig > 1 ? 's' : ''} más` : 'Nivel máximo'}</b></div>
       <div class="linea"><span>Fundada</span><b>${new Date(h.fundada).toLocaleDateString()}</b></div>
-      <p class="tenue" style="margin-top:8px">Tus otros personajes de esta cuenta pueden unirse a tu hermandad hablando con Lucía.</p>`;
+      <p class="tenue" style="margin-top:8px">Tus otros personajes de esta cuenta pueden unirse a tu hermandad hablando con Roxy.</p>`;
     si.textContent = 'Abandonar hermandad'; si.disabled = false;
     si.onclick = () => {
       if (si.dataset.confirma !== '1'){ si.dataset.confirma = '1'; si.textContent = '¿Seguro? Pulsa otra vez'; return; }

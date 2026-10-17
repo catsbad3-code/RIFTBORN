@@ -199,9 +199,11 @@ function modoCombate(on){ document.body.classList.toggle('combate', on); }
 // =====================================================
 //  ENEMIGOS
 // =====================================================
+// dificultad de todas las mazmorras: los monstruos y los jefes aguantan y pegan más (el oro y la experiencia no cambian)
+const DIFICULTAD = { vida:1.4, dano:1.3, vel:1.08 };
 function crearEnemigo(tipo, x, y, aggro = false){
-  const T0 = ENEM[tipo], s = E.R.escala, hp = Math.round(T0.hp * s);
-  const e = { tipo, nombre:T0.n, x, y, r:T0.r, hp, maxHp:hp, dmg:T0.dmg * s, vel:T0.vel, color:T0.color, rango:!!T0.rango,
+  const T0 = ENEM[tipo], s = E.R.escala, hp = Math.round(T0.hp * s * DIFICULTAD.vida);
+  const e = { tipo, nombre:T0.n, x, y, r:T0.r, hp, maxHp:hp, dmg:T0.dmg * s * DIFICULTAD.dano, vel:T0.vel * DIFICULTAD.vel, color:T0.color, rango:!!T0.rango,
     xp:Math.round(T0.xp * s), oro:Math.round(T0.oro * s), cd:rand(.5, 2), cdGolpe:0, aggro, hx:x, hy:y, wx:x, wy:y, flash:0, lento:0 };
   colisiones(e); enemigos.push(e);
 }
@@ -282,8 +284,8 @@ function dibujarAviso(e){
   ctx.restore();
 }
 function crearJefe(){
-  const R = E.R, s = R.escala, hp = Math.round(750 * s);
-  jefeVivo = { jefe:true, nombre:R.jefe, x:E.jefePos.x, y:E.jefePos.y, r:40, hp, maxHp:hp, dmg:16 * s, vel:80, color:R.acento,
+  const R = E.R, s = R.escala, hp = Math.round(750 * s * DIFICULTAD.vida);
+  jefeVivo = { jefe:true, nombre:R.jefe, x:E.jefePos.x, y:E.jefePos.y, r:40, hp, maxHp:hp, dmg:16 * s * DIFICULTAD.dano, vel:80, color:R.acento,
     xp:Math.round(160 * s), oro:Math.round(120 * s), cd:2, cdGolpe:0, aggro:false, flash:0, lento:0, patron:0, aviso:0, carga:0, cdir:0 };
   enemigos.push(jefeVivo);
   $('jefeNombre').textContent = R.jefe;
