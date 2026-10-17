@@ -1,7 +1,7 @@
 // =====================================================
 //  NPC CON MISIONES (estilo WoW: ! amarillo, ? gris o amarillo)
 // =====================================================
-const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68], "adolfo": [590, 2, 48, 80, 12]};  // el 5.º valor: píxeles de gorro que el retrato se salta
+const NPC_SPR = {"comandante": [2, 2, 51, 68], "sabia": [55, 2, 48, 68], "panda": [105, 2, 52, 68], "vance": [159, 2, 43, 68], "aiko": [204, 2, 42, 68], "tendera": [248, 2, 50, 68], "herrero": [300, 2, 46, 68], "clienta": [348, 2, 47, 68], "cliente": [397, 2, 44, 68], "leon": [443, 2, 47, 68], "kenji": [492, 2, 46, 68], "bruno": [540, 2, 46, 68], "adolfo": [590, 2, 48, 80, 12], "roxy": [642, 2, 47, 68]};  // el 5.º valor: píxeles de gorro que el retrato se salta
 const NPC_IMG = new Image();
 let npcListo = false;
 NPC_IMG.onload = () => npcListo = true;

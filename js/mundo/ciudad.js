@@ -185,7 +185,7 @@ function crearAsociacion(){
     { mu:true, spr:'armaduras', x:4 * T, y:2.1 * T, esc:.8 }
   ];
   G.npcs = [
-    { spr:'clienta', nombre:'Lucía, la registradora', x:7 * T, y:2.3 * T },
+    { spr:'roxy', nombre:'Roxy, la recepcionista', x:7 * T, y:2.3 * T },
     { spr:'cliente', nombre:'Ren, el evaluador', x:11 * T, y:5.2 * T },
     { spr:'vance', nombre:'Vance, intendente de emblemas', x:3 * T, y:7 * T }
   ];
