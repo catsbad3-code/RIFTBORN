@@ -101,13 +101,20 @@ $('btnTamTel').onclick = () => { AJ_TEL.tam = (AJ_TEL.tam + 1) % 3; aplicarAjust
 $('btnAutoTel').onclick = () => { AJ_TEL.auto = !AJ_TEL.auto; aplicarAjustesTel(); };
 $('btnChatTel').onclick = () => { reiniciarChat(); $('notaGuardado').textContent = 'El chat volvió a su lugar.'; };
 aplicarAjustesTel();
-$('btnVerPerfil').onclick = () => abrirPerfil('personaje');
 $('btnGuardar').onclick = () => { guardar(); $('notaGuardado').textContent = E.tipo === 'mazmorra' ? 'Partida guardada. Si sales ahora, apareces en la ciudad.' : 'Partida guardada.'; };
 $('btnSalir').onclick = () => { guardar(); cerrarVentanas(); enJuego = false; document.body.classList.remove('jugando', 'combate'); M = null; ir('pPersonajes'); };
 $('btnRevivir').onclick = () => { P.hp = D.maxHp; P.en = recursoLleno(); P.inv = 2; pantalla(null); irPosada('cama'); };
 document.addEventListener('visibilitychange', () => { if (document.hidden && enJuego && !pantallaActual) pausar(); });
 
-function pausar(){ $('notaGuardado').textContent = ''; $('btnSaltarPrologo').classList.toggle('oculto', !prologo); pantalla('pPausa'); }
+function pausar(){ $('notaGuardado').textContent = ''; $('btnSaltarPrologo').classList.toggle('oculto', !prologo); verAjustes(false); pantalla('pPausa'); }
+// la pausa tiene dos caras: el menú corto y los ajustes (sonido, pantalla, idioma y controles del teléfono)
+function verAjustes(si){
+  $('pausaMenu').classList.toggle('oculto', si); $('pausaAjustes').classList.toggle('oculto', !si);
+  $('pausaTit').textContent = si ? 'Ajustes' : 'Pausa'; $('notaGuardado').textContent = '';
+  $(si ? 'btnVolverPausa' : 'btnAjustes').focus({ preventScroll:true });
+}
+$('btnAjustes').onclick = () => verAjustes(true);
+$('btnVolverPausa').onclick = () => verAjustes(false);
 $('btnHistoria').onclick = () => verHistoria();
 // modo app: se puede instalar en el teléfono o el ordenador y jugar sin internet
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
