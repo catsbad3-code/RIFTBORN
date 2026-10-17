@@ -19,7 +19,7 @@ function loop(t){
     if (fb !== firmaBolsa){ firmaBolsa = fb; renderBolsa(); }
     const fp = [PJ.nivel, PJ.puntos, JSON.stringify(PJ.stats), Object.values(PJ.equipo).map(o => o ? o.id : '-').join(','), PJ.arma, wTab, !!M].join('|');
     if (fp !== firmaPj){ firmaPj = fp; renderPj(); }
-    if (abierta('wPj') && wTab === 'personaje'){ const v = $('pdVida'), en = $('pdEn'); if (v) v.textContent = `${Math.ceil(P.hp)}/${D.maxHp}`; if (en) en.textContent = `${Math.floor(P.en)}/${D.maxEn}`; }
+    if (abierta('wPj') && wTab === 'personaje'){ const v = $('pdVida'), en = $('pdEn'); if (v){ v.textContent = `${Math.ceil(P.hp)}/${D.maxHp}`; $('pdVidaB').style.width = Math.round(Math.max(0, Math.min(1, P.hp / D.maxHp)) * 100) + '%'; } if (en){ en.textContent = `${Math.floor(P.en)}/${D.maxEn}`; $('pdEnB').style.width = Math.round(Math.max(0, Math.min(1, P.en / D.maxEn)) * 100) + '%'; } }
   }
   requestAnimationFrame(loop);
 }

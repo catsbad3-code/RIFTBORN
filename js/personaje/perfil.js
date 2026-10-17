@@ -176,18 +176,27 @@ function renderPj(){
   const rc = $('wPjRetrato').getContext('2d'); rc.clearRect(0, 0, 96, 96); rc.drawImage($('avatar'), 0, 0, 96, 96);
   const cuerpo = $('wPjCuerpo');
   if (wTab === 'personaje'){
-    const fila = (n, v, k) => `<div class="pd-fila"><span>${n}</span><b ${v.id ? `id="${v.id}"` : ''} class="${v.extra ? 'verde' : ''}">${v.t}${k ? `<button class="pd-mas" data-stat="${k}" ${PJ.puntos ? '' : 'disabled'} aria-label="Subir ${n}">+</button>` : ''}</b></div>`;
-    const at = ['fue','agi','vit','int'].map(k => fila(NOMBRE_STAT[k], { t:D.s[k], extra:D.s[k] > PJ.stats[k] }, k)).join('');
-    const cb = [['Vida', `${Math.ceil(P.hp)}/${D.maxHp}`], [recurso().n, `${Math.floor(P.en)}/${D.maxEn}`], ['Daño físico', Math.round(D.fis)], ['Daño mágico', Math.round(D.mag)],
-      ['Crítico', Math.round(D.crit * 100) + '%'], ['Defensa', Math.round(D.def * 100) + '%'], ['Velocidad', Math.round(D.vel)], ['Forja', '+' + PJ.arma]]
-      .map(([n, v]) => fila(n, { t:v, id:n === 'Vida' ? 'pdVida' : n === recurso().n ? 'pdEn' : '' })).join('');
-    cuerpo.innerHTML = `<p class="pd-sub">Nivel ${PJ.nivel} ${c.nombre} · <span style="color:${R.color}">Rango ${R.l}</span></p>
-      <div class="pd"><div class="pd-col">${IZQ.map(slotHTML).join('')}</div>
-        <div class="pd-mod"><canvas id="figura" width="240" height="300"></canvas></div>
-        <div class="pd-col">${DER.filter(k => k !== 'arma').map(slotHTML).join('')}</div></div>
-      <div class="pd-abajo">${slotHTML('arma')}</div>
-      ${PJ.puntos ? `<p class="pd-puntos">Tienes ${PJ.puntos} puntos de atributo para repartir</p>` : ''}
-      <div class="pd-stats"><div class="pd-caja"><h4>Atributos</h4>${at}</div><div class="pd-caja"><h4>Combate</h4>${cb}</div></div>`;
+    const fila = (n, v, k, cls) => `<div class="pd-fila ${cls || ''}"><span>${n}</span><b ${v.id ? `id="${v.id}"` : ''} class="${v.extra ? 'verde' : ''}">${v.t}${k ? `<button class="pd-mas" data-stat="${k}" ${PJ.puntos ? '' : 'disabled'} aria-label="Subir ${n}">+</button>` : ''}</b></div>`;
+    const at = ['fue','agi','vit','int'].map(k => fila(NOMBRE_STAT[k], { t:D.s[k], extra:D.s[k] > PJ.stats[k] }, k, 'st-' + k)).join('');
+    const cb = [['Daño físico', Math.round(D.fis)], ['Daño mágico', Math.round(D.mag)], ['Crítico', Math.round(D.crit * 100) + '%'], ['Defensa', Math.round(D.def * 100) + '%'],
+      ['Velocidad', Math.round(D.vel)], ['Forja', '+' + PJ.arma]].map(([n, v]) => fila(n, { t:v })).join('');
+    // vida y recurso como barras (se actualizan solas mientras la ventana está abierta)
+    const barra = (cls, n, id, v, max) => `<div class="pd-barra ${cls}"><i id="${id}B" style="width:${Math.round(Math.max(0, Math.min(1, v / max)) * 100)}%"></i><span>${n}</span><b id="${id}">${Math.floor(v)}/${max}</b></div>`;
+    const xpPct = Math.round(Math.min(1, (PJ.xp || 0) / (PJ.xpSig || 1)) * 100);
+    cuerpo.innerHTML = `<div class="pd-cab" style="--cc:${c.color}">
+        <div class="pd-nivel"><b>${PJ.nivel}</b><small>Nivel</small></div>
+        <div class="pd-info"><div class="pd-titulos"><b>${c.nombre}</b><span class="pd-rango" style="--r:${R.color}">Rango ${R.l}</span></div>
+          <div class="pd-xp" title="Experiencia"><i style="width:${xpPct}%"></i><small>${PJ.xp || 0} / ${PJ.xpSig || 0}</small></div></div>
+      </div>
+      <div class="pd-cuerpo"><div class="pd-izq">
+        <div class="pd" style="--cc:${c.color}"><div class="pd-col">${IZQ.map(slotHTML).join('')}</div>
+          <div class="pd-mod"><canvas id="figura" width="240" height="236"></canvas></div>
+          <div class="pd-col">${DER.filter(k => k !== 'arma').map(slotHTML).join('')}</div></div>
+        <div class="pd-abajo">${slotHTML('arma')}</div></div>
+      <div class="pd-der">
+        <div class="pd-barras">${barra('vida', 'Vida', 'pdVida', Math.ceil(P.hp), D.maxHp)}${barra('rec', recurso().n, 'pdEn', P.en, D.maxEn)}</div>
+        ${PJ.puntos ? `<p class="pd-puntos">Tienes ${PJ.puntos} puntos de atributo para repartir</p>` : ''}
+        <div class="pd-stats"><div class="pd-caja"><h4>Atributos</h4>${at}</div><div class="pd-caja"><h4>Combate</h4>${cb}</div></div></div></div>`;
     cuerpo.querySelectorAll('.pd-mas').forEach(b => b.onclick = () => { if (PJ.puntos <= 0) return; PJ.stats[b.dataset.stat]++; PJ.puntos--; recalcular(); });
   } else if (wTab === 'mascota'){
     cuerpo.innerHTML = PJ.mascota
@@ -440,15 +449,31 @@ function asignar(id, tecla){
 
 function dibujarFigura(t){
   const c = $('figura'); if (!c) return;
-  const a = c.getContext('2d');
-  a.clearRect(0, 0, c.width, c.height);
-  const g = a.createRadialGradient(120, 170, 10, 120, 170, 170);
-  g.addColorStop(0, CLASES[PJ.clase].color + '55'); g.addColorStop(1, '#0e0a1c');
-  a.fillStyle = g; a.fillRect(0, 0, c.width, c.height);
-  a.fillStyle = 'rgba(0,0,0,.45)'; a.beginPath(); a.ellipse(120, 274, 50, 12, 0, 0, TAU); a.fill();
+  const a = c.getContext('2d'), W = c.width, H = c.height, cx = W / 2, suelo = H - 26, col = CLASES[PJ.clase].color;
+  a.clearRect(0, 0, W, H);
+  // fondo: penumbra teñida con el color de la clase y un haz de luz desde arriba
+  const fondo = a.createLinearGradient(0, 0, 0, H); fondo.addColorStop(0, '#0b0816'); fondo.addColorStop(1, '#1a1230');
+  a.fillStyle = fondo; a.fillRect(0, 0, W, H);
+  const haz = a.createRadialGradient(cx, suelo - 60, 8, cx, suelo - 60, H * .75);
+  haz.addColorStop(0, col + '50'); haz.addColorStop(1, col + '00');
+  a.fillStyle = haz; a.fillRect(0, 0, W, H);
+  // círculo rúnico en el suelo, girando despacio
+  a.save(); a.translate(cx, suelo); a.scale(1, .3);
+  a.strokeStyle = col + '99'; a.lineWidth = 3; a.beginPath(); a.arc(0, 0, 78, 0, TAU); a.stroke();
+  a.strokeStyle = col + '55'; a.lineWidth = 2; a.beginPath(); a.arc(0, 0, 62, 0, TAU); a.stroke();
+  a.fillStyle = col + 'cc';
+  for (let i = 0; i < 8; i++){ const an = t / 2600 + i * TAU / 8; a.save(); a.translate(Math.cos(an) * 70, Math.sin(an) * 70); a.rotate(Math.PI / 4); a.fillRect(-4, -4, 8, 8); a.restore(); }
+  a.restore();
+  // chispas que suben
+  for (let i = 0; i < 16; i++){
+    const v = 12 + (i * 7) % 11, k = ((t / 1000) * v / 60 + i * .37) % 1, x = cx + Math.sin(i * 12.9 + t / 1400) * (30 + (i * 23) % 70), y = suelo - k * (suelo - 10);
+    a.globalAlpha = Math.sin(k * Math.PI) * .8; a.fillStyle = i % 3 ? col : '#ffffff'; a.fillRect(Math.round(x), Math.round(y), 2, 2);
+  }
+  a.globalAlpha = 1;
+  a.fillStyle = 'rgba(0,0,0,.5)'; a.beginPath(); a.ellipse(cx, suelo, 44, 10, 0, 0, TAU); a.fill();
   if (!gatosListo) return;
   const [sx, sy, w, h, ax, ay] = cuadroGato(PJ.gato, 'ab', 0), esc = escGato(PJ.gato, 190 / 96), r = Math.sin(t / 420);
-  a.save(); a.translate(110, 274);
+  a.save(); a.translate(cx - 6, suelo);
   if (gatoPx(PJ.gato)){ a.imageSmoothingEnabled = false; a.translate(0, r > .6 ? -esc : 0); }
   else a.scale(1 - .012 * r, 1 + .025 * r);
   const frF = [sx, sy, w, h, ax, ay];
@@ -456,13 +481,17 @@ function dibujarFigura(t){
   a.drawImage(hojaJugador(), sx, sy, w, h, -ax * esc, -ay * esc, w * esc, h * esc);
   if (gatoPx(PJ.gato)) dibujarEquipoGato(a, imgGato(PJ.gato), frF, 'ab', esc, PJ.equipo, 'frente');
   a.restore();
+  // viñeta en los bordes
+  const vin = a.createRadialGradient(cx, H / 2, H * .35, cx, H / 2, H * .85);
+  vin.addColorStop(0, 'rgba(0,0,0,0)'); vin.addColorStop(1, 'rgba(0,0,0,.6)');
+  a.fillStyle = vin; a.fillRect(0, 0, W, H);
   if (PJ.mascota && ratasListo){
     // ciclo: despierto mirando a los lados, luego se duerme
     const ciclo = (t / 1000) % 16, flip = ciclo < 7 && Math.floor(ciclo / 2.5) % 2 === 1;
     const q = cuadroRata(PJ.mascota.tipo, flip ? 'lado' : 'abajo', false, 0, true);
-    pintarGato(a, PJ.mascota.tipo, 196, 280, 74, t, false, false, ciclo, null, q.img, q.fr);
+    pintarGato(a, PJ.mascota.tipo, W * .82, suelo + 6, 74, t, false, false, ciclo, null, q.img, q.fr);
     a.font = '700 13px Rajdhani, sans-serif'; a.textAlign = 'center'; a.fillStyle = '#e9e4ff';
-    a.fillText(PJ.mascota.nombre, 196, 296);
+    a.fillText(PJ.mascota.nombre, W * .82, suelo + 22);
   }
 }
 
