@@ -1,5 +1,6 @@
 // ---------- hermandades ----------
 const PRECIO_HERMANDAD = 5000; // 50 de plata
+const INCURSIONES_HERM = 20;    // mazmorras despejadas que pide la Asociación para fundar una hermandad
 const COLORES_HERM = ['#8a1c1c', '#e8641c', '#3a2b2e', '#1fb89a', '#6bc26b', '#5b3aa0', '#a9c9c9', '#b49cf0'];
 const NOMBRES_BAND = ['Espada', 'Corona', 'Puño', 'Martillo', 'Arco', 'Sol negro', 'Cruz', 'Lis'];
 const BAND_URL = 'img/mundo/band.png';
@@ -26,14 +27,17 @@ function abrirHermandad(msg){
       <label class="campo">Siglas (2 a 4 letras)<input id="hSiglas" maxlength="4" placeholder="GDE" style="text-transform:uppercase"></label>
       <p class="tenue" style="margin:6px 0 4px">Estandarte: <b id="bandNom">${NOMBRES_BAND[COLORES_HERM.indexOf(colorHerm)]}</b></p>
       <div class="herm-colores">${COLORES_HERM.map((c, i) => `<button type="button" class="herm-band" data-c="${c}" style="${bandPos(i)}" aria-pressed="${c === colorHerm}" aria-label="Estandarte ${NOMBRES_BAND[i]}"></button>`).join('')}</div>
+      <div class="linea"><span>Incursiones necesarias</span><b class="${(PJ.jefesTotal || 0) >= INCURSIONES_HERM ? 'verde' : 'rojo'}">${Math.min(PJ.jefesTotal || 0, INCURSIONES_HERM)} / ${INCURSIONES_HERM}</b></div>
+      ${(PJ.jefesTotal || 0) < INCURSIONES_HERM ? `<p class="tenue" style="margin:4px 0">«Solo los cazadores con experiencia pueden fundar una hermandad. Vuelve cuando hayas despejado ${INCURSIONES_HERM} mazmorras.»</p>` : ''}
       <div class="linea"><span>Coste de registro</span><b>${dinero(PRECIO_HERMANDAD)}</b></div>
       <div class="linea"><span>Tu dinero</span><b>${dinero(PJ.oro)}</b></div>`;
     $('miCuerpo').querySelectorAll('.herm-band').forEach(b => b.onclick = () => { colorHerm = b.dataset.c; $('bandNom').textContent = NOMBRES_BAND[COLORES_HERM.indexOf(colorHerm)]; $('miCuerpo').querySelectorAll('.herm-band').forEach(x => x.setAttribute('aria-pressed', x === b)); });
-    si.textContent = 'Fundar hermandad'; si.disabled = PJ.oro < PRECIO_HERMANDAD;
+    si.textContent = 'Fundar hermandad'; si.disabled = PJ.oro < PRECIO_HERMANDAD || (PJ.jefesTotal || 0) < INCURSIONES_HERM;
     si.onclick = () => {
       const n = $('hNombreH').value.trim(), sg = $('hSiglas').value.trim().toUpperCase();
       if (n.length < 3) return abrirHermandad('El nombre necesita al menos 3 letras.');
       if (!/^[A-ZÑ0-9]{2,4}$/.test(sg)) return abrirHermandad('Las siglas deben tener de 2 a 4 letras o números.');
+      if ((PJ.jefesTotal || 0) < INCURSIONES_HERM) return abrirHermandad(`Necesitas haber despejado ${INCURSIONES_HERM} mazmorras.`);
       if (PJ.oro < PRECIO_HERMANDAD) return abrirHermandad('No tienes suficiente dinero.');
       PJ.oro -= PRECIO_HERMANDAD;
       PJ.hermandad = { nombre:n, siglas:sg, color:colorHerm, band:COLORES_HERM.indexOf(colorHerm), rango:'Maestro de la hermandad', fundada:Date.now(), jefesBase:PJ.jefesTotal };

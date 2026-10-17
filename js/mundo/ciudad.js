@@ -185,7 +185,7 @@ function crearAsociacion(){
     { mu:true, spr:'armaduras', x:4 * T, y:2.1 * T, esc:.8 }
   ];
   G.npcs = [
-    { spr:'roxy', nombre:'Roxy, la recepcionista', x:7 * T, y:2.3 * T },
+    { spr:'roxy', nombre:'Roxy, la recepcionista', x:7 * T, y:2.3 * T, roxy:true },
     { spr:'cliente', nombre:'Ren, el evaluador', x:11 * T, y:5.2 * T },
     { spr:'vance', nombre:'Vance, intendente de emblemas', x:3 * T, y:7 * T }
   ];
@@ -195,7 +195,8 @@ function crearAsociacion(){
   G.tablon = { x:3 * T, y:4.2 * T };
   G.obs.push({ x:G.tablon.x, y:G.tablon.y, r:24 });
   G.puerta = 7 * T;
-  G.inter.push({ x:7 * T, y:4.4 * T, r:64, texto:'Registro de hermandades', accion:() => abrirHermandad() });
+  // Roxy atiende el mostrador: primero su historia (si tiene algo para ti) y si no, el registro de hermandades
+  G.inter.push({ x:7 * T, y:4.4 * T, r:64, texto:'Hablar con Roxy', accion:() => { const c = cadenaDe('roxy'); if (c && c.accion !== 'espera') hablarCadena(G.npcs.find(n => n.roxy)); else abrirHermandad(); } });
   G.inter.push({ x:11 * T, y:6.1 * T, r:56, texto:'Evaluación de rango', accion:() => abrirEvaluacion() });
   G.inter.push({ x:G.tablon.x, y:G.tablon.y + 50, r:56, texto:'Tablón de clasificación', accion:() => abrirClasificacion() });
   G.inter.push({ x:7 * T, y:8.4 * T, r:50, texto:'Salir a la ciudad', accion:() => irCiudad('asociacion') });

@@ -257,7 +257,7 @@ function dibujarMascota(t){
   const pie = M.y + 8;
   // la hoja ya trae izquierda y derecha: no hace falta reflejar
   const q = cuadroRata(PJ.mascota.tipo, M.dir || 'abajo', M.mov, M.paso || 0, M.flip);
-  pintarGato(ctx, PJ.mascota.tipo, M.x, pie, ALTO_GATO, t, M.mov, false, M.quieto || 0, null, q.img, q.fr);
+  pintarGato(ctx, PJ.mascota.tipo, M.x, pie, ALTO_GATO, t, M.mov, false, M.quieto || 0, null, hojaRata(PJ.mascota.pelaje), q.fr);
   rotulo(PJ.mascota.nombre, M.x, pie - ALTO_GATO - 4, '700 12px Rajdhani, sans-serif', '#e9e4ff', null, 0, true);
   if (M.tFrase > 0) burbuja(M.x, pie - ALTO_GATO - 18, M.frase, Math.min(1, M.tFrase));
 }

@@ -9,7 +9,9 @@ let nombrandoRaton = null;
 
 const NOMBRE_HABLANTE = { voz:'La Voz del Mundo', eco:'Voz misteriosa', narr:'' };
 const COLOR_HABLANTE = { gato:'#ffd76a', raton:'#ff9ad8', eco:'#c8a8ff', voz:'#7ae8ff', narr:'#d8d0e8' };
-const nombreHablante = q => q === 'gato' ? PJ.nombre : q === 'raton' ? (PJ.mascota ? PJ.mascota.nombre : 'Ratón sellado') : NOMBRE_HABLANTE[q];
+// los vecinos de las cadenas de misiones (HABLANTES, en cadenas.js) también hablan aquí, con su retrato
+const vecino = q => typeof HABLANTES !== 'undefined' ? HABLANTES[q] : null;
+const nombreHablante = q => q === 'gato' ? PJ.nombre : q === 'raton' ? (PJ.mascota ? PJ.mascota.nombre : 'Ratón sellado') : vecino(q) ? vecino(q).n : NOMBRE_HABLANTE[q];
 // lo que se dice según la clase (las habilidades que despierta al renacer)
 const habClic = () => esTactil ? 'el botón de ataque' : 'el clic izquierdo';
 const habDer = () => esTactil ? 'el botón de habilidad' : 'el clic derecho';
@@ -27,7 +29,7 @@ function mostrarLinea(){
   const caja = $('pDialogo');
   caja.dataset.quien = quien;
   $('dlgNombre').textContent = nombreHablante(quien);
-  $('dlgNombre').style.color = COLOR_HABLANTE[quien];
+  $('dlgNombre').style.color = COLOR_HABLANTE[quien] || (vecino(quien) || {}).col || '#fff';
   $('dlgTexto').textContent = '';
   pintarRetrato($('dlgRetrato'), quien);
   sfx('click');
@@ -62,6 +64,17 @@ function pintarRetrato(cv, quien){
   if (quien === 'narr'){ cv.style.display = 'none'; return; }
   cv.style.display = '';
   c.fillStyle = '#1d1638'; c.fillRect(0, 0, S, S);
+  const V = vecino(quien);
+  if (V){
+    // cabeza y hombros del vecino, de su hoja de personajes
+    let img, sx, sy, w, h;
+    if (V.cam){ if (typeof camListo === 'undefined' || !camListo) return; img = CAM_IMG; [sx, sy, w, h] = CAM[V.cam].ab[0]; }
+    else { if (!npcListo) return; img = NPC_IMG; [sx, sy, w, h] = NPC_SPR[V.spr]; const o = NPC_SPR[V.spr][4] || 0; sy += o; h -= o; }
+    h = Math.min(h, Math.round(w * .95));
+    const k = Math.max(1, Math.floor(Math.min((S - 6) / w, (S - 6) / h)));
+    c.drawImage(img, sx, sy, w, h, Math.round((S - w * k) / 2), 4, w * k, h * k);
+    return;
+  }
   if (quien === 'voz'){
     const g = c.createRadialGradient(S / 2, S / 2, 4, S / 2, S / 2, S / 2);
     g.addColorStop(0, '#ffffff'); g.addColorStop(.3, '#7ae8ff'); g.addColorStop(1, 'rgba(20,40,80,0)');

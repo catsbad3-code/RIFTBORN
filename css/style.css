@@ -1090,3 +1090,20 @@ body.tactil .aj-grupo.solo-tel{display:flex}
 /* con un solo gato para elegir, su ícono va centrado sobre el nombre */
 #gatosPj{display:flex !important;flex-wrap:wrap;justify-content:center;gap:6px}
 #gatosPj .wc-ic{width:min(56px,100%);flex:0 0 auto}
+
+/* ---------- colección (pestaña de la ventana del personaje) ---------- */
+.col-cab{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:6px;border-radius:6px;
+  background:linear-gradient(90deg,rgba(255,128,0,.18),rgba(0,0,0,.3));border:1px solid rgba(255,128,0,.4)}
+.col-cab b{font:600 16px "Marcellus",Georgia,serif;color:#ff9a3d}.col-cab span{font-weight:700;color:#fff}
+.col-sec{font:600 13px "Marcellus",Georgia,serif;color:var(--wo);margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid #3d3016}
+.col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.col-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:6px;cursor:pointer;text-align:center;color:#fff;
+  background:radial-gradient(ellipse at 50% 30%,#2a2238,#0e0b14);border:1px solid #4a3d20;font:600 12px Rajdhani,sans-serif;min-width:0}
+.col-item canvas{width:72px;height:58px;image-rendering:pixelated}
+.col-item b{font-size:12px;line-height:1.15;color:#ffd76a;overflow-wrap:anywhere}
+.col-item small{font-size:10.5px;line-height:1.2;color:#cfc4a8;font-weight:500}
+.col-item:hover:not(.bloq){filter:brightness(1.2);border-color:var(--wo)}
+.col-item.sel{border-color:#7dffa8;box-shadow:0 0 8px rgba(125,255,168,.5)}
+.col-item.sel small{color:#7dffa8;font-weight:700}
+.col-item.bloq{cursor:help;background:#0b0910;border-style:dashed}
+.col-item.bloq b{color:#8a8296}

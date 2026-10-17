@@ -69,7 +69,9 @@ function estadoMision(id){
   return { m, M, meta, prog, lista: m.estado === 'activa' && prog >= meta };
 }
 function marcaNPC(n){
-  if (!n.mision || !PJ) return null;
+  // las historias de los vecinos van primero (salvo el «?» gris de una etapa a medias, que cede ante su misión normal)
+  const mc = PJ && marcaCadena(n); if (mc && (mc.col !== '#b8b8c4' || !n.mision)) return mc;
+  if (!n.mision || !PJ) return mc;
   const e = estadoMision(n.mision);
   if (e.m.estado === 'libre') return { c:'!', col:'#ffd23f' };
   return e.lista ? { c:'?', col:'#ffd23f' } : { c:'?', col:'#b8b8c4' };
@@ -77,6 +79,8 @@ function marcaNPC(n){
 let npcHablando = null;
 function hablarNPC(n){
   npcHablando = n;
+  const cad = cadenaDe(npcClave(n));
+  if (cad && (cad.accion !== 'espera' || !n.mision) && hablarCadena(n)) return;
   const si = $('miSi'), no = $('miNo');
   si.disabled = false;
   $('miNombre').textContent = n.nombre;
@@ -156,10 +160,10 @@ function actualizarSeguimiento(){
   if (!PJ || !enJuego){ if (firmaSeg){ firmaSeg = ''; $('seguimiento').innerHTML = ''; } return; }
   const ids = activas().filter(id => PJ.misiones[id].sigue !== false);
   const filas = ids.map(id => { const e = estadoMision(id); return [id, MISIONES[id].titulo, e.prog, e.meta, e.lista, MISIONES[id].objetivo(e.meta)]; });
-  const fh = filaHistoria();
+  const fh = filaHistoria() + filasCadenas(), nh = (fh.match(/class="seg-m /g) || []).length;
   const f = JSON.stringify(filas) + PJ.segOculto + fh; if (f === firmaSeg) return; firmaSeg = f;
   const plegado = PJ.segOculto;
-  $('seguimiento').innerHTML = (filas.length || fh) ? `<b class="seg-cab"><span>Misiones (${filas.length + (fh ? 1 : 0)})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : fh + filas.map(([id, t, p, m, ok, obj]) =>
+  $('seguimiento').innerHTML = (filas.length || fh) ? `<b class="seg-cab"><span>Misiones (${filas.length + nh})</span><button id="segTog" title="${plegado ? 'Mostrar' : 'Ocultar'}" aria-label="${plegado ? 'Mostrar misiones' : 'Ocultar misiones'}">${plegado ? '+' : '–'}</button></b>` + (plegado ? '' : fh + filas.map(([id, t, p, m, ok, obj]) =>
     `<div class="seg-m ${ok ? 'ok' : ''}" data-segmis="${id}"><span class="seg-t">${t}</span><span class="seg-o">- ${obj.replace(/^(Trae|Elimina|Despeja) \d+ /, '')}: ${p}/${m}</span>${ok ? '<span class="seg-o ok">Listo para entregar</span>' : ''}</div>`).join('')) : '';
   const tg = $('segTog'); if (tg) tg.onclick = () => { PJ.segOculto = !PJ.segOculto; firmaSeg = ''; guardar(); actualizarSeguimiento(); };
   $('seguimiento').querySelectorAll('[data-segmis]').forEach(d => d.onclick = () => { misSel = d.dataset.segmis; abrirVentana('wMis'); });
