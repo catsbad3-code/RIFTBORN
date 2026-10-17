@@ -1087,3 +1087,6 @@ body.tactil .aj-grupo.solo-tel{display:flex}
   body.tactil .pd-fila{line-height:1.35}
   body.tactil .pd-der .pd-stats{grid-template-columns:1fr 1fr}
 }
+/* con un solo gato para elegir, su ícono va centrado sobre el nombre */
+#gatosPj{display:flex !important;flex-wrap:wrap;justify-content:center;gap:6px}
+#gatosPj .wc-ic{width:min(56px,100%);flex:0 0 auto}
