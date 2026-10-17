@@ -11,7 +11,7 @@ function toggleMontura(){
   PJ.montado = P.montura;
   sfx(P.montura ? 'montar' : 'click');
   chispas(P.x, P.y + 6, '#c8a878', 14, 120);
-  texto(P.x, P.y - 90, P.montura ? 'Montas tu jabalí' : 'Te bajas del jabalí', '#ffd76a', 14);
+  texto(P.x, P.y - 90, P.montura ? `Montas: ${montura().n}` : 'Te bajas de la montura', '#ffd76a', 14);
   $('btnMontura').setAttribute('aria-pressed', P.montura);
 }
 // el ratón no cabe en el jabalí: al montar se guarda y al bajar (o al entrar en un edificio o un portal) vuelve solo
@@ -100,7 +100,7 @@ function dibujarJinete(t, mov, derecha, pie){
   ctx.beginPath(); ctx.rect(-4, -60, w + 8, h + 70);
   ctx.moveTo(xa, -60); for (let x = xa; x <= xb; x++) ctx.lineTo(x, linea(x) - 3); ctx.lineTo(xb + 1, -60); ctx.closePath();
   ctx.clip('evenodd');
-  ctx.drawImage(MON_IMG, bx, by, w, h, 0, 0, w, h);
+  ctx.drawImage(hojaMontura(PJ.monturaSel), bx, by, w, h, 0, 0, w, h);
   ctx.restore();
   // --- la silla, en píxeles de pantalla; (0,0) es el centro del asiento ---
   const sc = Math.round(w * .44), aX = sc * K, aY = Math.round((linea(sc) - 1) * K);

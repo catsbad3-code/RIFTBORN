@@ -182,7 +182,7 @@ function mazmorraDespejada(){
   const R = E.R;
   E.despejada = true;
   avisarHistoria('jefe');
-  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioLFD(); premioJefeMundo();
+  PJ.limpias[R.l]++; PJ.jefesTotal++; contar('mazmorras'); darEmblemas(E.semanal ? 5 : 1, E.semanal ? 'titán semanal' : 'jefe derrotado'); premioTitan(); premioColeccion(E.rango, !!E.semanal); premioLFD(); premioJefeMundo();
   const oro = Math.round(80 * R.escala * rand(95, 110)), xp = Math.max(1, Math.round(120 * R.escala * factorXpPortal()));
   PJ.oro += oro;
   E.inter.push({ x:E.jefePos.x, y:E.jefePos.y, r:50, texto:'Volver a la ciudad', accion:() => salirMazmorra(true) });

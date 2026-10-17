@@ -43,7 +43,8 @@ const EVENTOS = [
   { id:'animas',   n:'Festival de las Ánimas', desde:[10, 1],  hasta:[11, 2],  objeto:'caramelo', adorno:'calabaza', col:'#ff8a1e',
     ofertas:[{ n:'Sombrero de calabaza', d:'Pieza de cabeza del festival.', precio:15, dar:() => ({ slot:'cabeza', nombre:'Calabaza del festival', base:'Calabaza' }) },
              { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } },
-             { n:'Tinte Calabaza', d:'Tiñe tu ropa de naranja.', precio:10, dar:() => { if (!PJ.tintes.includes('calabaza')) PJ.tintes.push('calabaza'); } }] },
+             { n:'Tinte Calabaza', d:'Tiñe tu ropa de naranja.', precio:10, dar:() => { darColeccion('tinte', 'calabaza'); }, col:['tinte', 'calabaza'] },
+             { n:'Jabalí de las Ánimas', d:'Montura del festival para tu colección.', precio:40, dar:() => { darColeccion('montura', 'animas'); }, col:['montura', 'animas'] }] },
   { id:'invierno', n:'Gran Invierno',          desde:[12, 15], hasta:[1, 2],   objeto:'regalo',   adorno:'arbol',    col:'#9fd8ff',
     ofertas:[{ n:'Gorro de invierno', d:'Pieza de cabeza del festival.', precio:15, dar:() => ({ slot:'cabeza', nombre:'Gorro del Gran Invierno', base:'Gorro' }) },
              { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] },
@@ -52,7 +53,8 @@ const EVENTOS = [
              { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] },
   { id:'solsticio',n:'Fuegos del Solsticio',   desde:[6, 21],  hasta:[7, 5],   objeto:'brasa',    adorno:'hoguera',  col:'#ffb347',
     ofertas:[{ n:'Corona de llamas', d:'Pieza de cabeza del festival.', precio:12, dar:() => ({ slot:'cabeza', nombre:'Corona del Solsticio', base:'Diadema' }) },
-             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } }] }
+             { n:'Galletas de queso ×3', d:'Para tu mascota.', precio:5, dar:() => { darApilable('queso', 3); } },
+             { n:'Pelaje de brasa', d:'Pelaje del festival para tu mascota.', precio:20, dar:() => { darColeccion('pelaje', 'brasa'); }, col:['pelaje', 'brasa'] }] }
 ];
 function eventoActual(){
   const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate();
@@ -78,11 +80,13 @@ function abrirPuestoEvento(msg){
   let h = `<p style="color:var(--xp);min-height:1.3em">${msg || ''}</p>
     <div class="linea"><span>Tienes (${APILABLES[ev.objeto].n})</span><b style="color:${ev.col}">${ic3(ev.objeto) || ''} ${n}</b></div>
     <p class="nota" style="margin:6px 0">Los monstruos sueltan ${APILABLES[ev.objeto].n.toLowerCase()}s mientras dure el festival (los jefes siempre).</p><div class="emb-lista">`;
-  ev.ofertas.forEach((o, i) => { h += `<div class="emb-fila"><div><b style="color:${ev.col}">${o.n}</b><small>${o.d}</small></div><button class="btn" data-of="${i}" ${n < o.precio ? 'disabled' : ''}>${o.precio}</button></div>`; });
+  // las piezas de colección se compran una sola vez
+  const yaTiene = o => o.col && (o.col[0] === 'tinte' ? (PJ.tintes || []) : coleccion()[o.col[0] === 'montura' ? 'monturas' : 'pelajes']).includes(o.col[1]);
+  ev.ofertas.forEach((o, i) => { h += `<div class="emb-fila"><div><b style="color:${ev.col}">${o.n}</b><small>${o.d}</small></div><button class="btn" data-of="${i}" ${n < o.precio || yaTiene(o) ? 'disabled' : ''}>${yaTiene(o) ? 'Tuyo' : o.precio}</button></div>`; });
   $('evCuerpo').innerHTML = h + '</div>';
   $('evTitulo').textContent = ev.n;
   $('evCuerpo').querySelectorAll('[data-of]').forEach(b => b.onclick = () => {
-    const o = ev.ofertas[+b.dataset.of]; if (((PJ.mats || {})[ev.objeto] || 0) < o.precio) return;
+    const o = ev.ofertas[+b.dataset.of]; if (((PJ.mats || {})[ev.objeto] || 0) < o.precio || yaTiene(o)) return;
     const r = o.dar();
     if (r && r.slot){
       if (PJ.bolsa.length >= TAM_BOLSA){ abrirPuestoEvento('Tu mochila está llena.'); return; }

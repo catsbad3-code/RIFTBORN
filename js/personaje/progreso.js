@@ -98,6 +98,7 @@ function revisarLogros(){
     chispas(P.x, P.y - 30, '#ffd100', 30, 200);
     guardar();
   }
+  logrosColeccion();   // algunos logros también dan una pieza de colección
 }
 const tituloActual = () => { const L = PJ && PJ.titulo && LOGROS.find(x => x.id === PJ.titulo); return L && PJ.logros && PJ.logros[L.id] ? L.titulo : ''; };
 

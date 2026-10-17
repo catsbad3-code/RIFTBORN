@@ -366,7 +366,7 @@ function herir(e, dmg, critExtra = 0){
 }
 
 function matar(e){
-  e.muerto = true; PJ.kills++; sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
+  e.muerto = true; PJ.kills++; if (!e.jefe){ PJ.matados = PJ.matados || {}; PJ.matados[e.tipo] = (PJ.matados[e.tipo] || 0) + 1; } sfx(e.jefe ? 'jefe' : 'muere', .05); contar('kills'); if (e.jefe) contar('jefes');
   if (M && PJ.mascota) ganarXPMascota(e.jefe ? 25 : 3);
   botinEvento(e);
   soltarEsencia(e);

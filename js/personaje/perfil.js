@@ -14,13 +14,14 @@ addEventListener('DOMContentLoaded', function(){
   ico('btnMascota', '<canvas width="64" height="64" id="icoPet"></canvas>');
   const pintarPet = () => { const c = $('icoPet'); if (!c || !ratasListo) return; const a = c.getContext('2d'); a.clearRect(0, 0, 64, 64);
     const [sx, sy, w, h] = RATAS_DIR[PJ && PJ.mascota ? PJ.mascota.tipo : 0].ab[0], k = Math.min(60 / w, 60 / h);
-    a.imageSmoothingEnabled = false; a.drawImage(RATAS_IMG, sx, sy, w, h, 32 - w * k / 2, 62 - h * k, w * k, h * k); };
+    a.imageSmoothingEnabled = false; a.drawImage(PJ && PJ.mascota ? hojaRata(PJ.mascota.pelaje) : RATAS_IMG, sx, sy, w, h, 32 - w * k / 2, 62 - h * k, w * k, h * k); };
   if (ratasListo) pintarPet(); else RATAS_IMG.addEventListener('load', pintarPet, { once:true });
   window.pintarIcoPet = pintarPet;
   // el jabalí de la montura, con el cuadro de reposo de su hoja
   ico('btnMontura', '<canvas width="64" height="64"></canvas>');
   const pintarJab = () => { const c = $('btnMontura').firstChild, a = c.getContext('2d'), [sx, sy, w, h] = MON.cuadros[MON.tipos.jabali.idle[0]], k = Math.min(62 / w, 62 / h);
-    a.imageSmoothingEnabled = false; a.drawImage(MON_IMG, sx, sy, w, h, 32 - w * k / 2, 63 - h * k, w * k, h * k); };
+    a.imageSmoothingEnabled = false; a.clearRect(0, 0, 64, 64); a.drawImage(PJ ? hojaMontura(PJ.monturaSel) : MON_IMG, sx, sy, w, h, 32 - w * k / 2, 63 - h * k, w * k, h * k); };
+  window.pintarIcoMontura = () => { if (monListo) pintarJab(); };
   if (monListo) pintarJab(); else MON_IMG.addEventListener('load', pintarJab, { once:true });
 }); $('icoLibro').innerHTML = ic3('libro'); $('icoMis').innerHTML = ic3('pergamino');
 const abierta = id => !$(id).classList.contains('oculto');
@@ -214,6 +215,7 @@ function renderPj(){
     const b = $('wPet'); if (b) b.onclick = () => { toggleMascota(); renderPj(); };
     const bq = $('wPetQueso'); if (bq) bq.onclick = () => { usarApilable('queso'); renderPj(); };
   } else if (wTab === 'desafios'){ cuerpo.innerHTML = htmlDesafios(); enlazarDesafios(); }
+  else if (wTab === 'coleccion'){ cuerpo.innerHTML = htmlColeccion(); enlazarColeccion(cuerpo); }
   else cuerpo.innerHTML = htmlRegistro();
 }
 
@@ -489,7 +491,7 @@ function dibujarFigura(t){
     // ciclo: despierto mirando a los lados, luego se duerme
     const ciclo = (t / 1000) % 16, flip = ciclo < 7 && Math.floor(ciclo / 2.5) % 2 === 1;
     const q = cuadroRata(PJ.mascota.tipo, flip ? 'lado' : 'abajo', false, 0, true);
-    pintarGato(a, PJ.mascota.tipo, W * .82, suelo + 6, 74, t, false, false, ciclo, null, q.img, q.fr);
+    pintarGato(a, PJ.mascota.tipo, W * .82, suelo + 6, 74, t, false, false, ciclo, null, hojaRata(PJ.mascota.pelaje), q.fr);
     a.font = '700 13px Rajdhani, sans-serif'; a.textAlign = 'center'; a.fillStyle = '#e9e4ff';
     a.fillText(PJ.mascota.nombre, W * .82, suelo + 22);
   }
