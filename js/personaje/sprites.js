@@ -142,12 +142,15 @@ function rotulo(txt, x, y, font, fill, stroke = null, lw = 0, sombra = false){
 }
 // silueta blanca de una hoja de sprites (para el destello al recibir daño); se calcula una vez por imagen
 const SILUETAS = new Map();
-function siluetaBlanca(img){
-  let c = SILUETAS.get(img);
+// silueta de un color (blanca para el destello al recibir un golpe). Se hace con composición y no con el filtro del
+// lienzo, que Safari del iPhone no tiene
+function siluetaBlanca(img, col = '#fff'){
+  let m = SILUETAS.get(col); if (!m) SILUETAS.set(col, m = new Map());
+  let c = m.get(img);
   if (!c && img.naturalWidth){
     c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
-    const a = c.getContext('2d'); a.drawImage(img, 0, 0); a.globalCompositeOperation = 'source-in'; a.fillStyle = '#fff'; a.fillRect(0, 0, c.width, c.height);
-    SILUETAS.set(img, c);
+    const a = c.getContext('2d'); a.drawImage(img, 0, 0); a.globalCompositeOperation = 'source-in'; a.fillStyle = col; a.fillRect(0, 0, c.width, c.height);
+    m.set(img, c);
   }
   return c || img;
 }
