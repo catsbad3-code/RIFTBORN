@@ -245,12 +245,16 @@ let claseElegida = 'mago';
 // el arma con la que empieza cada clase (y la de sus emblemas)
 const ARMA_CLASE = { guerrero:'Espada', sombra:'Daga', mago:'Báculo', sacerdote:'Báculo', arquero:'Arco' };
 let gatoPj = 0;
+// gatos que se pueden elegir al crear personaje: por ahora solo Mist, el gato rojo (el que tiene la hoja de caminar terminada).
+// Para sumar otro, añadir su número aquí. Los personajes ya creados con otro gato siguen igual.
+const GATOS_ELEGIBLES = [0];
 const ICONO_CLASE = { guerrero:'⚔️', sombra:'🗡️', mago:'🔮', sacerdote:'✨', arquero:'🏹' };
 const NOMBRES_AL = ['Kael','Mira','Thorne','Luna','Vex','Nyx','Rayo','Sombra','Bigotes','Zarpa','Eclipse','Ónix','Ceniza','Runa','Michi','Garra'];
 function renderCrear(){
   $('cNombre').value = ''; $('cErr').textContent = ''; rotSel = 0;
   const gc = $('gatosPj'); gc.innerHTML = '';
-  TIPOS_GATO.forEach((nombre, i) => {
+  if (!GATOS_ELEGIBLES.includes(gatoPj)) gatoPj = GATOS_ELEGIBLES[0];
+  GATOS_ELEGIBLES.forEach(i => { const nombre = TIPOS_GATO[i];
     const b = document.createElement('button'); b.className = 'wc-ic'; b.type = 'button'; b.title = nombre;
     b.setAttribute('aria-pressed', i === gatoPj); b.setAttribute('aria-label', nombre);
     const c = document.createElement('canvas'); c.width = c.height = 64; b.appendChild(c);
