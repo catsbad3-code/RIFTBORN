@@ -231,8 +231,46 @@ function dibujarNPC(x, y, ropa, pelo, t){
   ctx.fillStyle = pelo; ctx.beginPath(); ctx.arc(x, y - 31 + r, 10, Math.PI, TAU); ctx.fill();
 }
 
+// =====================================================
+//  FONDO DE LA CUEVA YA DIBUJADO
+//  El suelo, su tinte y las paredes no cambian: se pintan una vez por trozos de 512 px y cada fotograma solo se copian.
+//  (Antes se repintaba la pantalla entera varias veces y cada bloque de pared con dos capas: en el teléfono bajaban los FPS.)
+// =====================================================
+const TROZO = 512;
+let fondoCueva = { E:null, clave:'', m:new Map() };
+function trozoCueva(cx, cy, tex){
+  const c = document.createElement('canvas'); c.width = c.height = TROZO;
+  const a = c.getContext('2d'), R = E.R, ox = cx * TROZO, oy = cy * TROZO;
+  a.imageSmoothingEnabled = false; a.translate(-ox, -oy);
+  a.fillStyle = patron(tex.suelo) || R.suelo; a.fillRect(ox, oy, TROZO, TROZO);
+  a.globalAlpha = tex.tinte; a.fillStyle = R.suelo; a.fillRect(ox, oy, TROZO, TROZO); a.globalAlpha = 1;
+  const zona = { x0:Math.max(0, Math.floor(ox / T) - 1), x1:Math.min(E.cols - 1, Math.floor((ox + TROZO) / T) + 1),
+                 y0:Math.max(0, Math.floor(oy / T) - 1), y1:Math.min(E.rows - 1, Math.floor((oy + TROZO) / T) + 1) };
+  dibujarParedes(patron('piedra') || R.pared, patron('muro') || R.cara, null, R.pared + 'd9', R.cara + '99', a, zona);
+  return c;
+}
+function dibujarFondoCueva(tex){
+  // si cambia la cueva o termina de cargar una textura, se vuelve a pintar
+  const clave = [!!patron(tex.suelo), !!patron('piedra'), !!patron('muro')].join();
+  if (fondoCueva.E !== E || fondoCueva.clave !== clave) fondoCueva = { E, clave, m:new Map() };
+  const m = fondoCueva.m, x0 = Math.floor(cam.x / TROZO), x1 = Math.floor((cam.x + W) / TROZO), y0 = Math.floor(cam.y / TROZO), y1 = Math.floor((cam.y + H) / TROZO);
+  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++){
+    const k = cx + ',' + cy; let c = m.get(k);
+    if (!c){ c = trozoCueva(cx, cy, tex); m.set(k, c); }
+    else { m.delete(k); m.set(k, c); }          // el más usado queda al final
+    ctx.drawImage(c, cx * TROZO, cy * TROZO);
+  }
+  // se guardan los últimos 20 trozos (unos 20 MB); los más viejos se tiran
+  while (m.size > 20) m.delete(m.keys().next().value);
+}
 function dibujarMazmorra(t){
   const R = E.R, tex = TEXTURA_RANGO[E.rango];
+  if (terrListo){
+    dibujarFondoCueva(tex);
+    if (E.salida) dibujarPortal(E.salida.x, E.salida.y, 3, t, .7);
+    if (E.portalFinal) dibujarPortal(E.portalFinal.x, E.portalFinal.y, 4, t, .85);
+    return;
+  }
   ctx.fillStyle = patron(tex.suelo) || R.suelo; ctx.fillRect(cam.x - 10, cam.y - 10, W + 20, H + 20);
   if (terrListo){ ctx.globalAlpha = tex.tinte; ctx.fillStyle = R.suelo; ctx.fillRect(cam.x - 10, cam.y - 10, W + 20, H + 20); ctx.globalAlpha = 1; }
   if (!terrListo) for (const d of E.deco){

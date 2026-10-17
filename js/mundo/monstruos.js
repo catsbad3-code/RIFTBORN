@@ -108,26 +108,6 @@ function dibujarEnemigoViejo(e){
   }
 }
 
-// penumbra de las cuevas e interiores: el degradado se pinta una vez por tamaño de pantalla y luego sólo se coloca
-const PENUMBRA = {};
-function penumbra(tipo){
-  const clave = tipo + W + 'x' + H;
-  if (PENUMBRA[tipo] && PENUMBRA[tipo].clave === clave) return PENUMBRA[tipo].c;
-  const c = document.createElement('canvas'), a = c.getContext('2d');
-  if (tipo === 'cueva'){
-    c.width = W * 2; c.height = H * 2;
-    const g = a.createRadialGradient(W, H, 120, W, H, Math.max(360, Math.min(W, H) * .75));
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.88)');
-    a.fillStyle = g; a.fillRect(0, 0, W * 2, H * 2);
-  } else {
-    c.width = W; c.height = H;
-    const g = a.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, Math.max(W, H) * .7);
-    g.addColorStop(0, 'rgba(255,160,60,.06)'); g.addColorStop(1, 'rgba(20,8,0,.55)');
-    a.fillStyle = g; a.fillRect(0, 0, W, H);
-  }
-  PENUMBRA[tipo] = { clave, c };
-  return c;
-}
 const CARTEL = {};
 function dibujarMinimapa(){
   const bajo = H < 500; // teléfono acostado: minimapa más chico para dejar ver el mundo
